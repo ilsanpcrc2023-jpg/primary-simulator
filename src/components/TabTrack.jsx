@@ -2,7 +2,7 @@ import { memo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import NumBox from "./shared/NumBox";
 import { SH, CL } from "../constants";
-import { f, fE, pct, diffE } from "../utils";
+import { f, fE, pct, diffAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
@@ -67,15 +67,15 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
     {/* Track KPI */}
     <div className="grid grid-cols-2 gap-2">
       <div className={card + " p-3"}>
-        <div className="text-xs text-gray-500 mb-1">현 선택: 행위별 {ffsPct}% / 환자군 {hccPct}%</div>
+        <div className="text-xs text-gray-500 mb-1">현 선택: 행위별 {ffsPct}% / 환자군 {hccPct}% <span className="text-gray-400">· vs 순수 FFS</span></div>
         <div className="text-2xl sm:text-3xl font-extrabold" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{pct(tSchg)}</div>
-        <div className="text-xs sm:text-sm font-bold mt-0.5" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffE(T.tA, T.tS)}원</div>
-        <div className="text-xs text-gray-400 mt-0.5">{fE(T.tA)}억 → {fE(T.tS)}억</div>
+        <div className="text-xs sm:text-sm font-bold mt-0.5" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(T.inc0, T.tS)}</div>
+        <div className="text-xs text-gray-400 mt-0.5">{fE(T.inc0)}억 → {fE(T.tS)}억</div>
       </div>
       <div className="rounded-xl border p-3 shadow-sm" style={{ background: "#f0f9ff", borderColor: "#bae6fd" }}>
         <div className="text-xs text-gray-500 mb-1">공단 의원급 지출 변화</div>
         <div className="text-2xl sm:text-3xl font-extrabold text-blue-700">{pct(nhiNewChg, 2)}</div>
-        <div className="text-xs sm:text-sm font-bold text-blue-600 mt-0.5">{diffE(T.nhi0, T.nhi2)}원</div>
+        <div className="text-xs sm:text-sm font-bold text-blue-600 mt-0.5">{diffAuto(T.nhi0, T.nhi2)}</div>
         <div className="text-xs text-gray-400 mt-0.5">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
       </div>
     </div>

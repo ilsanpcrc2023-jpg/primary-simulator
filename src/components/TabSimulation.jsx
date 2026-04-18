@@ -4,7 +4,7 @@ import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import RegistrationPanel from "./RegistrationPanel";
 import { SH, CL, ON } from "../constants";
-import { f, fE, pct, diffE } from "../utils";
+import { f, fE, pct, diffAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
@@ -83,13 +83,13 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
       <div className={card + " p-3"}>
         <div className="text-xs text-gray-500 mb-1">의원 수입 변화 (LC {LC}%p)</div>
         <div className="text-2xl sm:text-3xl font-extrabold text-green-600">{pct(incNewChg)}</div>
-        <div className="text-sm font-bold text-green-600">{diffE(T.inc0, T.inc2)}원</div>
+        <div className="text-sm font-bold text-green-600">{diffAuto(T.inc0, T.inc2)}</div>
         <div className="text-xs text-gray-400 mt-1">{fE(T.inc0)}억 → {fE(T.inc2)}억</div>
       </div>
       <div className={card + " p-3"}>
         <div className="text-xs text-gray-500 mb-1">공단 총의료비 변화</div>
         <div className="text-2xl sm:text-3xl font-extrabold text-blue-700">{pct(nhiNewChg, 2)}</div>
-        <div className="text-sm font-bold text-blue-600">{diffE(T.nhi0, T.nhi2)}원</div>
+        <div className="text-sm font-bold text-blue-600">{diffAuto(T.nhi0, T.nhi2)}</div>
         <div className="text-xs text-gray-400 mt-1">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
       </div>
     </div>

@@ -82,7 +82,7 @@ export default memo(function RegistrationPanel({ state, set, updK, resetK, reg, 
             className="w-full big-thumb"
             style={{ '--thumb-bg': '#2563eb', accentColor: "#2563eb", background: `linear-gradient(to right, #2563eb ${(n_reg_per_clinic / 5000) * 100}%, #e5e7eb 0%)` }} />
           <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-            <span>0</span><span>500</span><span>1,000</span><span>2,000</span><span>5,000명</span>
+            <span>0</span><span>1,000</span><span>2,000</span><span>3,000</span><span>4,000</span><span>5,000명</span>
           </div>
           <div className="flex flex-wrap gap-1 mt-2">
             {[500, 1000, 1500, 2000, 3000].map(v => (
