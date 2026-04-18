@@ -1,0 +1,30 @@
+{
+  "name": "환자군(HCC) 기반 일차의료 지불모형 시뮬레이터",
+  "short_name": "HCC 시뮬레이터",
+  "description": "국민건강보험 일산병원 일차의료개발센터 정책 시뮬레이션 도구",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#1a6fa8",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
