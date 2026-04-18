@@ -61,10 +61,9 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
     <div className={card + " px-3 py-2.5"}>
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xs font-semibold text-gray-600 shrink-0">총 이용환자 수 (N)</span>
-        <input type="text" value={totalN.toLocaleString()}
-          onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) { set("totalN", v); if (v !== ON) set("dataLabel", "시뮬레이션 모드"); } }}
-          className="w-28 text-sm font-bold text-gray-800 text-right border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500" />
-        <span className="text-xs text-gray-400">명</span>
+        <NumBox value={totalN}
+          onChange={v => { const n = Math.max(1, Math.round(v)); set("totalN", n); if (n !== ON) set("dataLabel", "시뮬레이션 모드"); }}
+          color="#1f2937" suffix="명" />
         <span className="text-[10px] text-gray-400 ml-2">= 등록 + 비등록 합계</span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
