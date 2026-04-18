@@ -56,6 +56,9 @@ af940d1  ui: 의원당 평균 % 제거 (전체 %와 수학적 동일 중복)
 d49ad32  docs: 2026-04-19 세션 정리 — CLAUDE.md·인계장 최신화
 36ab828  ui: LC 카드에 현재 타원이용비중(L) → 변화 후 L 표시
 db6dfa1  Merge feature/l-display (현재 L 시각화)
+b69a8e8  docs: L 변화 시각화 반영 — CLAUDE.md·인계장 최신화
+a80ddec  ui: 탭 강조·실인원 프리셋 개정·의원당 기준수입 접힘
+01a43b7  Merge feature/tab-presets-baseline (탭/프리셋/수입 절대값)
 ```
 
 모든 커밋은 빌드·테스트 통과(npm run build + npm test, 14 tests). 커밋 작성자 이메일은 GitHub noreply 형식으로 통일.
@@ -94,6 +97,9 @@ db6dfa1  Merge feature/l-display (현재 L 시각화)
 | 파비콘·PWA | ✅ | favicon.svg·icon-192/512.png·manifest.webmanifest, scripts/gen-icons.mjs |
 | 탭 폰트 확대 | ✅ | 12px → 15px, padding 확대 |
 | L 변화 시각화 | ✅ | LC 카드에 가중평균 L + 환자군별 4박스로 현재값 → 변화 후 값 표시 |
+| 탭 강조 | ✅ | 폰트 17px·활성탭 border 2px deep-blue·box-shadow (시연 가시성) |
+| 실인원 프리셋 재정 | ✅ | 1000·1500·2000·3000·5000·7000 (한국 의원 실측 분포 반영) |
+| 의원당 수입 절대값 접힘 | ✅ | 기본 숨김 토글. "의사 1인 소득 ≠ 의원 외래 수입" 주석으로 오해 방지 |
 
 ---
 
