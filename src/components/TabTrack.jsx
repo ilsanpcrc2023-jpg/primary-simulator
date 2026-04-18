@@ -4,11 +4,14 @@ import NumBox from "./shared/NumBox";
 import { SH, CL } from "../constants";
 import { f, fE, pct, diffAuto } from "../utils";
 
+
+
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBchg, tCchg, tSchg }) {
-  const { hccPct, LC, R } = state;
+  const { hccPct, LC, R, M_clinics } = state;
   const ffsPct = 100 - hccPct;
+  const M = Math.max(1, M_clinics);
 
   return (<>
     <div className={card + " p-4"}>
@@ -70,7 +73,12 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
         <div className="text-xs text-gray-500 mb-1">현 선택: 행위별 {ffsPct}% / 환자군 {hccPct}% <span className="text-gray-400">· vs 순수 FFS</span></div>
         <div className="text-2xl sm:text-3xl font-extrabold" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{pct(tSchg)}</div>
         <div className="text-xs sm:text-sm font-bold mt-0.5" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(T.inc0, T.tS)}</div>
-        <div className="text-xs text-gray-400 mt-0.5">{fE(T.inc0)}억 → {fE(T.tS)}억</div>
+        <div className="text-xs text-gray-400 mt-0.5">{fE(T.inc0)}억 → {fE(T.tS)}억 · 전체</div>
+        <div className="mt-1 pt-1 border-t border-gray-100 text-xs">
+          <span className="text-gray-500">의원당 평균 </span>
+          <span className="font-bold" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tS - T.inc0) / M)}</span>
+          <span className="text-gray-400"> (M={f(M)})</span>
+        </div>
       </div>
       <div className="rounded-xl border p-3 shadow-sm" style={{ background: "#f0f9ff", borderColor: "#bae6fd" }}>
         <div className="text-xs text-gray-500 mb-1">공단 의원급 지출 변화</div>

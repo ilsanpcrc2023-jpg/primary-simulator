@@ -9,7 +9,8 @@ import { f, fE, pct, diffAuto } from "../utils";
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabSimulation({ state, set, updP, updBase, updK, resetK, reset, G, T, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
-  const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, R } = state;
+  const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, R, M_clinics } = state;
+  const M = Math.max(1, M_clinics);
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
 
   return (<>
@@ -84,7 +85,12 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
         <div className="text-xs text-gray-500 mb-1">의원 수입 변화 (LC {LC}%p)</div>
         <div className="text-2xl sm:text-3xl font-extrabold text-green-600">{pct(incNewChg)}</div>
         <div className="text-sm font-bold text-green-600">{diffAuto(T.inc0, T.inc2)}</div>
-        <div className="text-xs text-gray-400 mt-1">{fE(T.inc0)}억 → {fE(T.inc2)}억</div>
+        <div className="text-xs text-gray-400 mt-1">{fE(T.inc0)}억 → {fE(T.inc2)}억 · 전체</div>
+        <div className="mt-1 pt-1 border-t border-gray-100 text-xs">
+          <span className="text-gray-500">의원당 평균 </span>
+          <span className="font-bold text-green-700">{diffAuto(0, (T.inc2 - T.inc0) / M)}</span>
+          <span className="text-gray-400"> (M={f(M)})</span>
+        </div>
       </div>
       <div className={card + " p-3"}>
         <div className="text-xs text-gray-500 mb-1">공단 총의료비 변화</div>
