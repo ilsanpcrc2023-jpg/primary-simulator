@@ -2,7 +2,7 @@ import { memo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
-import RegistrationPanel from "./RegistrationPanel";
+import { RCard, PPCard, RegScaleCard, RegDistCard } from "./RegistrationPanel";
 import { SH, CL, ON } from "../constants";
 import { f, fE, pct, diffAuto } from "../utils";
 
@@ -14,11 +14,11 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
 
   return (<>
-    {/* 수가 설정 */}
+    {/* ① 환자군 기본수가 (P) 설정 */}
     <div className={card + " p-4"}>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="font-bold text-gray-900 text-sm">환자군 기본수가 (P) 설정</h2>
+          <h2 className="font-bold text-base text-gray-900">환자군 기본수가 (P) 설정</h2>
           <p className="text-[11px] text-gray-500 mt-0.5">P = 환자군 기준의료비 × 의원급 외래비중</p>
         </div>
         <div className="flex items-center gap-2">
@@ -43,11 +43,17 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
       </div>
     </div>
 
-    {/* 타원이용비중 변화율 (LC) — 핵심 인센티브 구조, 독립 카드 */}
+    {/* ② 주치의 등록관리비 (R) 설정 */}
+    <RCard state={state} set={set} setRUniform={setRUniform} updR={updR} reg={reg} regRatios={regRatios} />
+
+    {/* ③ 최종 일차의료수가 (PP) — 결과 (promoted) */}
+    <PPCard state={state} G={G} />
+
+    {/* ④ 타원이용비중 (L) 변화율 — 핵심 인센티브 (promoted) */}
     <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>타원이용비중 (L) 변화율 (LC)</h2>
+          <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>타원이용비중 (L) 변화율</h2>
           <p className="text-xs mt-0.5" style={{ color: "#7c3aed" }}>
             ⭐ 주치의 관리 강화 → L ↓ → 의원 수입 ↑ · 모델의 핵심 인센티브
           </p>
@@ -63,50 +69,28 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
         <span>-10%p</span><span>-5%p</span><span>0%p (변화 없음)</span>
       </div>
 
-      {/* 수식 설명 박스 */}
+      {/* 수식 요약 */}
       <div className="mt-3 pt-3 border-t border-purple-200/70 space-y-1 text-[11px]">
         <div className="flex items-start gap-2">
-          <span className="font-bold text-purple-700 shrink-0">공단 지급</span>
+          <span className="font-bold text-purple-700 shrink-0 w-16">공단 지급</span>
           <code className="font-mono text-purple-900 bg-white/60 rounded px-1.5 py-0.5">A = P × (1 − L) + R</code>
         </div>
         <div className="flex items-start gap-2">
-          <span className="font-bold text-purple-700 shrink-0">본인부담</span>
+          <span className="font-bold text-purple-700 shrink-0 w-16">본인부담</span>
           <code className="font-mono text-purple-900 bg-white/60 rounded px-1.5 py-0.5">B = M1 × 30%</code>
           <span className="text-purple-500 text-[10px]">(고정)</span>
         </div>
-        <div className="flex items-start gap-2">
-          <span className="font-bold text-purple-700 shrink-0">의원 수입</span>
-          <code className="font-mono text-purple-900 bg-white/60 rounded px-1.5 py-0.5">A + B (등록환자) + M1 (비등록)</code>
-        </div>
         <div className="text-[10px] text-purple-700 bg-purple-100/60 rounded px-2 py-1 mt-2 leading-relaxed">
-          ※ <b>R(등록관리비)은 타원이용비중 L에 걸리지 않습니다.</b> 환자가 어디 가든 등록관리 업무는 등록의원이 수행하므로, R은 전액 등록의원에 고정 지급됩니다. LC를 움직여도 R은 그대로 유지되는 이유입니다.
+          ※ 등록관리비(R)는 타원이용비중(L)과 무관하게 고정 지급됩니다.
         </div>
       </div>
     </div>
 
-    {/* v6.0: 주치의 등록관리비(R) + 등록환자 규모 + 환자군별 등록률 조정 */}
-    <RegistrationPanel state={state} set={set} updK={updK} resetK={resetK} updR={updR} setRUniform={setRUniform} reg={reg} regRatios={regRatios} ratios={ratios} G={G} />
+    {/* ⑤ 등록환자 규모 */}
+    <RegScaleCard state={state} set={set} reg={reg} />
 
-    {/* 총 실인원 환자수 (보조 — 데이터 규모 조정용) */}
-    <div className={card + " px-3 py-2.5"}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-semibold text-gray-600 shrink-0">총 실인원 환자수 (N)</span>
-        <NumBox value={totalN}
-          onChange={v => { const n = Math.max(1, Math.round(v)); set("totalN", n); if (n !== ON) set("dataLabel", "시뮬레이션 모드"); }}
-          color="#1f2937" suffix="명" />
-        <span className="text-[10px] text-gray-400 ml-2">= 등록 + 비등록 합계 · 연인원 아님</span>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-blue-600 font-semibold shrink-0">추정 규모</span>
-        {[{ l: "10만", v: 100000 }, { l: "100만", v: 1000000 }, { l: "1000만", v: 10000000 }, { l: "5000만", v: 50000000 }].map(b => (
-          <button key={b.v} onClick={() => { set("totalN", b.v); set("dataLabel", `추정 ${b.l}명 시뮬레이션`); }}
-            className="text-xs px-2 py-1 rounded border font-medium transition"
-            style={totalN === b.v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
-            {b.l}
-          </button>
-        ))}
-      </div>
-    </div>
+    {/* ⑥ 등록환자 분포 조정 (고급) */}
+    <RegDistCard state={state} set={set} updK={updK} resetK={resetK} ratios={ratios} regRatios={regRatios} />
 
     {/* KPI 2열 */}
     <div className="grid grid-cols-2 gap-2">
