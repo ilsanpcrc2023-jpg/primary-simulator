@@ -60,13 +60,13 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
         </div>
         <NumBox value={LC} onChange={v => set("LC", v)} color="#7c3aed" suffix="%p" />
       </div>
-      <input type="range" min={-10} max={0} step={0.5} value={LC}
+      <input type="range" min={-30} max={0} step={0.5} value={Math.max(-30, Math.min(0, LC))}
         onChange={e => set("LC", parseFloat(e.target.value))}
         aria-label="타원이용비중 변화율 슬라이더"
         className="w-full big-thumb"
-        style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${((LC + 10) / 10) * 100}%, #e5e7eb 0%)` }} />
+        style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${((Math.max(-30, Math.min(0, LC)) + 30) / 30) * 100}%, #e5e7eb 0%)` }} />
       <div className="flex justify-between text-[10px] mt-1" style={{ color: "#8b5cf6" }}>
-        <span>-10%p</span><span>-5%p</span><span>0%p (변화 없음)</span>
+        <span>-30%p</span><span>-20%p</span><span>-10%p</span><span>0%p (변화 없음)</span>
       </div>
 
       {/* 수식 요약 */}
@@ -97,31 +97,35 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
         <div className="flex items-baseline justify-between mb-2">
           <h3 className="font-bold text-base text-green-800">의원 수입 변화</h3>
-          <span className="text-[11px] font-semibold text-green-600">LC {LC}%p</span>
+          <span className="text-[11px] font-semibold text-green-600">LC {LC}%p · 기준선 대비</span>
         </div>
-        <div className="text-xs text-green-700/80 mb-1">의원당 평균</div>
-        <div className="text-4xl sm:text-5xl font-extrabold text-green-600 leading-none">{diffAuto(0, (T.inc2 - T.inc0) / M)}</div>
-        <div className="text-[11px] text-green-600/70 mt-1">M={f(M)}개 의원 기준</div>
-        <div className="mt-3 pt-2 border-t border-green-200/70 flex items-baseline gap-2 text-sm">
-          <span className="font-bold text-green-700">{pct(incNewChg)}</span>
-          <span className="text-green-700/80">· 전체 {diffAuto(T.inc0, T.inc2)}</span>
+        <div className="text-xs sm:text-sm text-green-700/80 font-semibold">전체 변화액</div>
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-2xl sm:text-3xl font-extrabold text-green-600 leading-tight">{diffAuto(T.inc0, T.inc2)}</span>
+          <span className="text-lg sm:text-xl font-bold text-green-700/80 leading-tight">{pct(incNewChg)}</span>
         </div>
         <div className="text-[11px] text-green-700/60 mt-0.5">{fE(T.inc0)}억 → {fE(T.inc2)}억</div>
+        <div className="mt-2 pt-2 border-t border-green-200/70">
+          <div className="text-xs sm:text-sm text-green-700/80 font-semibold">의원당 평균 <span className="font-normal text-green-600/60">(M={f(M)})</span></div>
+          <div className="text-xl sm:text-2xl font-extrabold text-green-700 leading-tight">{diffAuto(0, (T.inc2 - T.inc0) / M)}</div>
+        </div>
         <div className="mt-2 text-[10.5px] text-green-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
           의원 수입 = <b>등록환자</b>(환자군 모형 A + 본인부담 + R) + <b>비등록환자</b>(FFS M1 유지)
         </div>
       </div>
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
         <div className="flex items-baseline justify-between mb-2">
-          <h3 className="font-bold text-base text-blue-800">공단 총의료비 변화</h3>
-          <span className="text-[11px] font-semibold text-blue-600">의원급 외래</span>
+          <h3 className="font-bold text-base text-blue-800">의원급 외래 의료비 변화</h3>
+          <span className="text-[11px] font-semibold text-blue-600">공단 지출 기준</span>
         </div>
-        <div className="text-xs text-blue-700/80 mb-1">전체 변화액</div>
-        <div className="text-4xl sm:text-5xl font-extrabold text-blue-700 leading-none">{diffAuto(T.nhi0, T.nhi2)}</div>
-        <div className="text-[11px] text-blue-700/70 mt-1">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
-        <div className="mt-3 pt-2 border-t border-blue-200/70 flex items-baseline gap-2 text-sm">
-          <span className="font-bold text-blue-700">{pct(nhiNewChg, 2)}</span>
-          <span className="text-blue-700/70">기준선 대비</span>
+        <div className="text-xs sm:text-sm text-blue-700/80 font-semibold">전체 변화액</div>
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-2xl sm:text-3xl font-extrabold text-blue-700 leading-tight">{diffAuto(T.nhi0, T.nhi2)}</span>
+          <span className="text-lg sm:text-xl font-bold text-blue-700/80 leading-tight">{pct(nhiNewChg, 2)}</span>
+        </div>
+        <div className="text-[11px] text-blue-700/60 mt-0.5">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
+        <div className="mt-2 text-[10.5px] text-blue-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
+          기준선 = 전원 FFS 의원급 외래 총액 (입원·약국·병원급 제외)
         </div>
       </div>
     </div>

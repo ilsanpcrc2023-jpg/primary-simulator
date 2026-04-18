@@ -145,36 +145,50 @@ export const PPCard = memo(function PPCard({ state, G }) {
    ───────────────────────────────────────────── */
 export const RegScaleCard = memo(function RegScaleCard({ state, set, reg }) {
   const { totalN, M_clinics, n_reg_per_clinic, dataLabel } = state;
+  const perClinic = Math.max(1, Math.round(totalN / Math.max(1, M_clinics)));
+
+  const setPerClinic = (v) => {
+    const n = Math.max(1, Math.round(v));
+    const newTotal = Math.max(1, n * Math.max(1, M_clinics));
+    set("totalN", newTotal);
+    if (newTotal !== ON) set("dataLabel", "시뮬레이션 모드");
+  };
+
+  const setMPreservingPerClinic = (m) => {
+    const newM = Math.max(1, Math.round(m));
+    const newTotal = Math.max(1, perClinic * newM);
+    set("M_clinics", newM);
+    set("totalN", newTotal);
+    if (newTotal !== ON) set("dataLabel", "시뮬레이션 모드");
+  };
 
   return (
     <div className={card + " p-4"}>
       <h2 className={H2 + " mb-3"}>등록환자 규모</h2>
 
-      {/* 총 실인원 환자수 N */}
+      {/* 의원당 실인원 (primary 입력) */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">총 실인원 환자수 (N)</span>
-        <NumBox value={totalN}
-          onChange={v => { const n = Math.max(1, Math.round(v)); set("totalN", n); if (n !== ON) set("dataLabel", "시뮬레이션 모드"); }}
-          color="#1f2937" suffix="명" />
+        <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">의원당 실인원</span>
+        <NumBox value={perClinic} onChange={setPerClinic} color="#1f2937" suffix="명" />
         <div className="flex flex-wrap gap-1 ml-2">
-          {[{ l: "10만", v: 100000 }, { l: "100만", v: 1000000 }, { l: "1000만", v: 10000000 }, { l: "5000만", v: 50000000 }].map(b => (
-            <button key={b.v} onClick={() => { set("totalN", b.v); set("dataLabel", `추정 ${b.l}명 시뮬레이션`); }}
+          {[3000, 5000, 10000, 20000].map(v => (
+            <button key={v} onClick={() => setPerClinic(v)}
               className="text-[11px] px-2 py-0.5 rounded border font-medium transition"
-              style={totalN === b.v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
-              {b.l}
+              style={perClinic === v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+              {f(v)}명
             </button>
           ))}
         </div>
         <span className="text-[10px] text-gray-400 ml-auto">연인원 아님</span>
       </div>
 
-      {/* 의원 수 M */}
+      {/* 의원 수 M (per-clinic 보존) */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">의원 수 (M)</span>
-        <NumBox value={M_clinics} onChange={v => set("M_clinics", Math.max(1, Math.round(v)))} color="#1f2937" suffix="개" />
+        <NumBox value={M_clinics} onChange={setMPreservingPerClinic} color="#1f2937" suffix="개" />
         <div className="flex flex-wrap gap-1 ml-2">
           {[10, 100, 1000, 3000].map(v => (
-            <button key={v} onClick={() => set("M_clinics", v)}
+            <button key={v} onClick={() => setMPreservingPerClinic(v)}
               className="text-[11px] px-2 py-0.5 rounded border font-medium transition"
               style={M_clinics === v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
               {f(v)}
@@ -182,6 +196,12 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg }) {
           ))}
         </div>
         <span className="text-[10px] text-gray-400 ml-auto">파일럿 10 · 전국 ≈ 3,000</span>
+      </div>
+
+      {/* 전체 N 파생 표기 */}
+      <div className="mb-3 px-2 py-1 bg-gray-50 rounded text-[11px] text-gray-600">
+        전체 실인원 N = <b className="text-gray-800">{f(totalN)}명</b>
+        <span className="text-gray-400"> = 의원당 {f(perClinic)} × M {f(M_clinics)}</span>
       </div>
 
       {/* 의원당 등록환자수 */}
@@ -214,23 +234,27 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg }) {
         </div>
       </div>
 
-      {/* 요약 */}
+      {/* 요약 — 의원당 단위 통일: 실인원 = 등록 + 비등록 */}
       <div className="mt-3 pt-2 border-t border-gray-100 grid grid-cols-3 gap-2 text-xs">
         <div className="bg-gray-50 rounded px-2 py-1.5">
           <div className="text-gray-500 text-[10px]">의원당 실인원</div>
           <div className="font-bold text-gray-800">{f(Math.round(reg.n_total_per_clinic))}명</div>
         </div>
         <div className="bg-blue-50 rounded px-2 py-1.5">
-          <div className="text-blue-600 text-[10px]">총 등록환자</div>
-          <div className="font-bold text-blue-700">{f(Math.round(reg.n_reg_total))}명</div>
+          <div className="text-blue-600 text-[10px]">의원당 등록환자</div>
+          <div className="font-bold text-blue-700">{f(Math.round(reg.n_reg_pc))}명</div>
           <div className="text-[10px] text-blue-500">등록률 {(reg.regRate * 100).toFixed(1)}%</div>
         </div>
         <div className="bg-slate-50 rounded px-2 py-1.5">
-          <div className="text-slate-500 text-[10px]">비등록 (FFS)</div>
-          <div className="font-bold text-slate-700">{f(Math.round(reg.n_unreg_total))}명</div>
+          <div className="text-slate-500 text-[10px]">의원당 비등록 (FFS)</div>
+          <div className="font-bold text-slate-700">{f(Math.round(reg.n_total_per_clinic - reg.n_reg_pc))}명</div>
         </div>
       </div>
-      <div className="mt-1.5 text-[10px] text-gray-400 italic">
+      <div className="mt-2 bg-gray-50/70 rounded px-2 py-1 text-[11px] text-gray-600 leading-snug">
+        <span className="font-mono">의원당 실인원 {f(Math.round(reg.n_total_per_clinic))} = 등록 {f(Math.round(reg.n_reg_pc))} + 비등록 {f(Math.round(reg.n_total_per_clinic - reg.n_reg_pc))}</span>
+        <span className="text-gray-400"> · 전체 N = {f(Math.round(reg.n_reg_total + reg.n_unreg_total))}명 ({f(Math.round(reg.n_reg_total))} + {f(Math.round(reg.n_unreg_total))})</span>
+      </div>
+      <div className="mt-1 text-[10px] text-gray-400 italic">
         ※ 실인원 = 1년간 방문횟수와 무관하게 환자 1명 = 1로 집계. 연인원(방문건수) 아님.
       </div>
     </div>
