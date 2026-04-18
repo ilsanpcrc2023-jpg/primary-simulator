@@ -107,6 +107,9 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
           <span className="font-extrabold text-green-700 text-base">{diffAuto(0, (T.inc2 - T.inc0) / M)}</span>
           <span className="text-green-600/60 text-xs"> (M={f(M)})</span>
         </div>
+        <div className="mt-2 text-[10.5px] text-green-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
+          의원 수입 = <b>등록환자</b>(환자군 모형 A + 본인부담 + R) + <b>비등록환자</b>(FFS M1 유지)
+        </div>
       </div>
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
         <div className="flex items-baseline justify-between mb-2">
