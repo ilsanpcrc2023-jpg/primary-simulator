@@ -7,17 +7,20 @@ import { f, fE, pct, diffE } from "../utils";
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCchg, tSchg }) {
-  const { hccPct, LC } = state;
+  const { hccPct, LC, R } = state;
   const ffsPct = 100 - hccPct;
 
   return (<>
     <div className={card + " p-4"}>
       <h2 className="font-bold text-gray-900 mb-3 text-sm">Track 선택권</h2>
+      <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+        Track은 <b>등록환자</b>에게만 적용됩니다. 비등록환자는 항상 FFS로 진료합니다. R(등록관리비)은 모든 Track에서 등록환자에게 지급됩니다.
+      </p>
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { n: "Track A", d: "행위별", c: "#22c55e", bg: "#f0fdf4", v: 0 },
-          { n: "Track B", d: "혼합형 50:50", c: "#3b82f6", bg: "#eff6ff", v: 50 },
-          { n: "Track C", d: "환자군 기반", c: "#f97316", bg: "#fff7ed", v: 100 },
+          { n: "Track A", d: "FFS + R", c: "#22c55e", bg: "#f0fdf4", v: 0 },
+          { n: "Track B", d: "혼합 50:50 + R", c: "#3b82f6", bg: "#eff6ff", v: 50 },
+          { n: "Track C", d: "환자군 모형 + R", c: "#f97316", bg: "#fff7ed", v: 100 },
         ].map((t, i) => (
           <button key={i} onClick={() => set("hccPct", t.v)}
             aria-selected={hccPct === t.v}
@@ -98,7 +101,7 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCch
 
     {/* Track 안내 */}
     <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 text-xs text-blue-800 leading-relaxed">
-      Track A(행위별)를 선택해도 현재와 차이가 없으며, Track B·C로 전환 시 타원이용비중 관리에 따라 추가 수입이 발생합니다.
+      Track A(행위별)를 선택해도 등록환자당 R({R > 0 ? `${R.toLocaleString()}원` : "미설정"})만큼 추가 수입이 발생합니다. Track B·C로 전환 시 환자군 모형과 타원이용비중 관리에 따라 수입이 증가합니다.
       {hccPct > 0 && <> 현재 선택(행위별 {ffsPct}% : 환자군 {hccPct}%) 기준 <b className="text-green-700">{pct(tSchg)}</b> 수입 변화가 예상됩니다.</>}
       {" "}의원별 상황에 맞는 Track을 자율 선택할 수 있습니다.
     </div>

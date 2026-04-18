@@ -22,6 +22,12 @@ const initialState = {
   ssLtcPct: 1,
   ssMacroPct: 0.1,
   ssClinicShare: 50,
+  // v6.0
+  R: 0,
+  M_clinics: 10,
+  n_reg_per_clinic: 1000,
+  k_g: [1, 1, 1, 1],
+  showAdvancedDist: false,
 };
 
 function reducer(state, action) {
@@ -38,6 +44,13 @@ function reducer(state, action) {
       base[action.i] = { ...base[action.i], [action.key]: action.value };
       return { ...state, base };
     }
+    case "SET_K": {
+      const k_g = [...state.k_g];
+      k_g[action.i] = action.value;
+      return { ...state, k_g };
+    }
+    case "RESET_K":
+      return { ...state, k_g: [1, 1, 1, 1] };
     case "LOAD_DATA":
       return {
         ...state,
@@ -46,6 +59,7 @@ function reducer(state, action) {
         totalN: action.base.reduce((s, g) => s + g.N, 0),
         dataLabel: action.dataLabel,
         uploadBanner: action.uploadBanner,
+        M_clinics: action.M_clinics ?? state.M_clinics,
       };
     case "MACRO_SYNC": {
       const { newPct } = action;
@@ -103,6 +117,7 @@ export default function useSimulator() {
     base, P, LC, totalN, hccPct,
     ssTotalCost, ssAcute, ssEmergency, ssLtc,
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
+    R, M_clinics, n_reg_per_clinic, k_g,
   } = state;
 
   const ffsPct = 100 - hccPct;
@@ -111,6 +126,25 @@ export default function useSimulator() {
     const t = base.reduce((s, g) => s + g.N, 0);
     return base.map(g => g.N / t);
   }, [base]);
+
+  // v6.0: 등록환자 분포 (환자군별 조정계수 k_g 반영, 정규화)
+  const regRatios = useMemo(() => {
+    const w = ratios.map((r, i) => r * (k_g[i] ?? 1));
+    const sum = w.reduce((s, v) => s + v, 0);
+    return sum > 0 ? w.map(v => v / sum) : ratios;
+  }, [ratios, k_g]);
+
+  // 등록/비등록 환자 수 산출
+  const reg = useMemo(() => {
+    const M = Math.max(1, M_clinics);
+    const n_total_per_clinic = totalN / M;
+    const n_reg_pc = Math.min(n_reg_per_clinic, n_total_per_clinic);
+    const n_reg_total_raw = M * n_reg_pc;
+    const n_reg_total = Math.min(n_reg_total_raw, totalN);
+    const n_unreg_total = Math.max(0, totalN - n_reg_total);
+    const regRate = totalN > 0 ? n_reg_total / totalN : 0;
+    return { M, n_total_per_clinic, n_reg_pc, n_reg_total, n_unreg_total, regRate };
+  }, [M_clinics, totalN, n_reg_per_clinic]);
 
   const G = useMemo(() => {
     const lc = LC / 100;
@@ -122,28 +156,60 @@ export default function useSimulator() {
       const LL = b.L + lc;
       const A_new = p * (1 - LL);
       const AB_new = A_new + b.M1 * 0.30;
-      const inc0 = b.M1 * N;
-      const inc1 = AB_cur * N;
-      const inc2 = AB_new * N;
       const C1 = b.M1 / (1 - b.L);
       const D1 = C1 - b.M1;
+
+      // v6.0: 등록/비등록 분리
+      const n_reg_g = reg.n_reg_total * regRatios[i];
+      const n_unreg_g = Math.max(0, N - n_reg_g);
+
+      // 환자군 모형 하 1인당 수입 (등록환자), R은 L 우회
+      const ab_reg_cur = A_cur + R + b.M1 * 0.30;
+      const ab_reg_new = A_new + R + b.M1 * 0.30;
+
+      // 의원 총수입: 등록=환자군 모형, 비등록=FFS(M1)
+      const inc0 = b.M1 * N;                                    // baseline: 전원 FFS
+      const inc1 = ab_reg_cur * n_reg_g + b.M1 * n_unreg_g;     // v6 현 의료행태
+      const inc2 = ab_reg_new * n_reg_g + b.M1 * n_unreg_g;     // v6 LC 적용 후
+
+      // 공단 총의료비 (의원급 외래 전체, v5 관점 확장)
       const nhi0 = C1 * N;
-      const nhi1 = AB_cur * N + D1 * N;
-      const nhi2 = AB_new * N + D1 * (LL / b.L) * N;
-      const tA = AB_cur;
-      const tC = AB_new;
+      const nhi1 = (ab_reg_cur + D1) * n_reg_g + C1 * n_unreg_g;
+      const nhi2 = (ab_reg_new + D1 * (b.L > 0 ? LL / b.L : 1)) * n_reg_g + C1 * n_unreg_g;
+
+      // Track (1인당 등록환자 실지불액, 노션 Q6 재해석)
+      //   A: 등록환자도 FFS + R add-on
+      //   C: 환자군 모형 (LC 적용)
+      //   B: A와 C의 hccPct 가중평균
+      const tA = b.M1 + R;
+      const tC = ab_reg_new;
       const tB = (tA + tC) / 2;
       const tS = tA * (ffsPct / 100) + tC * (hccPct / 100);
-      return { N, p, b, A_cur, A_new, AB_cur, AB_new, LL, B: b.M1 * 0.30, inc0, inc1, inc2, nhi0, nhi1, nhi2, tA, tB, tC, tS };
+
+      return {
+        N, p, b,
+        A_cur, A_new, AB_cur, AB_new, LL,
+        B: b.M1 * 0.30,
+        R_per_pt: R,
+        n_reg: n_reg_g, n_unreg: n_unreg_g,
+        ab_reg_cur, ab_reg_new,
+        inc0, inc1, inc2, nhi0, nhi1, nhi2,
+        tA, tB, tC, tS,
+      };
     });
-  }, [base, P, LC, totalN, hccPct, ffsPct, ratios]);
+  }, [base, P, LC, totalN, hccPct, ffsPct, ratios, regRatios, reg, R]);
 
   const T = useMemo(() => {
     const s = { inc0: 0, inc1: 0, inc2: 0, nhi0: 0, nhi1: 0, nhi2: 0, tA: 0, tB: 0, tC: 0, tS: 0 };
     G.forEach(r => {
       s.inc0 += r.inc0; s.inc1 += r.inc1; s.inc2 += r.inc2;
       s.nhi0 += r.nhi0; s.nhi1 += r.nhi1; s.nhi2 += r.nhi2;
-      s.tA += r.tA * r.N; s.tB += r.tB * r.N; s.tC += r.tC * r.N; s.tS += r.tS * r.N;
+      // Track 총액: 등록환자 Track별 + 비등록환자 FFS 고정
+      const unregFFS = r.b.M1 * r.n_unreg;
+      s.tA += r.tA * r.n_reg + unregFFS;
+      s.tB += r.tB * r.n_reg + unregFFS;
+      s.tC += r.tC * r.n_reg + unregFFS;
+      s.tS += r.tS * r.n_reg + unregFFS;
     });
     return s;
   }, [G]);
@@ -176,6 +242,8 @@ export default function useSimulator() {
   const set = useCallback((key, value) => dispatch({ type: "SET", key, value }), []);
   const updP = useCallback((i, value) => dispatch({ type: "SET_P", i, value }), []);
   const updBase = useCallback((i, key, value) => dispatch({ type: "SET_BASE", i, key, value }), []);
+  const updK = useCallback((i, value) => dispatch({ type: "SET_K", i, value }), []);
+  const resetK = useCallback(() => dispatch({ type: "RESET_K" }), []);
   const handleMacroSync = useCallback((newPct) => dispatch({ type: "MACRO_SYNC", newPct }), []);
   const reset = useCallback(() => dispatch({ type: "RESET" }), []);
 
@@ -262,17 +330,19 @@ export default function useSimulator() {
       base: preset.base,
       P: preset.P,
       dataLabel: preset.label,
+      M_clinics: preset.M_clinics,
       uploadBanner: { success: true, msg: `${preset.label} 프리셋 로딩 완료`, details: null },
     });
   }, []);
 
   return {
-    state, set, updP, updBase, reset,
+    state, set, updP, updBase, updK, resetK, reset,
     handleMacroSync, handleFile, handleExport, loadPreset,
     fileRef,
     G, T, SS,
     ffsPct,
     incCurChg, incNewChg, nhiNewChg,
     tBchg, tCchg, tSchg,
+    reg, regRatios,
   };
 }
