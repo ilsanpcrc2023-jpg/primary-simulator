@@ -9,9 +9,10 @@ import { f, fE, pct, diffAuto } from "../utils";
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBchg, tCchg, tSchg }) {
-  const { hccPct, LC, R_g, M_clinics } = state;
+  const { base, hccPct, LC, R_g, M_clinics } = state;
   const ffsPct = 100 - hccPct;
   const M = Math.max(1, M_clinics);
+  const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
   const R_uniform = R_g[0] === R_g[1] && R_g[1] === R_g[2] && R_g[2] === R_g[3];
   const R_mean = Math.round((R_g[0] + R_g[1] + R_g[2] + R_g[3]) / 4);
   const R_label = R_uniform ? R_g[0].toLocaleString() + "원" : `환자군별 차등 (평균 ${R_mean.toLocaleString()}원)`;
@@ -56,38 +57,85 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
           {ffsPct > 0 && <div style={{ width: `${ffsPct}%`, background: "#22c55e" }} className="flex items-center justify-center transition-all">행위별</div>}
           {hccPct > 0 && <div style={{ width: `${hccPct}%`, background: "#f97316" }} className="flex items-center justify-center transition-all">환자군</div>}
         </div>
-        <div className="pt-1 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-600 shrink-0">타원이용비중 변화율</span>
-          <div className="flex-1 min-w-0">
-            <input type="range" min={-10} max={0} step={0.5} value={LC}
-              onChange={e => set("LC", parseFloat(e.target.value))}
-              aria-label="타원이용비중 변화율 슬라이더"
-              className="w-full big-thumb"
-              style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${((LC + 10) / 10) * 100}%, #e5e7eb 0%)` }} />
-          </div>
-          <NumBox value={LC} onChange={v => set("LC", Math.max(-10, Math.min(0, v)))} color="#7c3aed" suffix="%p" />
-        </div>
       </div>
     </div>
 
-    {/* Track KPI */}
-    <div className="grid grid-cols-2 gap-2">
-      <div className={card + " p-3"}>
-        <div className="text-xs text-gray-500 mb-1">현 선택: 행위별 {ffsPct}% / 환자군 {hccPct}% <span className="text-gray-400">· vs 순수 FFS</span></div>
-        <div className="text-2xl sm:text-3xl font-extrabold" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{pct(tSchg)}</div>
-        <div className="text-xs sm:text-sm font-bold mt-0.5" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(T.inc0, T.tS)}</div>
-        <div className="text-xs text-gray-400 mt-0.5">{fE(T.inc0)}억 → {fE(T.tS)}억 · 전체</div>
-        <div className="mt-1 pt-1 border-t border-gray-100 text-xs">
-          <span className="text-gray-500">의원당 평균 </span>
-          <span className="font-bold" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tS - T.inc0) / M)}</span>
-          <span className="text-gray-400"> (M={f(M)})</span>
+    {/* 타원이용비중 (L) 변화율 — 핵심 인센티브 (promoted, 수가 탭과 동일) */}
+    <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>타원이용비중 (L) 변화율</h2>
+          <p className="text-xs mt-0.5" style={{ color: "#7c3aed" }}>
+            ⭐ Track과 독립적 · 주치의 관리 강화로 L ↓ → 수입 ↑ · 모델의 핵심 인센티브
+          </p>
+        </div>
+        <NumBox value={LC} onChange={v => set("LC", v)} color="#7c3aed" suffix="%p" />
+      </div>
+      <input type="range" min={-30} max={0} step={0.5} value={Math.max(-30, Math.min(0, LC))}
+        onChange={e => set("LC", parseFloat(e.target.value))}
+        aria-label="Track 탭 타원이용비중 변화율 슬라이더"
+        className="w-full big-thumb"
+        style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${((Math.max(-30, Math.min(0, LC)) + 30) / 30) * 100}%, #e5e7eb 0%)` }} />
+      <div className="flex justify-between text-[10px] mt-1" style={{ color: "#8b5cf6" }}>
+        <span>-30%p</span><span>-20%p</span><span>-10%p</span><span>0%p (변화 없음)</span>
+      </div>
+
+      {/* 현재 L → 변화 후 L */}
+      {(() => {
+        const Lavg = ratios.reduce((s, r, i) => s + r * base[i].L, 0);
+        const LavgAfter = Math.max(0, Math.min(1, Lavg + LC / 100));
+        return (
+          <div className="mt-3 bg-white/70 rounded-lg px-3 py-2">
+            <div className="flex items-baseline justify-between mb-1.5">
+              <span className="text-xs font-semibold text-purple-700">타원이용비중 L (현재 → 변화 후)</span>
+              <span className="text-[10px] text-purple-500">이용환자 분포 가중평균</span>
+            </div>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-lg font-bold text-purple-700/70">{(Lavg * 100).toFixed(1)}%</span>
+              <span className="text-purple-400 text-base">→</span>
+              <span className="text-2xl font-extrabold text-purple-900">{(LavgAfter * 100).toFixed(1)}%</span>
+              <span className="text-sm font-bold text-purple-600">({LC > 0 ? "+" : ""}{LC}%p)</span>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+
+    {/* Track KPI (promoted, 수가 탭과 동일 포맷) */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
+        <div className="flex items-baseline justify-between mb-2">
+          <h3 className="font-bold text-base text-green-800">Track 현선택 수입 변화</h3>
+          <span className="text-[11px] font-semibold text-green-600">행위별 {ffsPct}% / 환자군 {hccPct}% · vs 순수 FFS</span>
+        </div>
+        <div className="text-xs sm:text-sm text-green-700/80 font-semibold">전체 변화액</div>
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(T.inc0, T.tS)}</span>
+          <span className="text-lg sm:text-xl font-bold leading-tight" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626", opacity: 0.85 }}>{pct(tSchg)}</span>
+        </div>
+        <div className="text-[11px] text-green-700/60 mt-0.5">{fE(T.inc0)}억 → {fE(T.tS)}억</div>
+        <div className="mt-2 pt-2 border-t border-green-200/70">
+          <div className="text-xs sm:text-sm text-green-700/80 font-semibold">의원당 평균 <span className="font-normal text-green-600/60">(M={f(M)})</span></div>
+          <div className="text-xl sm:text-2xl font-extrabold leading-tight" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tS - T.inc0) / M)}</div>
+        </div>
+        <div className="mt-2 text-[10.5px] text-green-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
+          등록환자 = Track 선택(행위별 {ffsPct}% + 환자군 {hccPct}% + R) · 비등록환자 = FFS M1 유지
         </div>
       </div>
-      <div className="rounded-xl border p-3 shadow-sm" style={{ background: "#f0f9ff", borderColor: "#bae6fd" }}>
-        <div className="text-xs text-gray-500 mb-1">공단 의원급 지출 변화</div>
-        <div className="text-2xl sm:text-3xl font-extrabold text-blue-700">{pct(nhiNewChg, 2)}</div>
-        <div className="text-xs sm:text-sm font-bold text-blue-600 mt-0.5">{diffAuto(T.nhi0, T.nhi2)}</div>
-        <div className="text-xs text-gray-400 mt-0.5">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
+      <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
+        <div className="flex items-baseline justify-between mb-2">
+          <h3 className="font-bold text-base text-blue-800">공단의 의원급 외래 의료비 지출 변화</h3>
+          <span className="text-[11px] font-semibold text-blue-600">Track 무관 · L에 따라 변동</span>
+        </div>
+        <div className="text-xs sm:text-sm text-blue-700/80 font-semibold">전체 변화액</div>
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-2xl sm:text-3xl font-extrabold text-blue-700 leading-tight">{diffAuto(T.nhi0, T.nhi2)}</span>
+          <span className="text-lg sm:text-xl font-bold text-blue-700/80 leading-tight">{pct(nhiNewChg, 2)}</span>
+        </div>
+        <div className="text-[11px] text-blue-700/60 mt-0.5">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
+        <div className="mt-2 text-[10.5px] text-blue-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
+          기준선 = 전원 FFS 의원급 외래 총액 (입원·약국·병원급 제외)
+        </div>
       </div>
     </div>
 
