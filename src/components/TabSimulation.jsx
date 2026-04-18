@@ -8,8 +8,8 @@ import { f, fE, pct, diffAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabSimulation({ state, set, updP, updBase, updK, resetK, reset, G, T, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
-  const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, R, M_clinics } = state;
+export default memo(function TabSimulation({ state, set, updP, updBase, updK, resetK, updR, setRUniform, reset, G, T, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
+  const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, R_g, M_clinics } = state;
   const M = Math.max(1, M_clinics);
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
 
@@ -55,16 +55,16 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
     </div>
 
     {/* v6.0: 주치의 등록관리비(R) + 등록환자 규모 + 환자군별 등록률 조정 */}
-    <RegistrationPanel state={state} set={set} updK={updK} resetK={resetK} reg={reg} regRatios={regRatios} ratios={ratios} G={G} />
+    <RegistrationPanel state={state} set={set} updK={updK} resetK={resetK} updR={updR} setRUniform={setRUniform} reg={reg} regRatios={regRatios} ratios={ratios} G={G} />
 
-    {/* 총 이용환자 수 (보조 — 데이터 규모 조정용) */}
+    {/* 총 실인원 환자수 (보조 — 데이터 규모 조정용) */}
     <div className={card + " px-3 py-2.5"}>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-semibold text-gray-600 shrink-0">총 이용환자 수 (N)</span>
+        <span className="text-xs font-semibold text-gray-600 shrink-0">총 실인원 환자수 (N)</span>
         <NumBox value={totalN}
           onChange={v => { const n = Math.max(1, Math.round(v)); set("totalN", n); if (n !== ON) set("dataLabel", "시뮬레이션 모드"); }}
           color="#1f2937" suffix="명" />
-        <span className="text-[10px] text-gray-400 ml-2">= 등록 + 비등록 합계</span>
+        <span className="text-[10px] text-gray-400 ml-2">= 등록 + 비등록 합계 · 연인원 아님</span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-blue-600 font-semibold shrink-0">추정 규모</span>
@@ -185,7 +185,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
               <div className="text-gray-400 text-xl mb-0.5">📤</div>
               <div className="text-xs font-semibold text-gray-600">엑셀 업로드</div>
-              <div className="text-xs text-gray-400 mt-0.5">분석템플릿 v4 또는 호환 파일</div>
+              <div className="text-xs text-gray-400 mt-0.5">NHIS-HCC분석템플릿 v6 또는 호환 파일</div>
             </div>
             <div className="flex-1 border-2 border-dashed border-blue-200 rounded-lg p-3 text-center hover:border-blue-400 transition cursor-pointer bg-blue-50/30"
               onClick={handleExport}>
@@ -200,7 +200,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
               <div key={i} className="rounded-lg px-2.5 py-2 border" style={{ borderColor: CL[i] + "40", background: CL[i] + "08" }}>
                 <div className="text-xs font-bold mb-1" style={{ color: CL[i] }}>{SH[i]} <span className="font-normal text-gray-400">N={f(base[i].N)}</span></div>
                 <div className="text-xs text-gray-500 space-y-0.5">
-                  <div>P <b className="text-gray-900">{f(P[i])}</b>{R > 0 && <span className="text-purple-600 text-[10px]"> +R {f(R)}</span>}</div>
+                  <div>P <b className="text-gray-900">{f(P[i])}</b>{R_g[i] > 0 && <span className="text-purple-600 text-[10px]"> +R {f(R_g[i])}</span>}</div>
                   <div>등록환자 1인 수입 <b className="text-blue-700">{f(Math.round(r.ab_reg_cur))}</b> → <b className="text-green-700">{f(Math.round(r.ab_reg_new))}</b></div>
                   <div className="text-gray-400" style={{ fontSize: 10 }}>A + 본인부담 + R · LC {LC}%p</div>
                 </div>
@@ -246,7 +246,8 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
                     <tbody>
                       {G.map((r, i) => {
                         const calcP = Math.round(base[i].ref * base[i].cr);
-                        const pp = P[i] + R;
+                        const Ri = R_g[i] ?? 0;
+                        const pp = P[i] + Ri;
                         return (
                           <tr key={i} className="border-t border-gray-100">
                             <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
@@ -257,7 +258,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
                               <input type="text" value={f(P[i])} className="w-16 text-center text-xs font-bold border border-blue-300 rounded bg-blue-50 py-0.5 text-blue-800"
                                 onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updP(i, v); }} />
                             </td>
-                            <td className="text-center px-1 bg-blue-50/20 text-purple-600 font-semibold">{f(R)}</td>
+                            <td className="text-center px-1 bg-blue-50/20 text-purple-600 font-semibold">{f(Ri)}</td>
                             <td className="text-center px-1 bg-blue-50/20 font-bold text-purple-700">{f(pp)}</td>
                             <td className="text-center px-1">
                               <input type="text" value={(base[i].L * 100).toFixed(1)} className="w-12 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
@@ -271,7 +272,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
                               <input type="text" value={f(base[i].N)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
                                 onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
                             </td>
-                            <td className="text-right px-1 bg-green-50/20 text-gray-600">{f(Math.round(r.A_cur + R))}</td>
+                            <td className="text-right px-1 bg-green-50/20 text-gray-600">{f(Math.round(r.A_cur + Ri))}</td>
                             <td className="text-right px-1 bg-green-50/20 font-semibold text-blue-700">{f(Math.round(r.ab_reg_cur))}</td>
                             <td className="text-right px-1 bg-green-50/20 font-bold text-green-700">{f(Math.round(r.ab_reg_new))}</td>
                           </tr>

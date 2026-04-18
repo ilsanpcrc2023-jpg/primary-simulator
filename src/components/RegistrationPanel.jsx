@@ -5,12 +5,19 @@ import { f, fAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function RegistrationPanel({ state, set, updK, resetK, reg, regRatios, ratios, G }) {
-  const { R, M_clinics, n_reg_per_clinic, k_g, showAdvancedDist } = state;
+export default memo(function RegistrationPanel({ state, set, updK, resetK, updR, setRUniform, reg, regRatios, ratios, G }) {
+  const { R_g, M_clinics, n_reg_per_clinic, k_g, showAdvancedDist, showAdvancedR } = state;
   const k_modified = k_g.some(v => Math.abs(v - 1) > 0.001);
 
-  // 공단 추가 지출 (R × 총 등록환자수, 연간)
-  const nhiAddFromR = R * reg.n_reg_total;
+  // R 균등 여부 판단 — 4개 값이 모두 같으면 균등, 아니면 차등
+  const R_uniform = R_g[0] === R_g[1] && R_g[1] === R_g[2] && R_g[2] === R_g[3];
+  const R_mean = (R_g[0] + R_g[1] + R_g[2] + R_g[3]) / 4;
+  const R_display = R_uniform ? R_g[0] : Math.round(R_mean);
+
+  // 공단 추가 지출 (Σ R_g × n_reg_g, 연간) — 환자군별 가중 합
+  const nhiAddFromR = R_g.reduce((s, r, i) => s + r * reg.n_reg_total * regRatios[i], 0);
+
+  const R_MAX = 200000;
 
   return (
     <>
@@ -21,30 +28,102 @@ export default memo(function RegistrationPanel({ state, set, updK, resetK, reg, 
             <h2 className="font-bold text-gray-900 text-sm">주치의 등록관리비 (R)</h2>
             <p className="text-xs text-gray-500 mt-0.5">환자군 기본수가(P)에 구조적으로 내장되는 등록관리 지속 수가</p>
           </div>
-          <NumBox value={R} onChange={v => set("R", Math.max(0, Math.min(100000, Math.round(v))))} color="#a855f7" suffix="원" />
+          <div className="flex items-center gap-2">
+            {!R_uniform && (
+              <span className="inline-flex items-center gap-1 text-[10px] bg-amber-100 text-amber-700 border border-amber-300 rounded-full px-2 py-0.5 font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                차등 모드
+              </span>
+            )}
+            <NumBox value={R_display} onChange={v => setRUniform(Math.max(0, Math.min(R_MAX, Math.round(v))))} color="#a855f7" suffix="원" />
+          </div>
         </div>
-        <input type="range" min={0} max={100000} step={1000} value={R}
-          onChange={e => set("R", parseInt(e.target.value))}
-          aria-label="주치의 등록관리비 슬라이더"
+        <input type="range" min={0} max={R_MAX} step={1000} value={R_display}
+          onChange={e => setRUniform(parseInt(e.target.value))}
+          aria-label="주치의 등록관리비 마스터 슬라이더"
           className="w-full big-thumb"
-          style={{ '--thumb-bg': '#a855f7', accentColor: "#a855f7", background: `linear-gradient(to right, #a855f7 ${(R / 100000) * 100}%, #e5e7eb 0%)` }} />
+          style={{ '--thumb-bg': '#a855f7', accentColor: "#a855f7", background: `linear-gradient(to right, #a855f7 ${(R_display / R_MAX) * 100}%, #e5e7eb 0%)` }} />
         <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-          <span>0원</span><span>5만원</span><span>10만원/년/환자</span>
+          <span>0원</span><span>5만원</span><span>10만원</span><span>15만원</span><span>20만원/년/환자</span>
         </div>
+        {!R_uniform && (
+          <div className="mt-1 text-[10px] text-amber-600 italic">
+            슬라이더 조작 시 4개 환자군 모두 같은 값으로 재설정됩니다 (균등 복귀).
+          </div>
+        )}
         <div className="mt-2 pt-2 border-t border-gray-100">
           <div className="text-[10px] text-gray-500 mb-1">최종 일차의료수가 (PP = P + R)</div>
           <div className="grid grid-cols-4 gap-1">
             {SH.map((g, i) => (
               <div key={i} className="rounded px-1.5 py-1 text-center" style={{ background: CL[i] + "12", borderLeft: `3px solid ${CL[i]}` }}>
                 <div className="text-[10px] font-semibold" style={{ color: CL[i] }}>{g}</div>
-                <div className="text-xs font-bold text-purple-700">{f(G[i].p + R)}원</div>
+                <div className="text-xs font-bold text-purple-700">{f(G[i].p + R_g[i])}원</div>
+                {!R_uniform && <div className="text-[9px] text-purple-400">R {f(R_g[i])}</div>}
               </div>
             ))}
           </div>
           <div className="mt-2 bg-amber-50 rounded px-2 py-1.5 text-xs flex justify-between items-center">
-            <span className="text-gray-600 text-[11px]">공단 추가 지출 (R × 등록환자, 연)</span>
+            <span className="text-gray-600 text-[11px]">공단 추가 지출 (Σ R × 등록환자, 연)</span>
             <span className="font-bold text-amber-700">{nhiAddFromR > 0 ? "+" : ""}{fAuto(nhiAddFromR)}</span>
           </div>
+        </div>
+
+        {/* 환자군별 R 차등 (고급) */}
+        <div className="mt-3 border-t border-gray-100 pt-2">
+          <button onClick={() => set("showAdvancedR", !showAdvancedR)}
+            className="w-full flex items-center justify-between px-1 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition rounded">
+            <span className="flex items-center gap-2">
+              <span>{showAdvancedR ? "▼" : "▶"}</span>
+              <span>환자군별 차등 (고급)</span>
+              {R_uniform ? (
+                <span className="text-[10px] text-gray-400">(기본값: 균등)</span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] bg-amber-100 text-amber-700 border border-amber-300 rounded-full px-2 py-0.5 font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  수정됨
+                </span>
+              )}
+            </span>
+            <span className="text-gray-400 text-[11px]">{showAdvancedR ? "접기" : "펼치기"}</span>
+          </button>
+          {showAdvancedR && (
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+                4군(와상)은 등록관리 업무 부담이 1군(건강)보다 큽니다. 정책 요구가 있을 경우 환자군별 차등 적용 가능. 값을 직접 입력하세요.
+              </p>
+              {/* 프리셋 */}
+              <div className="flex flex-wrap gap-1 mb-2">
+                <span className="text-[11px] text-gray-500 mr-1 self-center">빠른 선택:</span>
+                {[
+                  { label: "균등", v: [R_display, R_display, R_display, R_display] },
+                  { label: "선형증가", v: [5000, 10000, 15000, 20000] },
+                  { label: "중증 편중", v: [5000, 8000, 15000, 30000] },
+                ].map(p => (
+                  <button key={p.label} onClick={() => p.v.forEach((val, i) => updR(i, val))}
+                    className="text-[11px] px-2 py-0.5 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">
+                    {p.label}
+                  </button>
+                ))}
+                <button onClick={() => setRUniform(R_display)}
+                  className="text-[11px] px-2 py-0.5 rounded border border-red-200 text-red-600 hover:bg-red-50 ml-auto">
+                  균등으로 초기화
+                </button>
+              </div>
+              {/* 환자군별 입력 */}
+              <div className="grid grid-cols-4 gap-2">
+                {SH.map((g, i) => (
+                  <div key={i} className="rounded px-2 py-1.5 text-center" style={{ background: CL[i] + "10", border: `1px solid ${CL[i]}40` }}>
+                    <div className="text-[10px] font-bold mb-1" style={{ color: CL[i] }}>{g}</div>
+                    <input type="text" value={f(R_g[i])}
+                      onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0 && v <= R_MAX) updR(i, v); }}
+                      className="w-full text-center text-xs font-bold border rounded bg-white py-0.5"
+                      style={{ borderColor: CL[i] + "60", color: CL[i] }} />
+                    <div className="text-[9px] text-gray-400 mt-0.5">원/년</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -100,7 +179,7 @@ export default memo(function RegistrationPanel({ state, set, updK, resetK, reg, 
         {/* 파생 요약 */}
         <div className="mt-3 pt-2 border-t border-gray-100 grid grid-cols-3 gap-2 text-xs">
           <div className="bg-gray-50 rounded px-2 py-1.5">
-            <div className="text-gray-500 text-[10px]">의원당 이용환자</div>
+            <div className="text-gray-500 text-[10px]">의원당 실인원 환자수</div>
             <div className="font-bold text-gray-800">{f(Math.round(reg.n_total_per_clinic))}명</div>
           </div>
           <div className="bg-blue-50 rounded px-2 py-1.5">
@@ -112,6 +191,9 @@ export default memo(function RegistrationPanel({ state, set, updK, resetK, reg, 
             <div className="text-slate-500 text-[10px]">비등록 (FFS)</div>
             <div className="font-bold text-slate-700">{f(Math.round(reg.n_unreg_total))}명</div>
           </div>
+        </div>
+        <div className="mt-2 text-[10px] text-gray-400 italic">
+          ※ 실인원 = 1년간 방문횟수와 무관하게 환자 1명 = 1로 집계. 연인원(방문건수) 아님.
         </div>
       </div>
 

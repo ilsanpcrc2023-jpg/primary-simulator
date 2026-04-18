@@ -23,11 +23,12 @@ const initialState = {
   ssMacroPct: 0.1,
   ssClinicShare: 50,
   // v6.0
-  R: 0,
+  R_g: [0, 0, 0, 0],
   M_clinics: 10,
   n_reg_per_clinic: 1000,
   k_g: [1, 1, 1, 1],
   showAdvancedDist: false,
+  showAdvancedR: false,
 };
 
 function reducer(state, action) {
@@ -51,6 +52,13 @@ function reducer(state, action) {
     }
     case "RESET_K":
       return { ...state, k_g: [1, 1, 1, 1] };
+    case "SET_R_AT": {
+      const R_g = [...state.R_g];
+      R_g[action.i] = action.value;
+      return { ...state, R_g };
+    }
+    case "SET_R_UNIFORM":
+      return { ...state, R_g: [action.value, action.value, action.value, action.value] };
     case "LOAD_DATA":
       return {
         ...state,
@@ -117,7 +125,7 @@ export default function useSimulator() {
     base, P, LC, totalN, hccPct,
     ssTotalCost, ssAcute, ssEmergency, ssLtc,
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
-    R, M_clinics, n_reg_per_clinic, k_g,
+    R_g, M_clinics, n_reg_per_clinic, k_g,
   } = state;
 
   const ffsPct = 100 - hccPct;
@@ -163,9 +171,10 @@ export default function useSimulator() {
       const n_reg_g = reg.n_reg_total * regRatios[i];
       const n_unreg_g = Math.max(0, N - n_reg_g);
 
-      // 환자군 모형 하 1인당 수입 (등록환자), R은 L 우회
-      const ab_reg_cur = A_cur + R + b.M1 * 0.30;
-      const ab_reg_new = A_new + R + b.M1 * 0.30;
+      // 환자군별 등록관리비 (R은 L 우회, 환자군별 차등 허용)
+      const R_i = R_g[i] ?? 0;
+      const ab_reg_cur = A_cur + R_i + b.M1 * 0.30;
+      const ab_reg_new = A_new + R_i + b.M1 * 0.30;
 
       // 의원 총수입: 등록=환자군 모형, 비등록=FFS(M1)
       const inc0 = b.M1 * N;                                    // baseline: 전원 FFS
@@ -181,7 +190,7 @@ export default function useSimulator() {
       //   A: 등록환자도 FFS + R add-on
       //   C: 환자군 모형 (LC 적용)
       //   B: A와 C의 hccPct 가중평균
-      const tA = b.M1 + R;
+      const tA = b.M1 + R_i;
       const tC = ab_reg_new;
       const tB = (tA + tC) / 2;
       const tS = tA * (ffsPct / 100) + tC * (hccPct / 100);
@@ -190,14 +199,14 @@ export default function useSimulator() {
         N, p, b,
         A_cur, A_new, AB_cur, AB_new, LL,
         B: b.M1 * 0.30,
-        R_per_pt: R,
+        R_per_pt: R_i,
         n_reg: n_reg_g, n_unreg: n_unreg_g,
         ab_reg_cur, ab_reg_new,
         inc0, inc1, inc2, nhi0, nhi1, nhi2,
         tA, tB, tC, tS,
       };
     });
-  }, [base, P, LC, totalN, hccPct, ffsPct, ratios, regRatios, reg, R]);
+  }, [base, P, LC, totalN, hccPct, ffsPct, ratios, regRatios, reg, R_g]);
 
   const T = useMemo(() => {
     const s = { inc0: 0, inc1: 0, inc2: 0, nhi0: 0, nhi1: 0, nhi2: 0, tA: 0, tB: 0, tC: 0, tS: 0 };
@@ -247,6 +256,8 @@ export default function useSimulator() {
   const updBase = useCallback((i, key, value) => dispatch({ type: "SET_BASE", i, key, value }), []);
   const updK = useCallback((i, value) => dispatch({ type: "SET_K", i, value }), []);
   const resetK = useCallback(() => dispatch({ type: "RESET_K" }), []);
+  const updR = useCallback((i, value) => dispatch({ type: "SET_R_AT", i, value }), []);
+  const setRUniform = useCallback((value) => dispatch({ type: "SET_R_UNIFORM", value }), []);
   const handleMacroSync = useCallback((newPct) => dispatch({ type: "MACRO_SYNC", newPct }), []);
   const reset = useCallback(() => dispatch({ type: "RESET" }), []);
 
@@ -339,7 +350,7 @@ export default function useSimulator() {
   }, []);
 
   return {
-    state, set, updP, updBase, updK, resetK, reset,
+    state, set, updP, updBase, updK, resetK, updR, setRUniform, reset,
     handleMacroSync, handleFile, handleExport, loadPreset,
     fileRef,
     G, T, SS,

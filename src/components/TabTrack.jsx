@@ -9,9 +9,12 @@ import { f, fE, pct, diffAuto } from "../utils";
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBchg, tCchg, tSchg }) {
-  const { hccPct, LC, R, M_clinics } = state;
+  const { hccPct, LC, R_g, M_clinics } = state;
   const ffsPct = 100 - hccPct;
   const M = Math.max(1, M_clinics);
+  const R_uniform = R_g[0] === R_g[1] && R_g[1] === R_g[2] && R_g[2] === R_g[3];
+  const R_mean = Math.round((R_g[0] + R_g[1] + R_g[2] + R_g[3]) / 4);
+  const R_label = R_uniform ? R_g[0].toLocaleString() + "원" : `환자군별 차등 (평균 ${R_mean.toLocaleString()}원)`;
 
   return (<>
     <div className={card + " p-4"}>
@@ -109,7 +112,7 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
 
     {/* Track 안내 */}
     <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 text-xs text-blue-800 leading-relaxed">
-      Track A(행위별)를 선택해도 등록환자당 R({R > 0 ? `${R.toLocaleString()}원` : "미설정"})만큼 추가 수입이 발생합니다. Track B·C로 전환 시 환자군 모형과 타원이용비중 관리에 따라 수입이 증가합니다.
+      Track A(행위별)를 선택해도 등록환자당 R({R_label})만큼 추가 수입이 발생합니다. Track B·C로 전환 시 환자군 모형과 타원이용비중 관리에 따라 수입이 증가합니다.
       {hccPct > 0 && <> 현재 선택(행위별 {ffsPct}% : 환자군 {hccPct}%) 기준 <b className="text-green-700">{pct(tSchg)}</b> 수입 변화가 예상됩니다.</>}
       {" "}의원별 상황에 맞는 Track을 자율 선택할 수 있습니다.
     </div>

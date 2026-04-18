@@ -53,7 +53,8 @@ export default function App() {
         {tab === 0 && (
           <TabSimulation
             state={state} set={set}
-            updP={sim.updP} updBase={sim.updBase} updK={sim.updK} resetK={sim.resetK} reset={sim.reset}
+            updP={sim.updP} updBase={sim.updBase} updK={sim.updK} resetK={sim.resetK}
+            updR={sim.updR} setRUniform={sim.setRUniform} reset={sim.reset}
             G={sim.G} T={sim.T}
             reg={sim.reg} regRatios={sim.regRatios}
             incCurChg={sim.incCurChg} incNewChg={sim.incNewChg} nhiNewChg={sim.nhiNewChg}
