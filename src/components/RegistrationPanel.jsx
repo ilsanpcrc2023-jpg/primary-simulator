@@ -52,7 +52,10 @@ export default memo(function RegistrationPanel({ state, set, updK, resetK, updR,
           </div>
         )}
         <div className="mt-2 pt-2 border-t border-gray-100">
-          <div className="text-[10px] text-gray-500 mb-1">최종 일차의료수가 (PP = P + R)</div>
+          <div className="flex items-baseline justify-between mb-1">
+            <div className="text-[11px] font-semibold text-gray-700">최종 일차의료수가 <span className="text-purple-700">(PP = P + R)</span></div>
+            <span className="text-[10px] text-gray-400">명목 청구수가</span>
+          </div>
           <div className="grid grid-cols-4 gap-1">
             {SH.map((g, i) => (
               <div key={i} className="rounded px-1.5 py-1 text-center" style={{ background: CL[i] + "12", borderLeft: `3px solid ${CL[i]}` }}>
@@ -61,6 +64,9 @@ export default memo(function RegistrationPanel({ state, set, updK, resetK, updR,
                 {!R_uniform && <div className="text-[9px] text-purple-400">R {f(R_g[i])}</div>}
               </div>
             ))}
+          </div>
+          <div className="mt-1.5 text-[10px] text-gray-500 bg-gray-50 rounded px-2 py-1 leading-relaxed">
+            ※ PP는 <b>명목(청구) 수가</b>. 공단 실지급은 <code className="font-mono text-purple-700">A = P × (1 − L) + R</code> (R은 L 우회, 타원이용비중 카드 참조).
           </div>
           <div className="mt-2 bg-amber-50 rounded px-2 py-1.5 text-xs flex justify-between items-center">
             <span className="text-gray-600 text-[11px]">공단 추가 지출 (Σ R × 등록환자, 연)</span>

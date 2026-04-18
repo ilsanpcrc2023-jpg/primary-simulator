@@ -17,7 +17,10 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
     {/* 수가 설정 */}
     <div className={card + " p-4"}>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-900 text-sm">일차의료수가 설정</h2>
+        <div>
+          <h2 className="font-bold text-gray-900 text-sm">환자군 기본수가 (P) 설정</h2>
+          <p className="text-[11px] text-gray-500 mt-0.5">P = 환자군 기준의료비 × 의원급 외래비중</p>
+        </div>
         <div className="flex items-center gap-2">
           {totalN === ON && <span className="text-xs text-gray-400 hidden sm:inline">{dataLabel}</span>}
           <button onClick={reset} className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded px-2 py-0.5">초기화</button>
@@ -44,9 +47,9 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
     <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>타원이용비중 변화율 (LC)</h2>
+          <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>타원이용비중 (L) 변화율 (LC)</h2>
           <p className="text-xs mt-0.5" style={{ color: "#7c3aed" }}>
-            ⭐ 주치의 관리 강화 → 타원이용 ↓ → 의원 수입 ↑ · 모델의 핵심 인센티브
+            ⭐ 주치의 관리 강화 → L ↓ → 의원 수입 ↑ · 모델의 핵심 인센티브
           </p>
         </div>
         <NumBox value={LC} onChange={v => set("LC", Math.max(-10, Math.min(0, v)))} color="#7c3aed" suffix="%p" />
@@ -58,6 +61,26 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
         style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${((LC + 10) / 10) * 100}%, #e5e7eb 0%)` }} />
       <div className="flex justify-between text-[10px] mt-1" style={{ color: "#8b5cf6" }}>
         <span>-10%p</span><span>-5%p</span><span>0%p (변화 없음)</span>
+      </div>
+
+      {/* 수식 설명 박스 */}
+      <div className="mt-3 pt-3 border-t border-purple-200/70 space-y-1 text-[11px]">
+        <div className="flex items-start gap-2">
+          <span className="font-bold text-purple-700 shrink-0">공단 지급</span>
+          <code className="font-mono text-purple-900 bg-white/60 rounded px-1.5 py-0.5">A = P × (1 − L) + R</code>
+        </div>
+        <div className="flex items-start gap-2">
+          <span className="font-bold text-purple-700 shrink-0">본인부담</span>
+          <code className="font-mono text-purple-900 bg-white/60 rounded px-1.5 py-0.5">B = M1 × 30%</code>
+          <span className="text-purple-500 text-[10px]">(고정)</span>
+        </div>
+        <div className="flex items-start gap-2">
+          <span className="font-bold text-purple-700 shrink-0">의원 수입</span>
+          <code className="font-mono text-purple-900 bg-white/60 rounded px-1.5 py-0.5">A + B (등록환자) + M1 (비등록)</code>
+        </div>
+        <div className="text-[10px] text-purple-700 bg-purple-100/60 rounded px-2 py-1 mt-2 leading-relaxed">
+          ※ <b>R(등록관리비)은 타원이용비중 L에 걸리지 않습니다.</b> 환자가 어디 가든 등록관리 업무는 등록의원이 수행하므로, R은 전액 등록의원에 고정 지급됩니다. LC를 움직여도 R은 그대로 유지되는 이유입니다.
+        </div>
       </div>
     </div>
 
@@ -294,10 +317,15 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
                     </tbody>
                   </table>
                 </div>
-                <div className="flex flex-wrap gap-3 text-xs text-gray-400 mt-2">
-                  <span><span className="inline-block w-3 h-3 bg-purple-50 border border-purple-200 rounded mr-1 align-middle"></span>근거 = 빅데이터 (읽기전용)</span>
-                  <span><span className="inline-block w-3 h-3 bg-blue-50 border border-blue-300 rounded mr-1 align-middle"></span>판단·실측 = 편집 가능</span>
-                  <span>PP = P + R · A = P×(1−L) + R · 수입 = A + M1×30%</span>
+                <div className="mt-2 space-y-1">
+                  <div className="flex flex-wrap gap-3 text-[11px] text-gray-400">
+                    <span><span className="inline-block w-3 h-3 bg-purple-50 border border-purple-200 rounded mr-1 align-middle"></span>근거 = 빅데이터 (읽기전용)</span>
+                    <span><span className="inline-block w-3 h-3 bg-blue-50 border border-blue-300 rounded mr-1 align-middle"></span>판단·실측 = 편집 가능</span>
+                  </div>
+                  <div className="text-[11px] text-gray-600 bg-gray-50 rounded px-2 py-1.5 font-mono leading-relaxed">
+                    <div>계산P = 기준의료비 × 의원비중 · <b>PP = P + R</b> (명목)</div>
+                    <div><b>A = P × (1 − L) + R</b> (공단 실지급, R은 L 우회) · B = M1 × 30% · 수입 = A + B</div>
+                  </div>
                 </div>
               </div>
             )}
