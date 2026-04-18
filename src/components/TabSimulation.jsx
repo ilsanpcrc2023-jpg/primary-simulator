@@ -38,19 +38,26 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
           </div>
         ))}
       </div>
-      <div className="mt-4 pt-3 border-t border-gray-100">
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          <span className="text-xs font-semibold text-gray-700">타원이용비중 변화율 (LC)</span>
-          <span className="text-xs text-gray-400">진료건수 기준 · 등록 후 관리 강화 시 예상 감소폭</span>
-          <div className="ml-auto">
-            <NumBox value={LC} onChange={v => set("LC", Math.max(-10, Math.min(0, v)))} color="#7c3aed" suffix="%p" />
-          </div>
+    </div>
+
+    {/* 타원이용비중 변화율 (LC) — 핵심 인센티브 구조, 독립 카드 */}
+    <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>타원이용비중 변화율 (LC)</h2>
+          <p className="text-xs mt-0.5" style={{ color: "#7c3aed" }}>
+            ⭐ 주치의 관리 강화 → 타원이용 ↓ → 의원 수입 ↑ · 모델의 핵심 인센티브
+          </p>
         </div>
-        <input type="range" min={-10} max={0} step={0.5} value={LC}
-          onChange={e => set("LC", parseFloat(e.target.value))}
-          aria-label="타원이용비중 변화율 슬라이더"
-          className="w-full big-thumb"
-          style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${((LC + 10) / 10) * 100}%, #e5e7eb 0%)` }} />
+        <NumBox value={LC} onChange={v => set("LC", Math.max(-10, Math.min(0, v)))} color="#7c3aed" suffix="%p" />
+      </div>
+      <input type="range" min={-10} max={0} step={0.5} value={LC}
+        onChange={e => set("LC", parseFloat(e.target.value))}
+        aria-label="타원이용비중 변화율 슬라이더"
+        className="w-full big-thumb"
+        style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${((LC + 10) / 10) * 100}%, #e5e7eb 0%)` }} />
+      <div className="flex justify-between text-[10px] mt-1" style={{ color: "#8b5cf6" }}>
+        <span>-10%p</span><span>-5%p</span><span>0%p (변화 없음)</span>
       </div>
     </div>
 
@@ -192,6 +199,12 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
               <div className="text-blue-400 text-xl mb-0.5">📥</div>
               <div className="text-xs font-semibold text-blue-600">현재값 내보내기</div>
               <div className="text-xs text-blue-400 mt-0.5">시뮬레이터 → 엑셀 Export</div>
+            </div>
+            <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
+              onClick={() => { if (confirm("현재 업로드·수정한 모든 값을 지우고 파일럿 데이터(10개 의원, 69,604명)로 되돌립니다. 진행할까요?")) reset(); }}>
+              <div className="text-amber-500 text-xl mb-0.5">↩</div>
+              <div className="text-xs font-semibold text-amber-700">파일럿 복귀</div>
+              <div className="text-xs text-amber-500 mt-0.5">기본 10개 의원 데이터로 초기화</div>
             </div>
           </div>
 
