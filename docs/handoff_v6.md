@@ -59,6 +59,9 @@ db6dfa1  Merge feature/l-display (현재 L 시각화)
 b69a8e8  docs: L 변화 시각화 반영 — CLAUDE.md·인계장 최신화
 a80ddec  ui: 탭 강조·실인원 프리셋 개정·의원당 기준수입 접힘
 01a43b7  Merge feature/tab-presets-baseline (탭/프리셋/수입 절대값)
+5b7b9c0  docs: 탭·프리셋·수입절대값 접힘 반영 — 문서 최신화
+cdf9a02  ui: Track 탭 KPI/LC 카드를 수가 탭 포맷과 통일
+1f62212  Merge feature/track-kpi-align (Track 탭 일관성)
 ```
 
 모든 커밋은 빌드·테스트 통과(npm run build + npm test, 14 tests). 커밋 작성자 이메일은 GitHub noreply 형식으로 통일.
@@ -100,6 +103,8 @@ a80ddec  ui: 탭 강조·실인원 프리셋 개정·의원당 기준수입 접�
 | 탭 강조 | ✅ | 폰트 17px·활성탭 border 2px deep-blue·box-shadow (시연 가시성) |
 | 실인원 프리셋 재정 | ✅ | 1000·1500·2000·3000·5000·7000 (한국 의원 실측 분포 반영) |
 | 의원당 수입 절대값 접힘 | ✅ | 기본 숨김 토글. "의사 1인 소득 ≠ 의원 외래 수입" 주석으로 오해 방지 |
+| Track 탭 ↔ 수가 탭 포맷 통일 | ✅ | Track 탭에 LC promoted 카드(-30%p+L시각화), KPI 녹색/파랑 promoted 2카드 동일 포맷 |
+| 공단 카드 명칭 통일 | ✅ | 양 탭 모두 "공단의 의원급 외래 의료비 지출 변화" (구명칭 "공단 총의료비" 금지) |
 
 ---
 

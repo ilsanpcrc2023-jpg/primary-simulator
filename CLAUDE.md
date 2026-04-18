@@ -68,7 +68,7 @@ src/
 │   ├── Header.jsx
 │   ├── DatasetSelector.jsx      # 프리셋 드롭다운 (현 파일럿 1개)
 │   ├── TabSimulation.jsx        # 탭 1: P·R·PP·LC·규모·분포·KPI·차트
-│   ├── TabTrack.jsx             # 탭 2: Track A/B/C 비교
+│   ├── TabTrack.jsx             # 탭 2: Track A/B/C 비교 (LC·KPI 카드 포맷은 TabSimulation과 통일)
 │   ├── TabSharedSaving.jsx      # 탭 3: C축 성과조정
 │   ├── RegistrationPanel.jsx    # named exports: RCard, PPCard, RegScaleCard, RegDistCard
 │   ├── WinWinWin.jsx
@@ -103,7 +103,7 @@ src/
 **결과 영역:**
 - KPI 2카드 **promoted**
   - 녹색 (의원 수입 변화): 전체 변화액 primary (text-3xl/30px) + % 옆 병기 (text-xl/20px) → 의원당 평균 secondary (text-2xl/24px) → 수식 설명("등록 + 비등록") → **"의원당 수입 절대값" 접힘 토글** (기본 숨김, 열면 기존/LC 후 의원당 외래 수입 절대값 + "의사 1인 소득 ≠ 의원 외래 수입" 주석)
-  - 파랑 (**의원급 외래 의료비 변화** — "공단 총의료비"는 부정확한 구명칭, 사용 금지): 전체 변화액 primary + % 옆 병기, 기준선 주석 ("전원 FFS 의원급 외래 총액, 입원·약국·병원급 제외")
+  - 파랑 (**공단의 의원급 외래 의료비 지출 변화** — "공단 총의료비"는 부정확한 구명칭, 사용 금지): 전체 변화액 primary + % 옆 병기, 기준선 주석 ("전원 FFS 의원급 외래 총액, 입원·약국·병원급 제외")
 - 차트 2열 (환자군별 수입 / 의원급 외래 의료비 비교)
 - 데이터 관리 (아코디언): 엑셀 업로드 / 내보내기 / 파일럿 복귀
 
