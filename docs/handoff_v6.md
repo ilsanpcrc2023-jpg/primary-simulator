@@ -53,6 +53,9 @@ cedaca6  ui: LC 슬라이더 범위 -10%p → -30%p 확장
 d95e822  ui: KPI 라벨·의원당 평균 가독성 강화
 af940d1  ui: 의원당 평균 % 제거 (전체 %와 수학적 동일 중복)
 798bcc3  Merge feature/favicon-update (최종 main 반영)
+d49ad32  docs: 2026-04-19 세션 정리 — CLAUDE.md·인계장 최신화
+36ab828  ui: LC 카드에 현재 타원이용비중(L) → 변화 후 L 표시
+db6dfa1  Merge feature/l-display (현재 L 시각화)
 ```
 
 모든 커밋은 빌드·테스트 통과(npm run build + npm test, 14 tests). 커밋 작성자 이메일은 GitHub noreply 형식으로 통일.
@@ -90,6 +93,7 @@ af940d1  ui: 의원당 평균 % 제거 (전체 %와 수학적 동일 중복)
 | LC 슬라이더 확장 | ✅ | -10%p → -30%p (극단 시나리오 탐색) |
 | 파비콘·PWA | ✅ | favicon.svg·icon-192/512.png·manifest.webmanifest, scripts/gen-icons.mjs |
 | 탭 폰트 확대 | ✅ | 12px → 15px, padding 확대 |
+| L 변화 시각화 | ✅ | LC 카드에 가중평균 L + 환자군별 4박스로 현재값 → 변화 후 값 표시 |
 
 ---
 
