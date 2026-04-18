@@ -1,10 +1,10 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { RCard, PPCard, RegScaleCard, RegDistCard } from "./RegistrationPanel";
 import { SH, CL, ON } from "../constants";
-import { f, fE, pct, diffAuto } from "../utils";
+import { f, fE, pct, diffAuto, fAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
@@ -12,6 +12,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
   const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, R_g, M_clinics } = state;
   const M = Math.max(1, M_clinics);
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
+  const [showBaseline, setShowBaseline] = useState(false);
 
   return (<>
     {/* ① 환자군 기본수가 (P) 설정 */}
@@ -144,6 +145,18 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
         <div className="mt-2 text-[10.5px] text-green-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
           의원 수입 = <b>등록환자</b>(환자군 모형 A + 본인부담 + R) + <b>비등록환자</b>(FFS M1 유지)
         </div>
+        <button onClick={() => setShowBaseline(v => !v)}
+          className="mt-1.5 text-[10px] text-green-700/50 hover:text-green-800 transition flex items-center gap-0.5">
+          <span>{showBaseline ? "▲" : "▼"}</span>
+          <span>의원당 수입 절대값 {showBaseline ? "접기" : "보기"}</span>
+        </button>
+        {showBaseline && (
+          <div className="mt-1 bg-white/70 rounded px-2 py-1.5 text-[10.5px] text-green-900 leading-snug space-y-0.5">
+            <div>기존 의원당 수입 <b>{fAuto(T.inc0 / M)}</b> / 년 (LC=0, 기준선)</div>
+            <div>LC {LC}%p 후 의원당 수입 <b>{fAuto(T.inc2 / M)}</b> / 년</div>
+            <div className="text-[9.5px] text-green-600/70 italic pt-0.5">※ 등록·비등록 환자 모두 포함한 외래 수입 추정치. 의사 1인 소득과는 다른 개념 (의원 운영비·직원급여·재료비 공제 전).</div>
+          </div>
+        )}
       </div>
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
         <div className="flex items-baseline justify-between mb-2">
