@@ -107,11 +107,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
         <div className="text-[11px] text-green-700/60 mt-0.5">{fE(T.inc0)}억 → {fE(T.inc2)}억</div>
         <div className="mt-2 pt-2 border-t border-green-200/70">
           <div className="text-xs sm:text-sm text-green-700/80 font-semibold">의원당 평균 <span className="font-normal text-green-600/60">(M={f(M)})</span></div>
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-xl sm:text-2xl font-extrabold text-green-700 leading-tight">{diffAuto(0, (T.inc2 - T.inc0) / M)}</span>
-            <span className="text-base sm:text-lg font-bold text-green-700/80 leading-tight">{pct(incNewChg)}</span>
-          </div>
-          <div className="text-[10px] text-green-700/50 mt-0.5 italic">※ 전체·의원당 변화율은 정의상 동일 (의원당 = 전체 ÷ M)</div>
+          <div className="text-xl sm:text-2xl font-extrabold text-green-700 leading-tight">{diffAuto(0, (T.inc2 - T.inc0) / M)}</div>
         </div>
         <div className="mt-2 text-[10.5px] text-green-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
           의원 수입 = <b>등록환자</b>(환자군 모형 A + 본인부담 + R) + <b>비등록환자</b>(FFS M1 유지)
