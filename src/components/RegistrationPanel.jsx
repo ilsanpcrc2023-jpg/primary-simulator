@@ -214,23 +214,27 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg }) {
         </div>
       </div>
 
-      {/* 요약 */}
+      {/* 요약 — 의원당 단위 통일: 실인원 = 등록 + 비등록 */}
       <div className="mt-3 pt-2 border-t border-gray-100 grid grid-cols-3 gap-2 text-xs">
         <div className="bg-gray-50 rounded px-2 py-1.5">
           <div className="text-gray-500 text-[10px]">의원당 실인원</div>
           <div className="font-bold text-gray-800">{f(Math.round(reg.n_total_per_clinic))}명</div>
         </div>
         <div className="bg-blue-50 rounded px-2 py-1.5">
-          <div className="text-blue-600 text-[10px]">총 등록환자</div>
-          <div className="font-bold text-blue-700">{f(Math.round(reg.n_reg_total))}명</div>
+          <div className="text-blue-600 text-[10px]">의원당 등록환자</div>
+          <div className="font-bold text-blue-700">{f(Math.round(reg.n_reg_pc))}명</div>
           <div className="text-[10px] text-blue-500">등록률 {(reg.regRate * 100).toFixed(1)}%</div>
         </div>
         <div className="bg-slate-50 rounded px-2 py-1.5">
-          <div className="text-slate-500 text-[10px]">비등록 (FFS)</div>
-          <div className="font-bold text-slate-700">{f(Math.round(reg.n_unreg_total))}명</div>
+          <div className="text-slate-500 text-[10px]">의원당 비등록 (FFS)</div>
+          <div className="font-bold text-slate-700">{f(Math.round(reg.n_total_per_clinic - reg.n_reg_pc))}명</div>
         </div>
       </div>
-      <div className="mt-1.5 text-[10px] text-gray-400 italic">
+      <div className="mt-2 bg-gray-50/70 rounded px-2 py-1 text-[11px] text-gray-600 leading-snug">
+        <span className="font-mono">의원당 실인원 {f(Math.round(reg.n_total_per_clinic))} = 등록 {f(Math.round(reg.n_reg_pc))} + 비등록 {f(Math.round(reg.n_total_per_clinic - reg.n_reg_pc))}</span>
+        <span className="text-gray-400"> · 전체 N = {f(Math.round(reg.n_reg_total + reg.n_unreg_total))}명 ({f(Math.round(reg.n_reg_total))} + {f(Math.round(reg.n_unreg_total))})</span>
+      </div>
+      <div className="mt-1 text-[10px] text-gray-400 italic">
         ※ 실인원 = 1년간 방문횟수와 무관하게 환자 1명 = 1로 집계. 연인원(방문건수) 아님.
       </div>
     </div>
