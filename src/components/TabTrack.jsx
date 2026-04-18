@@ -147,12 +147,20 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
               );
             })}
             <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
-              <td className="px-2 py-2 text-sm">총수입</td>
+              <td className="px-2 py-2 text-sm">총수입<div className="text-[10px] text-gray-400 font-normal">(전체)</div></td>
               <td className="text-right px-2"><div>{fE(T.tA)}억</div><div className="text-green-600 font-normal text-xs">{pct(tAchg)}</div></td>
               <td className="text-right px-2"><div>{fE(T.tB)}억</div><div className="text-green-600 font-normal text-xs">{pct(tBchg)}</div></td>
               <td className="text-right px-2"><div>{fE(T.tC)}억</div><div className="text-green-600 font-normal text-xs">{pct(tCchg)}</div></td>
               <td className="text-right px-2 text-purple-700">{fE(T.tS)}억</td>
               <td className="text-right px-2" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{pct(tSchg)}</td>
+            </tr>
+            <tr className="bg-blue-50/40 font-semibold">
+              <td className="px-2 py-2 text-xs text-blue-700">의원당 평균<div className="text-[10px] text-blue-400 font-normal">(순수 FFS 대비 변화)</div></td>
+              <td className="text-right px-2 text-xs" style={{ color: tAchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tA - T.inc0) / M)}</td>
+              <td className="text-right px-2 text-xs" style={{ color: tBchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tB - T.inc0) / M)}</td>
+              <td className="text-right px-2 text-xs" style={{ color: tCchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tC - T.inc0) / M)}</td>
+              <td className="text-right px-2 text-xs font-bold" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tS - T.inc0) / M)}</td>
+              <td className="text-right px-2 text-[10px] text-blue-400">M={f(M)}</td>
             </tr>
           </tbody>
         </table>
