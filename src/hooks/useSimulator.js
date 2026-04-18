@@ -23,7 +23,7 @@ const initialState = {
   ssMacroPct: 0.1,
   ssClinicShare: 50,
   // v6.0
-  R_g: [0, 0, 0, 0],
+  R_g: [10000, 10000, 10000, 10000],
   M_clinics: 10,
   n_reg_per_clinic: 1000,
   k_g: [1, 1, 1, 1],

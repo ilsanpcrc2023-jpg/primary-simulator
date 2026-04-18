@@ -36,7 +36,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
               className="w-full big-thumb"
               style={{ '--thumb-bg': CL[i], accentColor: CL[i], background: `linear-gradient(to right, ${CL[i]} ${((P[i] - 50000) / 1950000) * 100}%, #e5e7eb 0%)` }} />
             <div className="text-center">
-              <NumBox value={P[i]} onChange={v => updP(i, Math.max(50000, Math.min(2000000, v)))} color={CL[i]} suffix="원" />
+              <NumBox value={P[i]} onChange={v => updP(i, Math.max(0, Math.round(v)))} color={CL[i]} suffix="원" />
             </div>
           </div>
         ))}
@@ -58,7 +58,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
             ⭐ 주치의 관리 강화 → L ↓ → 의원 수입 ↑ · 모델의 핵심 인센티브
           </p>
         </div>
-        <NumBox value={LC} onChange={v => set("LC", Math.max(-10, Math.min(0, v)))} color="#7c3aed" suffix="%p" />
+        <NumBox value={LC} onChange={v => set("LC", v)} color="#7c3aed" suffix="%p" />
       </div>
       <input type="range" min={-10} max={0} step={0.5} value={LC}
         onChange={e => set("LC", parseFloat(e.target.value))}
@@ -92,24 +92,35 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
     {/* ⑥ 등록환자 분포 조정 (고급) */}
     <RegDistCard state={state} set={set} updK={updK} resetK={resetK} ratios={ratios} regRatios={regRatios} />
 
-    {/* KPI 2열 */}
-    <div className="grid grid-cols-2 gap-2">
-      <div className={card + " p-3"}>
-        <div className="text-xs text-gray-500 mb-1">의원 수입 변화 (LC {LC}%p)</div>
-        <div className="text-2xl sm:text-3xl font-extrabold text-green-600">{pct(incNewChg)}</div>
-        <div className="text-sm font-bold text-green-600">{diffAuto(T.inc0, T.inc2)}</div>
-        <div className="text-xs text-gray-400 mt-1">{fE(T.inc0)}억 → {fE(T.inc2)}억 · 전체</div>
-        <div className="mt-1 pt-1 border-t border-gray-100 text-xs">
-          <span className="text-gray-500">의원당 평균 </span>
-          <span className="font-bold text-green-700">{diffAuto(0, (T.inc2 - T.inc0) / M)}</span>
-          <span className="text-gray-400"> (M={f(M)})</span>
+    {/* KPI 2열 — 핵심 결과 (promoted) */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
+        <div className="flex items-baseline justify-between mb-2">
+          <h3 className="font-bold text-base text-green-800">의원 수입 변화</h3>
+          <span className="text-[11px] font-semibold text-green-600">LC {LC}%p</span>
+        </div>
+        <div className="text-4xl sm:text-5xl font-extrabold text-green-600 leading-none">{pct(incNewChg)}</div>
+        <div className="text-lg font-bold text-green-700 mt-2">{diffAuto(T.inc0, T.inc2)}</div>
+        <div className="text-xs text-green-700/70 mt-1">{fE(T.inc0)}억 → {fE(T.inc2)}억 · 전체</div>
+        <div className="mt-2 pt-2 border-t border-green-200/70 text-sm">
+          <span className="text-green-700/80">의원당 평균 </span>
+          <span className="font-extrabold text-green-700 text-base">{diffAuto(0, (T.inc2 - T.inc0) / M)}</span>
+          <span className="text-green-600/60 text-xs"> (M={f(M)})</span>
         </div>
       </div>
-      <div className={card + " p-3"}>
-        <div className="text-xs text-gray-500 mb-1">공단 총의료비 변화</div>
-        <div className="text-2xl sm:text-3xl font-extrabold text-blue-700">{pct(nhiNewChg, 2)}</div>
-        <div className="text-sm font-bold text-blue-600">{diffAuto(T.nhi0, T.nhi2)}</div>
-        <div className="text-xs text-gray-400 mt-1">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
+      <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
+        <div className="flex items-baseline justify-between mb-2">
+          <h3 className="font-bold text-base text-blue-800">공단 총의료비 변화</h3>
+          <span className="text-[11px] font-semibold text-blue-600">의원급 외래</span>
+        </div>
+        <div className="text-4xl sm:text-5xl font-extrabold text-blue-700 leading-none">{pct(nhiNewChg, 2)}</div>
+        <div className="text-lg font-bold text-blue-700 mt-2">{diffAuto(T.nhi0, T.nhi2)}</div>
+        <div className="text-xs text-blue-700/70 mt-1">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
+        <div className="mt-2 pt-2 border-t border-blue-200/70 text-sm">
+          <span className="text-blue-700/80">의원당 평균 </span>
+          <span className="font-extrabold text-blue-700 text-base">{diffAuto(0, (T.nhi2 - T.nhi0) / M)}</span>
+          <span className="text-blue-600/60 text-xs"> (M={f(M)})</span>
+        </div>
       </div>
     </div>
 

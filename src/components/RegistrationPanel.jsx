@@ -6,7 +6,7 @@ import { f, fAuto } from "../utils";
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 const H2 = "font-bold text-base text-gray-900";
 const ACC_BTN = "w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition";
-const R_MAX = 200000;
+const R_MAX = 100000;
 
 /* ─────────────────────────────────────────────
    R 설정 카드 — 슬라이더 + 환자군별 차등 (고급) + 공단 추가 지출
@@ -29,7 +29,7 @@ export const RCard = memo(function RCard({ state, set, setRUniform, updR, reg, r
               차등 모드
             </span>
           )}
-          <NumBox value={R_display} onChange={v => setRUniform(Math.max(0, Math.min(R_MAX, Math.round(v))))} color="#a855f7" suffix="원" />
+          <NumBox value={R_display} onChange={v => setRUniform(Math.max(0, Math.round(v)))} color="#a855f7" suffix="원" />
         </div>
       </div>
       <input type="range" min={0} max={R_MAX} step={1000} value={R_display}
@@ -38,7 +38,7 @@ export const RCard = memo(function RCard({ state, set, setRUniform, updR, reg, r
         className="w-full big-thumb"
         style={{ '--thumb-bg': '#a855f7', accentColor: "#a855f7", background: `linear-gradient(to right, #a855f7 ${(R_display / R_MAX) * 100}%, #e5e7eb 0%)` }} />
       <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-        <span>0원</span><span>5만원</span><span>10만원</span><span>15만원</span><span>20만원/년/환자</span>
+        <span>0원</span><span>2.5만원</span><span>5만원</span><span>7.5만원</span><span>10만원/년/환자</span>
       </div>
       {!R_uniform && (
         <div className="mt-1 text-[10px] text-amber-600 italic">
@@ -95,7 +95,7 @@ export const RCard = memo(function RCard({ state, set, setRUniform, updR, reg, r
                 <div key={i} className="rounded px-2 py-1.5 text-center" style={{ background: CL[i] + "10", border: `1px solid ${CL[i]}40` }}>
                   <div className="text-[10px] font-bold mb-1" style={{ color: CL[i] }}>{g}</div>
                   <input type="text" value={f(R_g[i])}
-                    onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0 && v <= R_MAX) updR(i, v); }}
+                    onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updR(i, v); }}
                     className="w-full text-center text-xs font-bold border rounded bg-white py-0.5"
                     style={{ borderColor: CL[i] + "60", color: CL[i] }} />
                   <div className="text-[9px] text-gray-400 mt-0.5">원/년</div>
@@ -188,18 +188,18 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg }) {
       <div className="mb-2">
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-semibold text-gray-700">의원당 등록환자수</span>
-          <NumBox value={n_reg_per_clinic} onChange={v => set("n_reg_per_clinic", Math.max(0, Math.min(5000, Math.round(v))))} color="#2563eb" suffix="명" />
+          <NumBox value={n_reg_per_clinic} onChange={v => set("n_reg_per_clinic", Math.max(0, Math.round(v)))} color="#2563eb" suffix="명" />
         </div>
-        <input type="range" min={0} max={5000} step={50} value={n_reg_per_clinic}
+        <input type="range" min={0} max={2000} step={50} value={Math.min(n_reg_per_clinic, 2000)}
           onChange={e => set("n_reg_per_clinic", parseInt(e.target.value))}
           aria-label="의원당 등록환자수 슬라이더"
           className="w-full big-thumb"
-          style={{ '--thumb-bg': '#2563eb', accentColor: "#2563eb", background: `linear-gradient(to right, #2563eb ${(n_reg_per_clinic / 5000) * 100}%, #e5e7eb 0%)` }} />
+          style={{ '--thumb-bg': '#2563eb', accentColor: "#2563eb", background: `linear-gradient(to right, #2563eb ${(Math.min(n_reg_per_clinic, 2000) / 2000) * 100}%, #e5e7eb 0%)` }} />
         <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-          <span>0</span><span>1,000</span><span>2,000</span><span>3,000</span><span>4,000</span><span>5,000명</span>
+          <span>0</span><span>500</span><span>1,000</span><span>1,500</span><span>2,000명</span>
         </div>
         <div className="flex flex-wrap gap-1 mt-2">
-          {[500, 1000, 1500, 2000, 3000].map(v => (
+          {[500, 1000, 1500, 2000].map(v => (
             <button key={v} onClick={() => set("n_reg_per_clinic", v)}
               className="text-[11px] px-2 py-0.5 rounded border font-medium transition"
               style={n_reg_per_clinic === v
@@ -208,6 +208,9 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg }) {
               {f(v)}명
             </button>
           ))}
+          {n_reg_per_clinic > 2000 && (
+            <span className="text-[10px] text-blue-600 italic self-center ml-1">슬라이더 범위 초과 · 직접 입력값 적용 중</span>
+          )}
         </div>
       </div>
 
