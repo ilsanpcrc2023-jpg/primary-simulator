@@ -66,7 +66,7 @@ export default function App() {
             state={state} set={set}
             G={sim.G} T={sim.T}
             nhiNewChg={sim.nhiNewChg}
-            tBchg={sim.tBchg} tCchg={sim.tCchg} tSchg={sim.tSchg}
+            tAchg={sim.tAchg} tBchg={sim.tBchg} tCchg={sim.tCchg} tSchg={sim.tSchg}
           />
         )}
 

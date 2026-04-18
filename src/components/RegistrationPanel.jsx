@@ -31,14 +31,19 @@ export default memo(function RegistrationPanel({ state, set, updK, resetK, reg, 
         <div className="flex justify-between text-[10px] text-gray-400 mt-1">
           <span>0원</span><span>5만원</span><span>10만원/년/환자</span>
         </div>
-        <div className="mt-2 pt-2 border-t border-gray-100 grid grid-cols-2 gap-2 text-xs">
-          <div className="bg-purple-50 rounded px-2 py-1.5">
-            <div className="text-gray-500 text-[10px]">최종 일차의료수가 (PP=P+R)</div>
-            <div className="font-bold text-purple-700">{f(G[0].p + R)} ~ {f(G[3].p + R)}원</div>
+        <div className="mt-2 pt-2 border-t border-gray-100">
+          <div className="text-[10px] text-gray-500 mb-1">최종 일차의료수가 (PP = P + R)</div>
+          <div className="grid grid-cols-4 gap-1">
+            {SH.map((g, i) => (
+              <div key={i} className="rounded px-1.5 py-1 text-center" style={{ background: CL[i] + "12", borderLeft: `3px solid ${CL[i]}` }}>
+                <div className="text-[10px] font-semibold" style={{ color: CL[i] }}>{g}</div>
+                <div className="text-xs font-bold text-purple-700">{f(G[i].p + R)}원</div>
+              </div>
+            ))}
           </div>
-          <div className="bg-amber-50 rounded px-2 py-1.5">
-            <div className="text-gray-500 text-[10px]">공단 추가 지출 (연)</div>
-            <div className="font-bold text-amber-700">{nhiAddFromR > 0 ? "+" : ""}{fE(nhiAddFromR)}억</div>
+          <div className="mt-2 bg-amber-50 rounded px-2 py-1.5 text-xs flex justify-between items-center">
+            <span className="text-gray-600 text-[11px]">공단 추가 지출 (R × 등록환자, 연)</span>
+            <span className="font-bold text-amber-700">{nhiAddFromR > 0 ? "+" : ""}{fE(nhiAddFromR)}억</span>
           </div>
         </div>
       </div>
@@ -50,11 +55,19 @@ export default memo(function RegistrationPanel({ state, set, updK, resetK, reg, 
         {/* 의원 수 */}
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xs font-semibold text-gray-600 shrink-0 w-20">의원 수 (M)</span>
-          <input type="text" value={f(M_clinics)}
-            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) set("M_clinics", v); }}
-            className="w-28 text-sm font-bold text-gray-800 text-right border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500" />
-          <span className="text-xs text-gray-400">개</span>
-          <span className="text-xs text-gray-400 ml-auto hidden sm:inline">파일럿 10 · 전국 ≈ 3,000</span>
+          <NumBox value={M_clinics} onChange={v => set("M_clinics", Math.max(1, Math.round(v)))} color="#1f2937" suffix="개" />
+          <div className="flex flex-wrap gap-1 ml-2">
+            {[10, 100, 1000, 3000].map(v => (
+              <button key={v} onClick={() => set("M_clinics", v)}
+                className="text-[11px] px-2 py-0.5 rounded border font-medium transition"
+                style={M_clinics === v
+                  ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" }
+                  : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                {f(v)}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-gray-400 ml-auto hidden lg:inline">파일럿 10 · 전국 ≈ 3,000</span>
         </div>
 
         {/* 의원당 등록환자수 슬라이더 */}

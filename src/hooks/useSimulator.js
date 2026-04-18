@@ -217,9 +217,12 @@ export default function useSimulator() {
   const incCurChg = T.inc0 > 0 ? (T.inc1 - T.inc0) / T.inc0 : 0;
   const incNewChg = T.inc0 > 0 ? (T.inc2 - T.inc0) / T.inc0 : 0;
   const nhiNewChg = T.nhi0 > 0 ? (T.nhi2 - T.nhi0) / T.nhi0 : 0;
-  const tBchg = T.tA > 0 ? (T.tB - T.tA) / T.tA : 0;
-  const tCchg = T.tA > 0 ? (T.tC - T.tA) / T.tA : 0;
-  const tSchg = T.tA > 0 ? (T.tS - T.tA) / T.tA : 0;
+  // Track 변화율 기준 = 순수 FFS (inc0, 사업 미시행·R=0 기준선).
+  // Track A에서도 R>0이면 양(+) 변화가 나와야 한다는 노션 Q6 정합.
+  const tAchg = T.inc0 > 0 ? (T.tA - T.inc0) / T.inc0 : 0;
+  const tBchg = T.inc0 > 0 ? (T.tB - T.inc0) / T.inc0 : 0;
+  const tCchg = T.inc0 > 0 ? (T.tC - T.inc0) / T.inc0 : 0;
+  const tSchg = T.inc0 > 0 ? (T.tS - T.inc0) / T.inc0 : 0;
 
   const SS = useMemo(() => {
     const totalMedCost = ssTotalCost * 1e12;
@@ -342,7 +345,7 @@ export default function useSimulator() {
     G, T, SS,
     ffsPct,
     incCurChg, incNewChg, nhiNewChg,
-    tBchg, tCchg, tSchg,
+    tAchg, tBchg, tCchg, tSchg,
     reg, regRatios,
   };
 }

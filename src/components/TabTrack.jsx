@@ -6,7 +6,7 @@ import { f, fE, pct, diffE } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCchg, tSchg }) {
+export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBchg, tCchg, tSchg }) {
   const { hccPct, LC, R } = state;
   const ffsPct = 100 - hccPct;
 
@@ -110,7 +110,7 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCch
     <div className={card + " overflow-hidden"}>
       <div className="px-3 py-2.5 border-b border-gray-100">
         <h3 className="text-sm font-bold text-gray-900">
-          Track별 1인당 실지불액 비교 <span className="text-gray-400 font-normal text-xs">(타원이용 {LC}%p)</span>
+          Track별 1인당 실지불액 비교 <span className="text-gray-400 font-normal text-xs">(타원이용 {LC}%p · 변화율 기준 = 순수 FFS)</span>
         </h3>
       </div>
       <div className="overflow-x-auto">
@@ -125,7 +125,8 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCch
           </tr></thead>
           <tbody>
             {G.map((r, i) => {
-              const chg = r.tA > 0 ? (r.tS - r.tA) / r.tA : 0;
+              // 기준 = 순수 FFS (M1, 사업 미시행)
+              const chg = r.b.M1 > 0 ? (r.tS - r.b.M1) / r.b.M1 : 0;
               return (
                 <tr key={i} className="border-t border-gray-100">
                   <td className="px-2 py-2 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
@@ -139,7 +140,7 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCch
             })}
             <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
               <td className="px-2 py-2 text-sm">총수입</td>
-              <td className="text-right px-2">{fE(T.tA)}억</td>
+              <td className="text-right px-2"><div>{fE(T.tA)}억</div><div className="text-green-600 font-normal text-xs">{pct(tAchg)}</div></td>
               <td className="text-right px-2"><div>{fE(T.tB)}억</div><div className="text-green-600 font-normal text-xs">{pct(tBchg)}</div></td>
               <td className="text-right px-2"><div>{fE(T.tC)}억</div><div className="text-green-600 font-normal text-xs">{pct(tCchg)}</div></td>
               <td className="text-right px-2 text-purple-700">{fE(T.tS)}억</td>
