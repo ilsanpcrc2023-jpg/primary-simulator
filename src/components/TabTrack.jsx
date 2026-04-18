@@ -2,22 +2,31 @@ import { memo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import NumBox from "./shared/NumBox";
 import { SH, CL } from "../constants";
-import { f, fE, pct, diffE } from "../utils";
+import { f, fE, pct, diffAuto } from "../utils";
+
+
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCchg, tSchg }) {
-  const { hccPct, LC } = state;
+export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBchg, tCchg, tSchg }) {
+  const { hccPct, LC, R_g, M_clinics } = state;
   const ffsPct = 100 - hccPct;
+  const M = Math.max(1, M_clinics);
+  const R_uniform = R_g[0] === R_g[1] && R_g[1] === R_g[2] && R_g[2] === R_g[3];
+  const R_mean = Math.round((R_g[0] + R_g[1] + R_g[2] + R_g[3]) / 4);
+  const R_label = R_uniform ? R_g[0].toLocaleString() + "원" : `환자군별 차등 (평균 ${R_mean.toLocaleString()}원)`;
 
   return (<>
     <div className={card + " p-4"}>
       <h2 className="font-bold text-gray-900 mb-3 text-sm">Track 선택권</h2>
+      <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+        Track은 <b>등록환자</b>에게만 적용됩니다. 비등록환자는 항상 FFS로 진료합니다. R(등록관리비)은 모든 Track에서 등록환자에게 지급됩니다.
+      </p>
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { n: "Track A", d: "행위별", c: "#22c55e", bg: "#f0fdf4", v: 0 },
-          { n: "Track B", d: "혼합형 50:50", c: "#3b82f6", bg: "#eff6ff", v: 50 },
-          { n: "Track C", d: "환자군 기반", c: "#f97316", bg: "#fff7ed", v: 100 },
+          { n: "Track A", d: "FFS + R", c: "#22c55e", bg: "#f0fdf4", v: 0 },
+          { n: "Track B", d: "혼합 50:50 + R", c: "#3b82f6", bg: "#eff6ff", v: 50 },
+          { n: "Track C", d: "환자군 모형 + R", c: "#f97316", bg: "#fff7ed", v: 100 },
         ].map((t, i) => (
           <button key={i} onClick={() => set("hccPct", t.v)}
             aria-selected={hccPct === t.v}
@@ -64,15 +73,20 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCch
     {/* Track KPI */}
     <div className="grid grid-cols-2 gap-2">
       <div className={card + " p-3"}>
-        <div className="text-xs text-gray-500 mb-1">현 선택: 행위별 {ffsPct}% / 환자군 {hccPct}%</div>
+        <div className="text-xs text-gray-500 mb-1">현 선택: 행위별 {ffsPct}% / 환자군 {hccPct}% <span className="text-gray-400">· vs 순수 FFS</span></div>
         <div className="text-2xl sm:text-3xl font-extrabold" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{pct(tSchg)}</div>
-        <div className="text-xs sm:text-sm font-bold mt-0.5" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffE(T.tA, T.tS)}원</div>
-        <div className="text-xs text-gray-400 mt-0.5">{fE(T.tA)}억 → {fE(T.tS)}억</div>
+        <div className="text-xs sm:text-sm font-bold mt-0.5" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(T.inc0, T.tS)}</div>
+        <div className="text-xs text-gray-400 mt-0.5">{fE(T.inc0)}억 → {fE(T.tS)}억 · 전체</div>
+        <div className="mt-1 pt-1 border-t border-gray-100 text-xs">
+          <span className="text-gray-500">의원당 평균 </span>
+          <span className="font-bold" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tS - T.inc0) / M)}</span>
+          <span className="text-gray-400"> (M={f(M)})</span>
+        </div>
       </div>
       <div className="rounded-xl border p-3 shadow-sm" style={{ background: "#f0f9ff", borderColor: "#bae6fd" }}>
         <div className="text-xs text-gray-500 mb-1">공단 의원급 지출 변화</div>
         <div className="text-2xl sm:text-3xl font-extrabold text-blue-700">{pct(nhiNewChg, 2)}</div>
-        <div className="text-xs sm:text-sm font-bold text-blue-600 mt-0.5">{diffE(T.nhi0, T.nhi2)}원</div>
+        <div className="text-xs sm:text-sm font-bold text-blue-600 mt-0.5">{diffAuto(T.nhi0, T.nhi2)}</div>
         <div className="text-xs text-gray-400 mt-0.5">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
       </div>
     </div>
@@ -98,7 +112,7 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCch
 
     {/* Track 안내 */}
     <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 text-xs text-blue-800 leading-relaxed">
-      Track A(행위별)를 선택해도 현재와 차이가 없으며, Track B·C로 전환 시 타원이용비중 관리에 따라 추가 수입이 발생합니다.
+      Track A(행위별)를 선택해도 등록환자당 R({R_label})만큼 추가 수입이 발생합니다. Track B·C로 전환 시 환자군 모형과 타원이용비중 관리에 따라 수입이 증가합니다.
       {hccPct > 0 && <> 현재 선택(행위별 {ffsPct}% : 환자군 {hccPct}%) 기준 <b className="text-green-700">{pct(tSchg)}</b> 수입 변화가 예상됩니다.</>}
       {" "}의원별 상황에 맞는 Track을 자율 선택할 수 있습니다.
     </div>
@@ -107,7 +121,7 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCch
     <div className={card + " overflow-hidden"}>
       <div className="px-3 py-2.5 border-b border-gray-100">
         <h3 className="text-sm font-bold text-gray-900">
-          Track별 1인당 실지불액 비교 <span className="text-gray-400 font-normal text-xs">(타원이용 {LC}%p)</span>
+          Track별 1인당 실지불액 비교 <span className="text-gray-400 font-normal text-xs">(타원이용 {LC}%p · 변화율 기준 = 순수 FFS)</span>
         </h3>
       </div>
       <div className="overflow-x-auto">
@@ -122,7 +136,8 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCch
           </tr></thead>
           <tbody>
             {G.map((r, i) => {
-              const chg = r.tA > 0 ? (r.tS - r.tA) / r.tA : 0;
+              // 기준 = 순수 FFS (M1, 사업 미시행)
+              const chg = r.b.M1 > 0 ? (r.tS - r.b.M1) / r.b.M1 : 0;
               return (
                 <tr key={i} className="border-t border-gray-100">
                   <td className="px-2 py-2 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
@@ -135,12 +150,20 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tBchg, tCch
               );
             })}
             <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
-              <td className="px-2 py-2 text-sm">총수입</td>
-              <td className="text-right px-2">{fE(T.tA)}억</td>
+              <td className="px-2 py-2 text-sm">총수입<div className="text-[10px] text-gray-400 font-normal">(전체)</div></td>
+              <td className="text-right px-2"><div>{fE(T.tA)}억</div><div className="text-green-600 font-normal text-xs">{pct(tAchg)}</div></td>
               <td className="text-right px-2"><div>{fE(T.tB)}억</div><div className="text-green-600 font-normal text-xs">{pct(tBchg)}</div></td>
               <td className="text-right px-2"><div>{fE(T.tC)}억</div><div className="text-green-600 font-normal text-xs">{pct(tCchg)}</div></td>
               <td className="text-right px-2 text-purple-700">{fE(T.tS)}억</td>
               <td className="text-right px-2" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{pct(tSchg)}</td>
+            </tr>
+            <tr className="bg-blue-50/40 font-semibold">
+              <td className="px-2 py-2 text-xs text-blue-700">의원당 평균<div className="text-[10px] text-blue-400 font-normal">(순수 FFS 대비 변화)</div></td>
+              <td className="text-right px-2 text-xs" style={{ color: tAchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tA - T.inc0) / M)}</td>
+              <td className="text-right px-2 text-xs" style={{ color: tBchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tB - T.inc0) / M)}</td>
+              <td className="text-right px-2 text-xs" style={{ color: tCchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tC - T.inc0) / M)}</td>
+              <td className="text-right px-2 text-xs font-bold" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tS - T.inc0) / M)}</td>
+              <td className="text-right px-2 text-[10px] text-blue-400">M={f(M)}</td>
             </tr>
           </tbody>
         </table>

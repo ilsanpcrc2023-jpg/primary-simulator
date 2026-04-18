@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import WinWinWin from "./WinWinWin";
-import { fE, fSv } from "../utils";
+import { fAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
@@ -37,7 +37,7 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
       <div className="rounded-lg p-3 text-center" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
         <div className="text-xs text-gray-500 mb-1">총 절감액</div>
         <div className="text-2xl sm:text-3xl font-extrabold text-red-600">
-          {fSv(SS.itemTotal)}원
+          {fAuto(SS.itemTotal)}
         </div>
       </div>
     </div>
@@ -81,7 +81,7 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
           <div className="flex items-center justify-between mt-1.5">
             <span className="text-xs text-gray-500">절감액</span>
             <span className="text-sm font-bold" style={{ color: item.color }}>
-              {item.saving >= 1e12 ? (item.saving / 1e12).toFixed(2) + "조원" : fE(item.saving) + "억원"}
+              {fAuto(item.saving)}
             </span>
           </div>
         </div>
@@ -128,27 +128,27 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
         <PieChart>
           <Pie
             data={[
-              { name: "공단 적립", value: Math.round(SS.nhisFromItem / 1e8 * 10) / 10, raw: SS.nhisFromItem, color: "#ef4444" },
-              { name: "일차의료 지원", value: Math.round(SS.clinicFromItem / 1e8 * 10) / 10, raw: SS.clinicFromItem, color: "#22c55e" },
+              { name: "공단 적립", value: SS.nhisFromItem, color: "#ef4444" },
+              { name: "일차의료 지원", value: SS.clinicFromItem, color: "#22c55e" },
             ].filter(d => d.value > 0)}
             cx="50%" cy="50%" innerRadius={45} outerRadius={85}
             startAngle={90} endAngle={450}
             paddingAngle={3} dataKey="value"
-            label={({ name, raw }) => `${name} ${fSv(raw || 0)}원`}
+            label={({ name, value }) => `${name} ${fAuto(value || 0)}`}
             labelLine={{ stroke: "#94a3b8", strokeWidth: 1 }}
           >
             {[
-              { value: Math.round(SS.nhisFromItem / 1e8 * 10) / 10, color: "#ef4444" },
-              { value: Math.round(SS.clinicFromItem / 1e8 * 10) / 10, color: "#22c55e" },
+              { value: SS.nhisFromItem, color: "#ef4444" },
+              { value: SS.clinicFromItem, color: "#22c55e" },
             ].filter(d => d.value > 0).map((d, i) => <Cell key={i} fill={d.color} />)}
           </Pie>
-          <Tooltip formatter={v => v >= 10000 ? (v / 10000).toFixed(2) + "조원" : v + "억원"} contentStyle={{ fontSize: 12 }} />
+          <Tooltip formatter={v => fAuto(v)} contentStyle={{ fontSize: 12 }} />
         </PieChart>
       </ResponsiveContainer>
       <div className="flex justify-center gap-4 text-xs mt-1">
-        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#ef4444" }}></span>공단 적립 <b className="text-red-600">{fSv(SS.nhisFromItem)}원</b></span>
-        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#22c55e" }}></span>일차의료 지원 <b className="text-green-600">{fSv(SS.clinicFromItem)}원</b></span>
-        <span className="text-gray-400">합계 <b>{fSv(SS.itemTotal)}원</b></span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#ef4444" }}></span>공단 적립 <b className="text-red-600">{fAuto(SS.nhisFromItem)}</b></span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#22c55e" }}></span>일차의료 지원 <b className="text-green-600">{fAuto(SS.clinicFromItem)}</b></span>
+        <span className="text-gray-400">합계 <b>{fAuto(SS.itemTotal)}</b></span>
       </div>
     </div>
 
@@ -157,9 +157,9 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
       { t: "국민 (환자)", c: "#059669", bg: "#ecfdf5", bd: "#a7f3d0",
         txt: "불필요한 입원·응급 감소\n의료의 질 향상\n주치의 연속 진료" },
       { t: "의원 (의사)", c: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
-        txt: `B]축 수입 + C]축 인센티브\n절감 성과의 ${ssClinicShare}% 배분\n${fSv(SS.clinicFromItem)}원 추가` },
+        txt: `B]축 수입 + C]축 인센티브\n절감 성과의 ${ssClinicShare}% 배분\n${fAuto(SS.clinicFromItem)} 추가` },
       { t: "공단 (정부)", c: "#dc2626", bg: "#fef2f2", bd: "#fecaca",
-        txt: `절감분의 ${100 - ssClinicShare}% 환수\n${fSv(SS.nhisFromItem)}원 절감\n의료비 예측가능성 향상` },
+        txt: `절감분의 ${100 - ssClinicShare}% 환수\n${fAuto(SS.nhisFromItem)} 절감\n의료비 예측가능성 향상` },
     ]} />
 
     {/* 안내 문구 */}

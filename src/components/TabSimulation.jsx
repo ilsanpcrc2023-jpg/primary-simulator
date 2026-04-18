@@ -2,19 +2,25 @@ import { memo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
+import { RCard, PPCard, RegScaleCard, RegDistCard } from "./RegistrationPanel";
 import { SH, CL, ON } from "../constants";
-import { f, fE, pct, diffE } from "../utils";
+import { f, fE, pct, diffAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabSimulation({ state, set, updP, updBase, reset, G, T, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport }) {
-  const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel } = state;
+export default memo(function TabSimulation({ state, set, updP, updBase, updK, resetK, updR, setRUniform, reset, G, T, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
+  const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, R_g, M_clinics } = state;
+  const M = Math.max(1, M_clinics);
+  const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
 
   return (<>
-    {/* 수가 설정 */}
+    {/* ① 환자군 기본수가 (P) 설정 */}
     <div className={card + " p-4"}>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-900 text-sm">일차의료수가 설정</h2>
+        <div>
+          <h2 className="font-bold text-base text-gray-900">환자군 기본수가 (P) 설정</h2>
+          <p className="text-[11px] text-gray-500 mt-0.5">P = 환자군 기준의료비 × 의원급 외래비중</p>
+        </div>
         <div className="flex items-center gap-2">
           {totalN === ON && <span className="text-xs text-gray-400 hidden sm:inline">{dataLabel}</span>}
           <button onClick={reset} className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded px-2 py-0.5">초기화</button>
@@ -30,62 +36,94 @@ export default memo(function TabSimulation({ state, set, updP, updBase, reset, G
               className="w-full big-thumb"
               style={{ '--thumb-bg': CL[i], accentColor: CL[i], background: `linear-gradient(to right, ${CL[i]} ${((P[i] - 50000) / 1950000) * 100}%, #e5e7eb 0%)` }} />
             <div className="text-center">
-              <NumBox value={P[i]} onChange={v => updP(i, Math.max(50000, Math.min(2000000, v)))} color={CL[i]} suffix="원" />
+              <NumBox value={P[i]} onChange={v => updP(i, Math.max(0, Math.round(v)))} color={CL[i]} suffix="원" />
             </div>
           </div>
         ))}
       </div>
-      <div className="mt-4 pt-3 border-t border-gray-100">
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          <span className="text-xs font-semibold text-gray-700">타원이용비중 변화율 (LC)</span>
-          <span className="text-xs text-gray-400">진료건수 기준 · 등록 후 관리 강화 시 예상 감소폭</span>
-          <div className="ml-auto">
-            <NumBox value={LC} onChange={v => set("LC", Math.max(-10, Math.min(0, v)))} color="#7c3aed" suffix="%p" />
-          </div>
+    </div>
+
+    {/* ② 주치의 등록관리비 (R) 설정 */}
+    <RCard state={state} set={set} setRUniform={setRUniform} updR={updR} reg={reg} regRatios={regRatios} />
+
+    {/* ③ 최종 일차의료수가 (PP) — 결과 (promoted) */}
+    <PPCard state={state} G={G} />
+
+    {/* ④ 타원이용비중 (L) 변화율 — 핵심 인센티브 (promoted) */}
+    <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>타원이용비중 (L) 변화율</h2>
+          <p className="text-xs mt-0.5" style={{ color: "#7c3aed" }}>
+            ⭐ 주치의 관리 강화 → L ↓ → 의원 수입 ↑ · 모델의 핵심 인센티브
+          </p>
         </div>
-        <input type="range" min={-10} max={0} step={0.5} value={LC}
-          onChange={e => set("LC", parseFloat(e.target.value))}
-          aria-label="타원이용비중 변화율 슬라이더"
-          className="w-full big-thumb"
-          style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${((LC + 10) / 10) * 100}%, #e5e7eb 0%)` }} />
+        <NumBox value={LC} onChange={v => set("LC", v)} color="#7c3aed" suffix="%p" />
+      </div>
+      <input type="range" min={-10} max={0} step={0.5} value={LC}
+        onChange={e => set("LC", parseFloat(e.target.value))}
+        aria-label="타원이용비중 변화율 슬라이더"
+        className="w-full big-thumb"
+        style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${((LC + 10) / 10) * 100}%, #e5e7eb 0%)` }} />
+      <div className="flex justify-between text-[10px] mt-1" style={{ color: "#8b5cf6" }}>
+        <span>-10%p</span><span>-5%p</span><span>0%p (변화 없음)</span>
+      </div>
+
+      {/* 수식 요약 */}
+      <div className="mt-3 pt-3 border-t border-purple-200/70 space-y-1 text-[11px]">
+        <div className="flex items-start gap-2">
+          <span className="font-bold text-purple-700 shrink-0 w-16">공단 지급</span>
+          <code className="font-mono text-purple-900 bg-white/60 rounded px-1.5 py-0.5">A = P × (1 − L) + R</code>
+        </div>
+        <div className="flex items-start gap-2">
+          <span className="font-bold text-purple-700 shrink-0 w-16">본인부담</span>
+          <code className="font-mono text-purple-900 bg-white/60 rounded px-1.5 py-0.5">B = M1 × 30%</code>
+          <span className="text-purple-500 text-[10px]">(고정)</span>
+        </div>
+        <div className="text-[10px] text-purple-700 bg-purple-100/60 rounded px-2 py-1 mt-2 leading-relaxed">
+          ※ 등록관리비(R)는 타원이용비중(L)과 무관하게 고정 지급됩니다.
+        </div>
       </div>
     </div>
 
-    {/* 등록환자 수 */}
-    <div className={card + " px-3 py-2.5"}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-semibold text-gray-600 shrink-0">등록환자 수 (N)</span>
-        <input type="text" value={totalN.toLocaleString()}
-          onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) { set("totalN", v); if (v !== ON) set("dataLabel", "시뮬레이션 모드"); } }}
-          className="w-28 text-sm font-bold text-gray-800 text-right border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500" />
-        <span className="text-xs text-gray-400">명</span>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-blue-600 font-semibold shrink-0">추정 환자수 예측</span>
-        {[{ l: "10만", v: 100000 }, { l: "100만", v: 1000000 }, { l: "1000만", v: 10000000 }, { l: "5000만", v: 50000000 }].map(b => (
-          <button key={b.v} onClick={() => { set("totalN", b.v); set("dataLabel", `추정 ${b.l}명 시뮬레이션`); }}
-            className="text-xs px-2 py-1 rounded border font-medium transition"
-            style={totalN === b.v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
-            {b.l}
-          </button>
-        ))}
-        <span className="text-xs text-gray-400">명</span>
-      </div>
-    </div>
+    {/* ⑤ 등록환자 규모 */}
+    <RegScaleCard state={state} set={set} reg={reg} />
 
-    {/* KPI 2열 */}
-    <div className="grid grid-cols-2 gap-2">
-      <div className={card + " p-3"}>
-        <div className="text-xs text-gray-500 mb-1">의원 수입 변화 (LC {LC}%p)</div>
-        <div className="text-2xl sm:text-3xl font-extrabold text-green-600">{pct(incNewChg)}</div>
-        <div className="text-sm font-bold text-green-600">{diffE(T.inc0, T.inc2)}원</div>
-        <div className="text-xs text-gray-400 mt-1">{fE(T.inc0)}억 → {fE(T.inc2)}억</div>
+    {/* ⑥ 등록환자 분포 조정 (고급) */}
+    <RegDistCard state={state} set={set} updK={updK} resetK={resetK} ratios={ratios} regRatios={regRatios} />
+
+    {/* KPI 2열 — 핵심 결과 (promoted) */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
+        <div className="flex items-baseline justify-between mb-2">
+          <h3 className="font-bold text-base text-green-800">의원 수입 변화</h3>
+          <span className="text-[11px] font-semibold text-green-600">LC {LC}%p</span>
+        </div>
+        <div className="text-4xl sm:text-5xl font-extrabold text-green-600 leading-none">{pct(incNewChg)}</div>
+        <div className="text-lg font-bold text-green-700 mt-2">{diffAuto(T.inc0, T.inc2)}</div>
+        <div className="text-xs text-green-700/70 mt-1">{fE(T.inc0)}억 → {fE(T.inc2)}억 · 전체</div>
+        <div className="mt-2 pt-2 border-t border-green-200/70 text-sm">
+          <span className="text-green-700/80">의원당 평균 </span>
+          <span className="font-extrabold text-green-700 text-base">{diffAuto(0, (T.inc2 - T.inc0) / M)}</span>
+          <span className="text-green-600/60 text-xs"> (M={f(M)})</span>
+        </div>
+        <div className="mt-2 text-[10.5px] text-green-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
+          의원 수입 = <b>등록환자</b>(환자군 모형 A + 본인부담 + R) + <b>비등록환자</b>(FFS M1 유지)
+        </div>
       </div>
-      <div className={card + " p-3"}>
-        <div className="text-xs text-gray-500 mb-1">공단 총의료비 변화</div>
-        <div className="text-2xl sm:text-3xl font-extrabold text-blue-700">{pct(nhiNewChg, 2)}</div>
-        <div className="text-sm font-bold text-blue-600">{diffE(T.nhi0, T.nhi2)}원</div>
-        <div className="text-xs text-gray-400 mt-1">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
+      <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
+        <div className="flex items-baseline justify-between mb-2">
+          <h3 className="font-bold text-base text-blue-800">공단 총의료비 변화</h3>
+          <span className="text-[11px] font-semibold text-blue-600">의원급 외래</span>
+        </div>
+        <div className="text-4xl sm:text-5xl font-extrabold text-blue-700 leading-none">{pct(nhiNewChg, 2)}</div>
+        <div className="text-lg font-bold text-blue-700 mt-2">{diffAuto(T.nhi0, T.nhi2)}</div>
+        <div className="text-xs text-blue-700/70 mt-1">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
+        <div className="mt-2 pt-2 border-t border-blue-200/70 text-sm">
+          <span className="text-blue-700/80">의원당 평균 </span>
+          <span className="font-extrabold text-blue-700 text-base">{diffAuto(0, (T.nhi2 - T.nhi0) / M)}</span>
+          <span className="text-blue-600/60 text-xs"> (M={f(M)})</span>
+        </div>
       </div>
     </div>
 
@@ -175,13 +213,19 @@ export default memo(function TabSimulation({ state, set, updP, updBase, reset, G
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
               <div className="text-gray-400 text-xl mb-0.5">📤</div>
               <div className="text-xs font-semibold text-gray-600">엑셀 업로드</div>
-              <div className="text-xs text-gray-400 mt-0.5">분석템플릿 v4 또는 호환 파일</div>
+              <div className="text-xs text-gray-400 mt-0.5">NHIS-HCC분석템플릿 v6 또는 호환 파일</div>
             </div>
             <div className="flex-1 border-2 border-dashed border-blue-200 rounded-lg p-3 text-center hover:border-blue-400 transition cursor-pointer bg-blue-50/30"
               onClick={handleExport}>
               <div className="text-blue-400 text-xl mb-0.5">📥</div>
               <div className="text-xs font-semibold text-blue-600">현재값 내보내기</div>
               <div className="text-xs text-blue-400 mt-0.5">시뮬레이터 → 엑셀 Export</div>
+            </div>
+            <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
+              onClick={() => { if (confirm("현재 업로드·수정한 모든 값을 지우고 파일럿 데이터(10개 의원, 69,604명)로 되돌립니다. 진행할까요?")) reset(); }}>
+              <div className="text-amber-500 text-xl mb-0.5">↩</div>
+              <div className="text-xs font-semibold text-amber-700">파일럿 복귀</div>
+              <div className="text-xs text-amber-500 mt-0.5">기본 10개 의원 데이터로 초기화</div>
             </div>
           </div>
 
@@ -190,9 +234,9 @@ export default memo(function TabSimulation({ state, set, updP, updBase, reset, G
               <div key={i} className="rounded-lg px-2.5 py-2 border" style={{ borderColor: CL[i] + "40", background: CL[i] + "08" }}>
                 <div className="text-xs font-bold mb-1" style={{ color: CL[i] }}>{SH[i]} <span className="font-normal text-gray-400">N={f(base[i].N)}</span></div>
                 <div className="text-xs text-gray-500 space-y-0.5">
-                  <div>수가(P) <b className="text-gray-900">{f(P[i])}</b></div>
-                  <div>실수입 <b className="text-blue-700">{f(Math.round(r.AB_cur))}</b> → <b className="text-green-700">{f(Math.round(r.AB_new))}</b></div>
-                  <div className="text-gray-400" style={{ fontSize: 10 }}>공단+본인부담, LC {LC}%p</div>
+                  <div>P <b className="text-gray-900">{f(P[i])}</b>{R_g[i] > 0 && <span className="text-purple-600 text-[10px]"> +R {f(R_g[i])}</span>}</div>
+                  <div>등록환자 1인 수입 <b className="text-blue-700">{f(Math.round(r.ab_reg_cur))}</b> → <b className="text-green-700">{f(Math.round(r.ab_reg_new))}</b></div>
+                  <div className="text-gray-400" style={{ fontSize: 10 }}>A + 본인부담 + R · LC {LC}%p</div>
                 </div>
               </div>
             ))}
@@ -208,34 +252,36 @@ export default memo(function TabSimulation({ state, set, updP, updBase, reset, G
             {showEditTable && (
               <div className="mt-1">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs" style={{ minWidth: 820 }}>
+                  <table className="w-full text-xs" style={{ minWidth: 880 }}>
                     <thead>
                       <tr>
                         <th className="px-2 py-1" />
                         <th colSpan={3} className="text-center text-xs font-bold text-purple-600 bg-purple-50 px-1 py-1 border-b border-purple-200" style={{ borderRadius: "6px 6px 0 0" }}>근거 (빅데이터)</th>
-                        <th colSpan={2} className="text-center text-xs font-bold text-blue-600 bg-blue-50 px-1 py-1 border-b border-blue-200" style={{ borderRadius: "6px 6px 0 0" }}>판단 (정책)</th>
+                        <th colSpan={3} className="text-center text-xs font-bold text-blue-600 bg-blue-50 px-1 py-1 border-b border-blue-200" style={{ borderRadius: "6px 6px 0 0" }}>판단 (정책)</th>
                         <th colSpan={3} className="text-center text-xs font-bold text-gray-500 bg-gray-50 px-1 py-1 border-b border-gray-200" style={{ borderRadius: "6px 6px 0 0" }}>실측 (편집)</th>
-                        <th colSpan={3} className="text-center text-xs font-bold text-green-600 bg-green-50 px-1 py-1 border-b border-green-200" style={{ borderRadius: "6px 6px 0 0" }}>산출</th>
+                        <th colSpan={3} className="text-center text-xs font-bold text-green-600 bg-green-50 px-1 py-1 border-b border-green-200" style={{ borderRadius: "6px 6px 0 0" }}>산출 (1인당 등록환자)</th>
                       </tr>
                       <tr className="bg-gray-50 text-gray-500">
                         <th className="text-left px-2 py-1.5">환자군</th>
                         <th className="text-center px-1 py-1.5 bg-purple-50/50">기준의료비</th>
                         <th className="text-center px-1 py-1.5 bg-purple-50/50">의원비중</th>
-                        <th className="text-center px-1 py-1.5 bg-purple-50/50">계산수가</th>
+                        <th className="text-center px-1 py-1.5 bg-purple-50/50">계산P</th>
                         <th className="text-center px-1 py-1.5 bg-blue-50/50">수가(P)</th>
-                        <th className="text-center px-1 py-1.5 bg-blue-50/50">조정폭</th>
+                        <th className="text-center px-1 py-1.5 bg-blue-50/50">R</th>
+                        <th className="text-center px-1 py-1.5 bg-blue-50/50 text-purple-700">PP=P+R</th>
                         <th className="text-center px-1 py-1.5">L비용</th>
                         <th className="text-center px-1 py-1.5">현재외래비</th>
                         <th className="text-center px-1 py-1.5">환자수</th>
                         <th className="text-right px-1 py-1.5 bg-green-50/50">A(공단)</th>
-                        <th className="text-right px-1 py-1.5 bg-green-50/50">실수입</th>
-                        <th className="text-right px-1 py-1.5 bg-green-50/50 text-green-600">실수입(LC후)</th>
+                        <th className="text-right px-1 py-1.5 bg-green-50/50">수입</th>
+                        <th className="text-right px-1 py-1.5 bg-green-50/50 text-green-600">수입(LC후)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {G.map((r, i) => {
                         const calcP = Math.round(base[i].ref * base[i].cr);
-                        const adj = P[i] - calcP;
+                        const Ri = R_g[i] ?? 0;
+                        const pp = P[i] + Ri;
                         return (
                           <tr key={i} className="border-t border-gray-100">
                             <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
@@ -246,11 +292,8 @@ export default memo(function TabSimulation({ state, set, updP, updBase, reset, G
                               <input type="text" value={f(P[i])} className="w-16 text-center text-xs font-bold border border-blue-300 rounded bg-blue-50 py-0.5 text-blue-800"
                                 onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updP(i, v); }} />
                             </td>
-                            <td className="text-center px-1 bg-blue-50/20">
-                              <span className={`text-xs font-semibold ${adj >= 0 ? "text-green-600" : "text-red-500"}`}>
-                                {adj >= 0 ? "+" : ""}{f(adj)}
-                              </span>
-                            </td>
+                            <td className="text-center px-1 bg-blue-50/20 text-purple-600 font-semibold">{f(Ri)}</td>
+                            <td className="text-center px-1 bg-blue-50/20 font-bold text-purple-700">{f(pp)}</td>
                             <td className="text-center px-1">
                               <input type="text" value={(base[i].L * 100).toFixed(1)} className="w-12 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
                                 onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 100) updBase(i, "L", v / 100); }} />%
@@ -263,19 +306,24 @@ export default memo(function TabSimulation({ state, set, updP, updBase, reset, G
                               <input type="text" value={f(base[i].N)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
                                 onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
                             </td>
-                            <td className="text-right px-1 bg-green-50/20 text-gray-600">{f(Math.round(r.A_cur))}</td>
-                            <td className="text-right px-1 bg-green-50/20 font-semibold text-blue-700">{f(Math.round(r.AB_cur))}</td>
-                            <td className="text-right px-1 bg-green-50/20 font-bold text-green-700">{f(Math.round(r.AB_new))}</td>
+                            <td className="text-right px-1 bg-green-50/20 text-gray-600">{f(Math.round(r.A_cur + Ri))}</td>
+                            <td className="text-right px-1 bg-green-50/20 font-semibold text-blue-700">{f(Math.round(r.ab_reg_cur))}</td>
+                            <td className="text-right px-1 bg-green-50/20 font-bold text-green-700">{f(Math.round(r.ab_reg_new))}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
-                <div className="flex flex-wrap gap-3 text-xs text-gray-400 mt-2">
-                  <span><span className="inline-block w-3 h-3 bg-purple-50 border border-purple-200 rounded mr-1 align-middle"></span>근거 = 빅데이터 (읽기전용)</span>
-                  <span><span className="inline-block w-3 h-3 bg-blue-50 border border-blue-300 rounded mr-1 align-middle"></span>판단·실측 = 편집 가능</span>
-                  <span>계산수가 = 기준의료비 × 의원비중 · A = P×(1−L) · 실수입 = A + M1×30%</span>
+                <div className="mt-2 space-y-1">
+                  <div className="flex flex-wrap gap-3 text-[11px] text-gray-400">
+                    <span><span className="inline-block w-3 h-3 bg-purple-50 border border-purple-200 rounded mr-1 align-middle"></span>근거 = 빅데이터 (읽기전용)</span>
+                    <span><span className="inline-block w-3 h-3 bg-blue-50 border border-blue-300 rounded mr-1 align-middle"></span>판단·실측 = 편집 가능</span>
+                  </div>
+                  <div className="text-[11px] text-gray-600 bg-gray-50 rounded px-2 py-1.5 font-mono leading-relaxed">
+                    <div>계산P = 기준의료비 × 의원비중 · <b>PP = P + R</b> (명목)</div>
+                    <div><b>A = P × (1 − L) + R</b> (공단 실지급, R은 L 우회) · B = M1 × 30% · 수입 = A + B</div>
+                  </div>
                 </div>
               </div>
             )}
