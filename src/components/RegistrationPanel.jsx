@@ -1,7 +1,7 @@
 import { memo } from "react";
 import NumBox from "./shared/NumBox";
 import { SH, CL } from "../constants";
-import { f, fE } from "../utils";
+import { f, fAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
@@ -43,7 +43,7 @@ export default memo(function RegistrationPanel({ state, set, updK, resetK, reg, 
           </div>
           <div className="mt-2 bg-amber-50 rounded px-2 py-1.5 text-xs flex justify-between items-center">
             <span className="text-gray-600 text-[11px]">공단 추가 지출 (R × 등록환자, 연)</span>
-            <span className="font-bold text-amber-700">{nhiAddFromR > 0 ? "+" : ""}{fE(nhiAddFromR)}억</span>
+            <span className="font-bold text-amber-700">{nhiAddFromR > 0 ? "+" : ""}{fAuto(nhiAddFromR)}</span>
           </div>
         </div>
       </div>
