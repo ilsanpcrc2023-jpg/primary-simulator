@@ -60,13 +60,13 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
         </div>
         <NumBox value={LC} onChange={v => set("LC", v)} color="#7c3aed" suffix="%p" />
       </div>
-      <input type="range" min={-10} max={0} step={0.5} value={LC}
+      <input type="range" min={-30} max={0} step={0.5} value={Math.max(-30, Math.min(0, LC))}
         onChange={e => set("LC", parseFloat(e.target.value))}
         aria-label="타원이용비중 변화율 슬라이더"
         className="w-full big-thumb"
-        style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${((LC + 10) / 10) * 100}%, #e5e7eb 0%)` }} />
+        style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${((Math.max(-30, Math.min(0, LC)) + 30) / 30) * 100}%, #e5e7eb 0%)` }} />
       <div className="flex justify-between text-[10px] mt-1" style={{ color: "#8b5cf6" }}>
-        <span>-10%p</span><span>-5%p</span><span>0%p (변화 없음)</span>
+        <span>-30%p</span><span>-20%p</span><span>-10%p</span><span>0%p (변화 없음)</span>
       </div>
 
       {/* 수식 요약 */}
