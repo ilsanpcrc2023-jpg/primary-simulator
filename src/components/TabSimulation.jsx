@@ -99,14 +99,14 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
           <h3 className="font-bold text-base text-green-800">의원 수입 변화</h3>
           <span className="text-[11px] font-semibold text-green-600">LC {LC}%p</span>
         </div>
-        <div className="text-4xl sm:text-5xl font-extrabold text-green-600 leading-none">{pct(incNewChg)}</div>
-        <div className="text-lg font-bold text-green-700 mt-2">{diffAuto(T.inc0, T.inc2)}</div>
-        <div className="text-xs text-green-700/70 mt-1">{fE(T.inc0)}억 → {fE(T.inc2)}억 · 전체</div>
-        <div className="mt-2 pt-2 border-t border-green-200/70 text-sm">
-          <span className="text-green-700/80">의원당 평균 </span>
-          <span className="font-extrabold text-green-700 text-base">{diffAuto(0, (T.inc2 - T.inc0) / M)}</span>
-          <span className="text-green-600/60 text-xs"> (M={f(M)})</span>
+        <div className="text-xs text-green-700/80 mb-1">의원당 평균</div>
+        <div className="text-4xl sm:text-5xl font-extrabold text-green-600 leading-none">{diffAuto(0, (T.inc2 - T.inc0) / M)}</div>
+        <div className="text-[11px] text-green-600/70 mt-1">M={f(M)}개 의원 기준</div>
+        <div className="mt-3 pt-2 border-t border-green-200/70 flex items-baseline gap-2 text-sm">
+          <span className="font-bold text-green-700">{pct(incNewChg)}</span>
+          <span className="text-green-700/80">· 전체 {diffAuto(T.inc0, T.inc2)}</span>
         </div>
+        <div className="text-[11px] text-green-700/60 mt-0.5">{fE(T.inc0)}억 → {fE(T.inc2)}억</div>
         <div className="mt-2 text-[10.5px] text-green-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
           의원 수입 = <b>등록환자</b>(환자군 모형 A + 본인부담 + R) + <b>비등록환자</b>(FFS M1 유지)
         </div>
@@ -116,13 +116,12 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
           <h3 className="font-bold text-base text-blue-800">공단 총의료비 변화</h3>
           <span className="text-[11px] font-semibold text-blue-600">의원급 외래</span>
         </div>
-        <div className="text-4xl sm:text-5xl font-extrabold text-blue-700 leading-none">{pct(nhiNewChg, 2)}</div>
-        <div className="text-lg font-bold text-blue-700 mt-2">{diffAuto(T.nhi0, T.nhi2)}</div>
-        <div className="text-xs text-blue-700/70 mt-1">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
-        <div className="mt-2 pt-2 border-t border-blue-200/70 text-sm">
-          <span className="text-blue-700/80">의원당 평균 </span>
-          <span className="font-extrabold text-blue-700 text-base">{diffAuto(0, (T.nhi2 - T.nhi0) / M)}</span>
-          <span className="text-blue-600/60 text-xs"> (M={f(M)})</span>
+        <div className="text-xs text-blue-700/80 mb-1">전체 변화액</div>
+        <div className="text-4xl sm:text-5xl font-extrabold text-blue-700 leading-none">{diffAuto(T.nhi0, T.nhi2)}</div>
+        <div className="text-[11px] text-blue-700/70 mt-1">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
+        <div className="mt-3 pt-2 border-t border-blue-200/70 flex items-baseline gap-2 text-sm">
+          <span className="font-bold text-blue-700">{pct(nhiNewChg, 2)}</span>
+          <span className="text-blue-700/70">기준선 대비</span>
         </div>
       </div>
     </div>
