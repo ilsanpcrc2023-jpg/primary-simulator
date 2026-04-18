@@ -160,8 +160,8 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
       </div>
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
         <div className="flex items-baseline justify-between mb-2">
-          <h3 className="font-bold text-base text-blue-800">의원급 외래 의료비 변화</h3>
-          <span className="text-[11px] font-semibold text-blue-600">공단 지출 기준</span>
+          <h3 className="font-bold text-base text-blue-800">공단의 의원급 외래 의료비 지출 변화</h3>
+          <span className="text-[11px] font-semibold text-blue-600">입원·약국·병원급 제외</span>
         </div>
         <div className="text-xs sm:text-sm text-blue-700/80 font-semibold">전체 변화액</div>
         <div className="flex items-baseline gap-2 flex-wrap">
