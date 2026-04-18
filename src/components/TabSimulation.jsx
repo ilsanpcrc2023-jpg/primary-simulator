@@ -69,6 +69,38 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
         <span>-30%p</span><span>-20%p</span><span>-10%p</span><span>0%p (변화 없음)</span>
       </div>
 
+      {/* 현재 L → 변화 후 L */}
+      {(() => {
+        const Lavg = ratios.reduce((s, r, i) => s + r * base[i].L, 0);
+        const LavgAfter = Math.max(0, Math.min(1, Lavg + LC / 100));
+        return (
+          <div className="mt-3 bg-white/70 rounded-lg px-3 py-2">
+            <div className="flex items-baseline justify-between mb-1.5">
+              <span className="text-xs font-semibold text-purple-700">타원이용비중 L (현재 → 변화 후)</span>
+              <span className="text-[10px] text-purple-500">이용환자 분포 가중평균</span>
+            </div>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-lg font-bold text-purple-700/70">{(Lavg * 100).toFixed(1)}%</span>
+              <span className="text-purple-400 text-base">→</span>
+              <span className="text-2xl font-extrabold text-purple-900">{(LavgAfter * 100).toFixed(1)}%</span>
+              <span className="text-sm font-bold text-purple-600">({LC > 0 ? "+" : ""}{LC}%p)</span>
+            </div>
+            <div className="mt-1.5 grid grid-cols-4 gap-1 text-[10px]">
+              {SH.map((g, i) => {
+                const before = base[i].L * 100;
+                const after = Math.max(0, Math.min(100, before + LC));
+                return (
+                  <div key={i} className="text-center rounded px-1 py-0.5" style={{ background: CL[i] + "12" }}>
+                    <div className="font-bold" style={{ color: CL[i] }}>{g}</div>
+                    <div className="text-purple-700/70">{before.toFixed(1)}% → <b className="text-purple-900">{after.toFixed(1)}%</b></div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 수식 요약 */}
       <div className="mt-3 pt-3 border-t border-purple-200/70 space-y-1 text-[11px]">
         <div className="flex items-start gap-2">
