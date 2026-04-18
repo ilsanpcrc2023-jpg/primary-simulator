@@ -9,15 +9,16 @@ import { sliderCSS } from "./constants";
 const TABS = ["📋 수가 시뮬레이션", "📊 Track", "💰 Shared Saving"];
 
 const tabStyle = (active) => ({
-  background: active ? "#fff" : "#e8ecf1",
-  color: active ? "#1e40af" : "#64748b",
-  border: active ? "1px solid #d1d5db" : "1px solid #d1d5db",
-  borderBottom: active ? "1px solid #fff" : "1px solid #d1d5db",
-  borderRadius: "8px 8px 0 0",
-  fontWeight: active ? 700 : 500,
-  fontSize: "15px",
-  padding: "12px 8px",
-  marginBottom: "-1px",
+  background: active ? "#fff" : "#e2e8f0",
+  color: active ? "#1e3a8a" : "#475569",
+  border: active ? "2px solid #1e40af" : "2px solid #cbd5e1",
+  borderBottom: active ? "2px solid #fff" : "2px solid #94a3b8",
+  borderRadius: "10px 10px 0 0",
+  fontWeight: active ? 800 : 600,
+  fontSize: "17px",
+  padding: "14px 10px",
+  marginBottom: "-2px",
+  boxShadow: active ? "0 -2px 8px rgba(30, 64, 175, 0.15)" : "none",
   position: "relative",
   zIndex: active ? 2 : 1,
 });
@@ -34,8 +35,8 @@ export default function App() {
       <Header totalN={state.totalN} dataLabel={state.dataLabel} />
 
       {/* FOLDER TABS */}
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 pt-3" style={{ borderBottom: "1px solid #d1d5db" }}>
-        <div className="flex gap-1">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 pt-3" style={{ borderBottom: "2px solid #94a3b8" }}>
+        <div className="flex gap-1.5">
           {TABS.map((t, i) => (
             <button key={i} onClick={() => set("tab", i)}
               aria-selected={tab === i}
