@@ -16,8 +16,17 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, re
   const F_mean = Math.round((F_g[0] + F_g[1] + F_g[2] + F_g[3]) / 4);
   const isDefault = F_g.every((v, i) => v === INIT_F[i]);
 
+  // 정책 강도 배수 — 공식안 비율(1 : 1.65 : 2.37 : 2.95) 유지 여부 판정
+  const ratios = F_g.map((v, i) => v / INIT_F[i]);
+  const ratioUniform = ratios.every(r => Math.abs(r - ratios[0]) < 0.01);
+  const multiplier = ratioUniform ? ratios[0] : null;
+  const setMultiplier = (m) => {
+    const clamped = Math.max(0, m);
+    setFAll(INIT_F.map(v => Math.round(v * clamped)));
+  };
+
   const presets = [
-    { label: "공식안(차등)", desc: "복지부 공식안 준용", v: INIT_F },
+    { label: "공식안(차등)", desc: "복지부 공식안 준용 · 1.0x", v: INIT_F },
     { label: "균등 1만원", desc: "v6 기본", v: [10000, 10000, 10000, 10000] },
     { label: "중증 편중", desc: "고위험 집중", v: [50000, 150000, 350000, 500000] },
   ];
@@ -34,6 +43,37 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, re
         <div className="text-right shrink-0 ml-3">
           <div className="text-[10px] text-gray-400">평균 1인당</div>
           <div className="text-sm font-bold text-purple-700">{f(F_mean)}원/년</div>
+        </div>
+      </div>
+
+      {/* 정책 강도 배수 슬라이더 — 공식안 비율(1:1.65:2.37:2.95) 유지하며 전체 스케일 */}
+      <div className="rounded-lg border border-purple-200 bg-purple-50/40 p-3 mb-3">
+        <div className="flex items-baseline justify-between mb-1.5">
+          <span className="text-xs font-bold text-purple-800">정책 강도 (공식안 대비 배수)</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xl font-extrabold text-purple-900">
+              {multiplier !== null ? multiplier.toFixed(2) : "–"}
+            </span>
+            <span className="text-xs font-semibold text-purple-700">x</span>
+            {multiplier === null && (
+              <span className="text-[10px] text-amber-600 ml-1">사용자 정의</span>
+            )}
+          </div>
+        </div>
+        <input type="range" min={0.5} max={2.0} step={0.05}
+          value={multiplier !== null ? multiplier : 1.0}
+          onChange={e => setMultiplier(parseFloat(e.target.value))}
+          aria-label="정책 강도 배수"
+          className="w-full big-thumb"
+          style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed",
+            background: `linear-gradient(to right, #7c3aed ${(((multiplier !== null ? multiplier : 1.0) - 0.5) / 1.5) * 100}%, #e5e7eb 0%)` }} />
+        <div className="flex justify-between text-[10px] text-purple-600/70 mt-1">
+          <span>0.5x (반감)</span>
+          <span className="font-bold text-purple-700">1.0x (공식안)</span>
+          <span>2.0x (2배)</span>
+        </div>
+        <div className="text-[10.5px] text-purple-700/80 mt-1.5 leading-relaxed">
+          ※ 공식안 환자군별 비율(1 : 1.65 : 2.37 : 2.95)을 유지한 채 전체를 스케일. 아래 NumBox로 개별 편집 가능.
         </div>
       </div>
 
