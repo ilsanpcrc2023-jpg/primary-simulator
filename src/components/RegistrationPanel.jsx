@@ -229,6 +229,34 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
               ※ 환자군별 분포 실측 자료 없음. 기본값은 보고서 부록 추정치이며 변경 가능.
             </div>
           </div>
+
+          {/* 요약: 의원당 실인원 = 등록 + 비등록 */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="bg-gray-50 rounded px-2 py-1.5">
+                <div className="text-gray-500 text-[10px]">의원당 실인원</div>
+                <div className="font-bold text-gray-800">{f(Math.round(reg.n_total_per_clinic))}명</div>
+                <div className="text-[10px] text-gray-400">100%</div>
+              </div>
+              <div className="bg-blue-50 rounded px-2 py-1.5">
+                <div className="text-blue-600 text-[10px]">의원당 등록환자</div>
+                <div className="font-bold text-blue-700">{f(Math.round(reg.n_reg_pc))}명</div>
+                <div className="text-[10px] text-blue-500">{(reg.regRate * 100).toFixed(1)}%</div>
+              </div>
+              <div className="bg-slate-50 rounded px-2 py-1.5">
+                <div className="text-slate-500 text-[10px]">의원당 비등록 (FFS)</div>
+                <div className="font-bold text-slate-700">{f(Math.round(reg.n_total_per_clinic - reg.n_reg_pc))}명</div>
+                <div className="text-[10px] text-slate-400">{((1 - reg.regRate) * 100).toFixed(1)}%</div>
+              </div>
+            </div>
+            <div className="mt-1.5 bg-gray-50/70 rounded px-2 py-1 text-[10.5px] text-gray-600 font-mono leading-snug">
+              의원당 실인원 {f(Math.round(reg.n_total_per_clinic))} = 등록 {f(Math.round(reg.n_reg_pc))} + 비등록 {f(Math.round(reg.n_total_per_clinic - reg.n_reg_pc))}
+              <span className="text-gray-400"> · 전체 N = {f(Math.round(reg.n_reg_total + reg.n_unreg_total))}명</span>
+            </div>
+            <div className="mt-1 text-[10px] text-amber-600 italic leading-snug">
+              ※ 정책 효과(F·LC)는 <b>등록환자에만 적용</b>. 실인원을 늘려도 비등록 FFS만 증가하여 전체 수입 변화액은 동일, %만 작아집니다.
+            </div>
+          </div>
         </div>
       )}
     </div>
