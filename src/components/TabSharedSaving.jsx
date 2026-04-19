@@ -9,43 +9,10 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
   const { ssTotalCost, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare } = state;
 
   return (<>
-    {/* 거시 총괄 */}
-    <div className={card + " p-4"}>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-900 text-sm">Shared Saving 총괄</h2>
-        <span className="text-xs text-gray-400">C] 성과기반 조정</span>
-      </div>
-      <div className="text-xs text-gray-500 mb-3 flex flex-wrap items-center gap-1">
-        건강보험 총진료비
-        <input type="text" value={ssTotalCost}
-          onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) set("ssTotalCost", v); }}
-          className="w-16 text-center text-xs font-bold border border-red-300 rounded px-1 py-0.5 bg-red-50 text-red-700" />
-        <span>조원 기준</span>
-      </div>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xs font-semibold text-gray-700 shrink-0">총의료비 절감률</span>
-        <input type="range" min={0} max={15} step={0.001} value={SS.derivedMacroPct}
-          onChange={e => handleMacroSync(parseFloat(e.target.value))}
-          aria-label="총의료비 절감률 슬라이더"
-          className="flex-1 big-thumb"
-          style={{ '--thumb-bg': '#dc2626', accentColor: "#dc2626", background: `linear-gradient(to right, #dc2626 ${Math.min(SS.derivedMacroPct / 15 * 100, 100)}%, #e5e7eb 0%)` }} />
-        <input type="text" value={SS.derivedMacroPct.toFixed(3)}
-          onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) handleMacroSync(Math.max(0, Math.min(15, v))); }}
-          className="w-20 text-center text-xs font-bold border border-red-300 rounded px-1 py-0.5 bg-white text-red-700" />
-        <span className="text-xs text-gray-500">%</span>
-      </div>
-      <div className="rounded-lg p-3 text-center" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
-        <div className="text-xs text-gray-500 mb-1">총 절감액</div>
-        <div className="text-2xl sm:text-3xl font-extrabold text-red-600">
-          {fAuto(SS.itemTotal)}
-        </div>
-      </div>
-    </div>
-
-    {/* 항목별 절감 */}
+    {/* ① 항목별 절감 — 실제 입력 (위로) */}
     <div className={card + " p-4"}>
       <h2 className="font-bold text-gray-900 text-sm mb-3">항목별 절감 시뮬레이션</h2>
-      <div className="text-xs text-gray-400 mb-3">금액·절감률 수정 시 상단 총괄에 자동 반영</div>
+      <div className="text-xs text-gray-400 mb-3">금액·절감률을 편집하면 아래 총괄에 자동 반영</div>
 
       {[
         { label: "급성기 입원비", icon: "🏥", color: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
@@ -86,6 +53,39 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
           </div>
         </div>
       ))}
+    </div>
+
+    {/* ② 거시 총괄 — 종합 결과 (아래로) */}
+    <div className={card + " p-4"}>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-bold text-gray-900 text-sm">Shared Saving 총괄</h2>
+        <span className="text-xs text-gray-400">C] 성과기반 조정</span>
+      </div>
+      <div className="text-xs text-gray-500 mb-3 flex flex-wrap items-center gap-1">
+        건강보험 총진료비
+        <input type="text" value={ssTotalCost}
+          onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) set("ssTotalCost", v); }}
+          className="w-16 text-center text-xs font-bold border border-red-300 rounded px-1 py-0.5 bg-red-50 text-red-700" />
+        <span>조원 기준</span>
+      </div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs font-semibold text-gray-700 shrink-0">총의료비 절감률</span>
+        <input type="range" min={0} max={15} step={0.001} value={SS.derivedMacroPct}
+          onChange={e => handleMacroSync(parseFloat(e.target.value))}
+          aria-label="총의료비 절감률 슬라이더"
+          className="flex-1 big-thumb"
+          style={{ '--thumb-bg': '#dc2626', accentColor: "#dc2626", background: `linear-gradient(to right, #dc2626 ${Math.min(SS.derivedMacroPct / 15 * 100, 100)}%, #e5e7eb 0%)` }} />
+        <input type="text" value={SS.derivedMacroPct.toFixed(3)}
+          onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) handleMacroSync(Math.max(0, Math.min(15, v))); }}
+          className="w-20 text-center text-xs font-bold border border-red-300 rounded px-1 py-0.5 bg-white text-red-700" />
+        <span className="text-xs text-gray-500">%</span>
+      </div>
+      <div className="rounded-lg p-3 text-center" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
+        <div className="text-xs text-gray-500 mb-1">총 절감액</div>
+        <div className="text-2xl sm:text-3xl font-extrabold text-red-600">
+          {fAuto(SS.itemTotal)}
+        </div>
+      </div>
     </div>
 
     {/* 배분 비율 */}
