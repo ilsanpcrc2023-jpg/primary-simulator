@@ -24,18 +24,16 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
   const perClinicAfter = T.inc2 / M;
 
   return (<>
-    {/* ① 등록환자 규모 — 맨 위, 접힘 */}
+    {/* ① 등록환자 규모 — 맨 위, 접힘. 헤더에 전체 초기화 버튼 */}
     <RegScaleCard state={state} set={set} reg={reg}
-      updRegDist={updRegDist} setRegDistAll={setRegDistAll} scaleRegDist={scaleRegDist} />
+      updRegDist={updRegDist} setRegDistAll={setRegDistAll} scaleRegDist={scaleRegDist}
+      reset={reset} />
 
     {/* ② 환자군 기본수가 P — 4 슬라이더 + NumBox */}
     <div className={card + " p-4"}>
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-bold text-base text-gray-900">환자군 기본수가 (P)</h2>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400 hidden sm:inline">{dataLabel}</span>
-          <button onClick={reset} className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded px-2 py-0.5">기본값 복귀</button>
-        </div>
+        <span className="text-xs text-gray-400 hidden sm:inline">{dataLabel}</span>
       </div>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         {SH.map((g, i) => (
@@ -55,7 +53,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
     </div>
 
     {/* ③ 일차의료 기능수가 F — P와 동일 구조 */}
-    <FCard state={state} setFAll={setFAll} updF={updF} resetF={resetF} reg={reg} regRatios={regRatios} />
+    <FCard state={state} setFAll={setFAll} updF={updF} reg={reg} regRatios={regRatios} />
 
     {/* ④ 통합 수가 T — 접힘 */}
     <TCard state={state} G={G} />

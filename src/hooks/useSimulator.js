@@ -180,7 +180,10 @@ export default function useSimulator() {
       const D1 = C1 - b.M1;
 
       // v2.7: 등록/비등록 분리
-      const n_reg_g = reg.n_reg_total * regRatios[i];
+      // clamp: 환자군별 등록환자는 해당 환자군 총 이용환자를 초과할 수 없음
+      // (등록 ⊆ 이용 제약). 이용분포와 등록분포가 다르면 특정 군에서 초과 요청 발생
+      const n_reg_g_raw = reg.n_reg_total * regRatios[i];
+      const n_reg_g = Math.min(n_reg_g_raw, N);
       const n_unreg_g = Math.max(0, N - n_reg_g);
 
       // 환자군별 일차의료 기능수가 F (L 우회, 환자군별 차등)

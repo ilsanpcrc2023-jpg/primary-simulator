@@ -30,11 +30,10 @@ function PctInput({ value, onChange, color }) {
 }
 
 /* FCard — P와 동일한 4 슬라이더+NumBox 구조, 프리셋만 */
-export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, regRatios }) {
+export const FCard = memo(function FCard({ state, setFAll, updF, reg, regRatios }) {
   const { F_g } = state;
   const nhiAddFromF = F_g.reduce((s, r, i) => s + r * reg.n_reg_total * regRatios[i], 0);
   const F_mean = Math.round((F_g[0] + F_g[1] + F_g[2] + F_g[3]) / 4);
-  const isDefault = F_g.every((v, i) => v === INIT_F[i]);
 
   const presets = [
     { label: "공식안", v: INIT_F },
@@ -59,9 +58,6 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, re
                 </button>
               );
             })}
-            {!isDefault && (
-              <button onClick={resetF} className="text-[10px] px-1.5 py-0.5 rounded border border-red-200 text-red-600 hover:bg-red-50">초기화</button>
-            )}
           </div>
         </div>
       </div>
@@ -116,7 +112,7 @@ export const TCard = memo(function TCard({ state, G }) {
 });
 
 /* RegScaleCard — 접힘 아코디언, 요약 한 줄 상시, 펼치면 세부 편집 */
-export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updRegDist, setRegDistAll, scaleRegDist, defaultOpen = false }) {
+export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updRegDist, setRegDistAll, scaleRegDist, reset, defaultOpen = false }) {
   const { totalN, M_clinics, regDist } = state;
   const [open, setOpen] = useState(defaultOpen);
   const perClinic = Math.max(1, Math.round(totalN / Math.max(1, M_clinics)));
@@ -156,7 +152,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
 
   return (
     <div className={card + " overflow-hidden"}>
-      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 transition">
+      <div className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 transition cursor-pointer" onClick={() => setOpen(v => !v)}>
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="font-bold text-sm text-gray-900">등록환자 규모</span>
           <span className="text-[11px] text-gray-500">
@@ -165,8 +161,20 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
             )
           </span>
         </div>
-        <span className="text-gray-400 text-xs">{open ? "▲ 접기" : "▼ 펼치기"}</span>
-      </button>
+        <div className="flex items-center gap-2">
+          {reset && (
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                if (confirm("모든 설정을 기본값(복지부 시범사업안)으로 되돌립니다. 진행할까요?")) reset();
+              }}
+              className="text-[11px] text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
+              ↩ 전체 초기화
+            </button>
+          )}
+          <span className="text-gray-400 text-xs">{open ? "▲ 접기" : "▼ 펼치기"}</span>
+        </div>
+      </div>
       {open && (
         <div className="px-4 pb-4 pt-1 border-t border-gray-100">
           {/* 의원당 실인원 */}
