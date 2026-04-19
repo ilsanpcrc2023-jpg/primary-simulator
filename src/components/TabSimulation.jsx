@@ -9,7 +9,7 @@ import { f, fE, pct, diffAuto, fAuto, fMan, diffMan } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabSimulation({ state, set, updP, updBase, updF, setFAll, resetF, updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset, G, T, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
+export default memo(function TabSimulation({ state, set, updP, updBase, updF, setFAll, resetF, updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset, G, T, decomp, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
   const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, F_g, M_clinics } = state;
   const M = Math.max(1, M_clinics);
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
@@ -19,9 +19,12 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
   const Lavg = ratios.reduce((s, r, i) => s + r * base[i].L, 0);
   const LavgAfter = Math.max(0, Math.min(1, Lavg + LC / 100));
 
-  // 의원당 수입 절대값
-  const perClinicBase = T.inc0 / M;
-  const perClinicAfter = T.inc2 / M;
+  // 의원당 수입 절대값 (참여 전 기준 vs 참여 후 지불모형)
+  const perClinicBaseline = decomp.baselineIncome / M;
+  const perClinicAfter = decomp.afterIncome / M;
+  const perClinicPanel = decomp.panelEffect / M;
+  const perClinicModel = decomp.modelEffect / M;
+  const perClinicNet = decomp.netChange / M;
 
   return (<>
     {/* ① 등록환자 규모 — 맨 위, 접힘. 헤더에 전체 초기화 버튼 */}
@@ -83,32 +86,70 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
         <div className="flex items-baseline justify-between mb-2">
-          <h3 className="font-bold text-base text-green-800">의원 수입 변화</h3>
+          <h3 className="font-bold text-base text-green-800">의원 수입 변화 (분해)</h3>
           <span className="text-[11px] font-semibold text-green-600">LC {LC}%p</span>
         </div>
-        <div className="text-[11px] text-green-700/80 font-semibold">전체 변화액</div>
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-2xl sm:text-3xl font-extrabold text-green-600 leading-tight">{diffAuto(T.inc0, T.inc2)}</span>
-          <span className="text-base sm:text-lg font-bold text-green-700/80 leading-tight">{pct(incNewChg)}</span>
+
+        {/* 기준선 */}
+        <div className="flex items-baseline justify-between mb-1">
+          <span className="text-[11px] text-green-700/80 font-semibold">기준 수입 (참여 전, 전원 FFS)</span>
+          <span className="text-sm font-bold text-green-800/80">{fMan(perClinicBaseline)}/의원·년</span>
         </div>
 
-        <div className="mt-2 pt-2 border-t border-green-200/70">
-          <div className="text-[11px] text-green-700/80 font-semibold">의원당 평균 변화 <span className="font-normal text-green-600/60">(M={f(M)})</span></div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-green-700 leading-tight">{diffMan(perClinicAfter - perClinicBase)}</div>
-        </div>
-
-        <div className="mt-2 pt-2 border-t border-green-200/70 space-y-0.5">
+        {/* ① 패널 축소 효과 */}
+        <div className="mt-2 bg-white/60 rounded px-2 py-1.5">
           <div className="flex items-baseline justify-between">
-            <span className="text-[11px] text-green-700/70">기준선 의원당 수입</span>
-            <span className="text-base font-bold text-green-800/80">{fMan(perClinicBase)}/년</span>
+            <span className="text-[11px] text-slate-600">① 패널 변화 효과</span>
+            <span className="text-sm font-bold" style={{ color: decomp.panelEffect >= 0 ? "#16a34a" : "#dc2626" }}>
+              {diffMan(perClinicPanel)}/의원
+            </span>
+          </div>
+          <div className="text-[10px] text-slate-500">FFS 유지 가정 시 실인원 변화분</div>
+        </div>
+
+        {/* ② 지불방식 전환 효과 */}
+        <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[11px] text-indigo-700 font-semibold">② 지불방식 전환 효과</span>
+            <span className="text-sm font-bold" style={{ color: decomp.modelEffect >= 0 ? "#16a34a" : "#dc2626" }}>
+              {diffMan(perClinicModel)}/의원
+            </span>
+          </div>
+          <div className="text-[10px] text-indigo-500">등록환자 HCC 모형 프리미엄</div>
+        </div>
+
+        {/* 순 변화 */}
+        <div className="mt-2 pt-2 border-t border-green-200/70">
+          <div className="flex items-baseline justify-between mb-0.5">
+            <span className="text-[11px] text-green-700 font-semibold">순 변화 (① + ②)</span>
+            <span className="text-[11px] font-bold" style={{ color: decomp.netChgPct >= 0 ? "#16a34a" : "#dc2626" }}>
+              {pct(decomp.netChgPct)}
+            </span>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-[11px] text-green-700 font-semibold">LC 후 의원당 수입</span>
+            <span className="text-[11px] text-green-700/70">의원당</span>
+            <span className="text-2xl font-extrabold leading-tight" style={{ color: decomp.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
+              {diffMan(perClinicNet)}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[11px] text-green-700/70">전체</span>
+            <span className="text-base font-bold" style={{ color: decomp.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
+              {diffAuto(0, decomp.netChange)}
+            </span>
+          </div>
+        </div>
+
+        {/* 참여 후 총수입 */}
+        <div className="mt-2 pt-2 border-t border-green-200/70">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[11px] text-green-700 font-semibold">참여 후 의원당 수입</span>
             <span className="text-lg font-extrabold text-green-900">{fMan(perClinicAfter)}/년</span>
           </div>
         </div>
+
         <div className="mt-1.5 text-[9.5px] text-green-700/60 italic leading-tight">
-          ※ 등록·비등록 환자 모두 포함한 외래 수입 추정치. 의사 1인 소득 ≠ 의원 외래 수입.
+          ※ 등록·비등록 외래 수입 추정치. 의사 1인 소득 ≠ 의원 외래 수입.
         </div>
       </div>
 
@@ -172,7 +213,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
       { t: "국민 (환자)", c: "#059669", bg: "#ecfdf5", bd: "#a7f3d0",
         txt: "추가 부담 없이 주치의 확보\n본인부담 현행 유지\n불필요한 병원 이용 감소" },
       { t: "의원 (의사)", c: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
-        txt: `환자군 반영 공정 보상\n의원당 ${diffMan(perClinicAfter - perClinicBase)}\n(LC ${LC}%p)` },
+        txt: `환자군 반영 공정 보상\n의원당 ${diffMan(perClinicNet)}\n(LC ${LC}%p)` },
       { t: "공단 (정부)", c: "#dc2626", bg: "#fef2f2", bd: "#fecaca",
         txt: `지출 ${pct(nhiNewChg, 2)}\n예측 가능성 향상\n*Saving 효과 별도` },
     ]} />
@@ -191,6 +232,13 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
             <div><b className="text-purple-700">A = P × (1 − L) + F</b> (공단 실지급, F는 L 우회)</div>
             <div><b className="text-purple-700">B = M1 × 30%</b> (본인부담, 고정)</div>
             <div>의원 수입 = 등록환자(A + F + B) + 비등록환자(FFS M1)</div>
+          </div>
+          <div className="bg-gray-50 rounded-lg px-3 py-2 text-[11px] text-gray-700 leading-relaxed font-mono space-y-1">
+            <div className="font-semibold text-gray-800 mb-0.5">분해 (패널 효과 ↔ 지불방식 효과)</div>
+            <div>기준 수입 = <b>baseN × ffsPerPerson × M</b></div>
+            <div>① 패널 효과 = <b>Σ M1_g × (N_g − baseN_g)</b></div>
+            <div>② 모형 효과 = <b>Σ n_reg_g × (ab_reg_new_g − M1_g)</b></div>
+            <div>순 변화 = ① + ② = 참여 후 수입 − 기준 수입</div>
           </div>
           <div>
             <div className="text-[11px] font-semibold text-gray-700 mb-1">환자군별 타원이용비중 (현재 → 변화 후)</div>

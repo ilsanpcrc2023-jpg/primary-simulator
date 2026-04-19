@@ -14,6 +14,7 @@ export const INIT_REG_DIST = [100, 600, 200, 100];
 // 복지부 시범사업안 기본 (100기관 · 의원당 1,000명)
 export const INIT_M_CLINICS = 100;
 export const INIT_PER_CLINIC = 1000;
+export const INIT_BASE_PER_CLINIC = 1000;   // 참여 전 기준 실인원 (의원당)
 export const INIT_TOTAL_N = INIT_M_CLINICS * INIT_PER_CLINIC;
 export const INIT_DATA_LABEL = "복지부 시범사업안 (100기관 · 1,000명)";
 export const ON = INIT_BASE.reduce((s, g) => s + g.N, 0);

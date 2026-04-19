@@ -113,11 +113,12 @@ export const TCard = memo(function TCard({ state, G }) {
 
 /* RegScaleCard — 접힘 아코디언, 요약 한 줄 상시, 펼치면 세부 편집 */
 export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updRegDist, setRegDistAll, scaleRegDist, reset, defaultOpen = false }) {
-  const { totalN, M_clinics, regDist } = state;
+  const { totalN, M_clinics, regDist, baseN_per_clinic } = state;
   const [open, setOpen] = useState(defaultOpen);
   const perClinic = Math.max(1, Math.round(totalN / Math.max(1, M_clinics)));
   const n_reg_sum = regDist.reduce((s, v) => s + v, 0);
   const regPct = regDist.map(v => n_reg_sum > 0 ? (v / n_reg_sum) * 100 : 0);
+  const setBaseN = (v) => set("baseN_per_clinic", Math.max(0, Math.round(v)));
 
   const setPerClinic = (v) => {
     const n = Math.max(1, Math.round(v));
@@ -177,9 +178,25 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
       </div>
       {open && (
         <div className="px-4 pb-4 pt-1 border-t border-gray-100">
-          {/* 의원당 실인원 */}
+          {/* 참여 전 기준 실인원 (의원당) */}
           <div className="flex items-center gap-2 mb-2 flex-wrap mt-2">
-            <span className="text-xs font-semibold text-gray-700 shrink-0 w-24">의원당 실인원</span>
+            <span className="text-xs font-semibold text-gray-700 shrink-0 w-24">참여 전 기준</span>
+            <NumBox value={baseN_per_clinic} onChange={setBaseN} color="#64748b" suffix="명" />
+            <div className="flex flex-wrap gap-1 ml-1">
+              {[1000, 1500, 2000, 3000, 5000, 7000, 10000].map(v => (
+                <button key={v} onClick={() => setBaseN(v)}
+                  className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                  style={baseN_per_clinic === v ? { background: "#f1f5f9", borderColor: "#94a3b8", color: "#334155" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                  {f(v)}
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] text-gray-400 ml-auto">FFS 기준선 (패널 축소 분리용)</span>
+          </div>
+
+          {/* 참여 후 의원당 실인원 */}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="text-xs font-semibold text-gray-700 shrink-0 w-24">참여 후 실인원</span>
             <NumBox value={perClinic} onChange={setPerClinic} color="#1f2937" suffix="명" />
             <div className="flex flex-wrap gap-1 ml-1">
               {[1000, 1500, 2000, 3000, 5000, 7000, 10000].map(v => (

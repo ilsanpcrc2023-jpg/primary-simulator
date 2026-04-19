@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_TOTAL_N, INIT_DATA_LABEL, ON, COL_ALIASES } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, ON, COL_ALIASES } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
@@ -28,6 +28,8 @@ const initialState = {
   M_clinics: INIT_M_CLINICS,
   // 의원당 환자군별 등록환자수 (부록 추정치 100/600/200/100)
   regDist: [...INIT_REG_DIST],
+  // 참여 전 의원당 실인원 (FFS 기준선 계산용). 패널 변화 효과 분리를 위한 독립 변수.
+  baseN_per_clinic: INIT_BASE_PER_CLINIC,
 };
 
 function reducer(state, action) {
@@ -71,16 +73,22 @@ function reducer(state, action) {
       const scaled = state.regDist.map(v => Math.max(0, Math.round(v * scale)));
       return { ...state, regDist: scaled };
     }
-    case "LOAD_DATA":
+    case "LOAD_DATA": {
+      const newTotalN = action.base.reduce((s, g) => s + g.N, 0);
+      const newM = action.M_clinics ?? state.M_clinics;
+      const perClinic = Math.max(1, Math.round(newTotalN / Math.max(1, newM)));
       return {
         ...state,
         base: action.base,
         P: action.P,
-        totalN: action.base.reduce((s, g) => s + g.N, 0),
+        totalN: newTotalN,
         dataLabel: action.dataLabel,
         uploadBanner: action.uploadBanner,
-        M_clinics: action.M_clinics ?? state.M_clinics,
+        M_clinics: newM,
+        // 프리셋 로드 시 참여 전 기준 실인원을 해당 프리셋 의원당 실인원으로 자동 설정
+        baseN_per_clinic: perClinic,
       };
+    }
     case "MACRO_SYNC": {
       const { newPct } = action;
       const totalMedCost = state.ssTotalCost * 1e12;
@@ -137,7 +145,7 @@ export default function useSimulator() {
     base, P, LC, totalN, hccPct,
     ssTotalCost, ssAcute, ssEmergency, ssLtc,
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
-    F_g, M_clinics, regDist,
+    F_g, M_clinics, regDist, baseN_per_clinic,
   } = state;
 
   const ffsPct = 100 - hccPct;
@@ -241,6 +249,32 @@ export default function useSimulator() {
   const incCurChg = T.inc0 > 0 ? (T.inc1 - T.inc0) / T.inc0 : 0;
   const incNewChg = T.inc0 > 0 ? (T.inc2 - T.inc0) / T.inc0 : 0;
   const nhiNewChg = T.nhi0 > 0 ? (T.nhi2 - T.nhi0) / T.nhi0 : 0;
+
+  // v6.2 패널 분해: 참여 전 기준(baseN_per_clinic) vs 참여 후(totalN) 효과 분리
+  // baselineIncome: 참여 전 기준 수입 = baseN × ffsPerPerson × M
+  // panelEffect: 패널 크기 변화로 인한 수입 변화 (FFS 유지 가정)
+  // modelEffect: 등록환자에 대한 지불방식 전환 효과 (HCC vs FFS)
+  // netChange = panelEffect + modelEffect = afterIncome - baselineIncome
+  const decomp = useMemo(() => {
+    const M = Math.max(1, M_clinics);
+    const baseN_total = Math.max(0, baseN_per_clinic) * M;
+    // 이용분포 기반 FFS 1인당 평균 (환자군별 M1 가중평균)
+    const ffsPerPerson = base.reduce((s, b, i) => s + b.M1 * ratios[i], 0);
+    const baselineIncome = baseN_total * ffsPerPerson;
+    // 환자군별 기준 N (참여 전)
+    const baseN_g = base.map((_, i) => baseN_total * ratios[i]);
+    // panelEffect = Σ M1_g × (N_g_after − baseN_g)
+    const panelEffect = G.reduce((s, r, i) => s + r.b.M1 * (r.N - baseN_g[i]), 0);
+    // modelEffect = Σ n_reg_g × (ab_reg_new_g − M1_g)
+    const modelEffect = G.reduce((s, r) => s + r.n_reg * (r.ab_reg_new - r.b.M1), 0);
+    const afterIncome = T.inc2;
+    const netChange = afterIncome - baselineIncome;
+    return {
+      M, baseN_total, ffsPerPerson, baselineIncome,
+      panelEffect, modelEffect, netChange, afterIncome,
+      netChgPct: baselineIncome > 0 ? netChange / baselineIncome : 0,
+    };
+  }, [base, ratios, G, T.inc2, M_clinics, baseN_per_clinic]);
   // Track 변화율 기준 = 순수 FFS (inc0, 사업 미시행·R=0 기준선).
   // Track A에서도 R>0이면 양(+) 변화가 나와야 한다는 노션 Q6 정합.
   const tAchg = T.inc0 > 0 ? (T.tA - T.inc0) / T.inc0 : 0;
@@ -372,7 +406,7 @@ export default function useSimulator() {
     reset,
     handleMacroSync, handleFile, handleExport, loadPreset,
     fileRef,
-    G, T, SS,
+    G, T, SS, decomp,
     ffsPct,
     incCurChg, incNewChg, nhiNewChg,
     tAchg, tBchg, tCchg, tSchg,
