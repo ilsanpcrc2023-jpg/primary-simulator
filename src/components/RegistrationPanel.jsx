@@ -1,163 +1,102 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import NumBox from "./shared/NumBox";
 import { SH, CL, ON, INIT_F, INIT_REG_DIST } from "../constants";
 import { f, fAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 const H2 = "font-bold text-base text-gray-900";
+const F_MAX = 600000;
 
-/* ─────────────────────────────────────────────
-   FCard — 일차의료 기능수가 (F)
-   환자군별 4개 NumBox 메인, 슬라이더 없음, 프리셋 버튼
-   ───────────────────────────────────────────── */
+/* FCard — P와 동일한 4 슬라이더+NumBox 구조, 프리셋만 */
 export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, regRatios }) {
   const { F_g } = state;
   const nhiAddFromF = F_g.reduce((s, r, i) => s + r * reg.n_reg_total * regRatios[i], 0);
   const F_mean = Math.round((F_g[0] + F_g[1] + F_g[2] + F_g[3]) / 4);
   const isDefault = F_g.every((v, i) => v === INIT_F[i]);
 
-  // 정책 강도 배수 — 공식안 비율(1 : 1.65 : 2.37 : 2.95) 유지 여부 판정
-  const ratios = F_g.map((v, i) => v / INIT_F[i]);
-  const ratioUniform = ratios.every(r => Math.abs(r - ratios[0]) < 0.01);
-  const multiplier = ratioUniform ? ratios[0] : null;
-  const setMultiplier = (m) => {
-    const clamped = Math.max(0, m);
-    setFAll(INIT_F.map(v => Math.round(v * clamped)));
-  };
-
   const presets = [
-    { label: "공식안(차등)", desc: "복지부 공식안 준용 · 1.0x", v: INIT_F },
-    { label: "균등 1만원", desc: "v6 기본", v: [10000, 10000, 10000, 10000] },
-    { label: "중증 편중", desc: "고위험 집중", v: [50000, 150000, 350000, 500000] },
+    { label: "공식안", v: INIT_F },
+    { label: "균등 1만원", v: [10000, 10000, 10000, 10000] },
+    { label: "중증 편중", v: [50000, 150000, 350000, 500000] },
   ];
 
   return (
     <div className={card + " p-4"}>
-      <div className="flex items-start justify-between mb-2">
-        <div>
-          <h2 className={H2}>일차의료 기능수가 (F)</h2>
-          <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
-            주치의 등록관리 + 저평가된 일차의료 본연 기능(만성질환 포괄관리·재택의료·건강상담)의 상대가치 보정
-          </p>
-        </div>
-        <div className="text-right shrink-0 ml-3">
-          <div className="text-[10px] text-gray-400">평균 1인당</div>
-          <div className="text-sm font-bold text-purple-700">{f(F_mean)}원/년</div>
-        </div>
-      </div>
-
-      {/* 정책 강도 배수 슬라이더 — 공식안 비율(1:1.65:2.37:2.95) 유지하며 전체 스케일 */}
-      <div className="rounded-lg border border-purple-200 bg-purple-50/40 p-3 mb-3">
-        <div className="flex items-baseline justify-between mb-1.5">
-          <span className="text-xs font-bold text-purple-800">정책 강도 (공식안 대비 배수)</span>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-xl font-extrabold text-purple-900">
-              {multiplier !== null ? multiplier.toFixed(2) : "–"}
-            </span>
-            <span className="text-xs font-semibold text-purple-700">x</span>
-            {multiplier === null && (
-              <span className="text-[10px] text-amber-600 ml-1">사용자 정의</span>
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className={H2}>일차의료 기능수가 (F)</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-gray-400">평균 {f(F_mean)}원 · 공단 +{fAuto(nhiAddFromF)}</span>
+          <div className="flex gap-1">
+            {presets.map(p => {
+              const active = F_g.every((v, i) => v === p.v[i]);
+              return (
+                <button key={p.label} onClick={() => setFAll(p.v)}
+                  className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                  style={active ? { background: "#f5f3ff", borderColor: "#c4b5fd", color: "#6d28d9" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                  {p.label}
+                </button>
+              );
+            })}
+            {!isDefault && (
+              <button onClick={resetF} className="text-[10px] px-1.5 py-0.5 rounded border border-red-200 text-red-600 hover:bg-red-50">초기화</button>
             )}
           </div>
         </div>
-        <input type="range" min={0.5} max={2.0} step={0.05}
-          value={multiplier !== null ? multiplier : 1.0}
-          onChange={e => setMultiplier(parseFloat(e.target.value))}
-          aria-label="정책 강도 배수"
-          className="w-full big-thumb"
-          style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed",
-            background: `linear-gradient(to right, #7c3aed ${(((multiplier !== null ? multiplier : 1.0) - 0.5) / 1.5) * 100}%, #e5e7eb 0%)` }} />
-        <div className="flex justify-between text-[10px] text-purple-600/70 mt-1">
-          <span>0.5x (반감)</span>
-          <span className="font-bold text-purple-700">1.0x (공식안)</span>
-          <span>2.0x (2배)</span>
-        </div>
-        <div className="text-[10.5px] text-purple-700/80 mt-1.5 leading-relaxed">
-          ※ 공식안 환자군별 비율(1 : 1.65 : 2.37 : 2.95)을 유지한 채 전체를 스케일. 아래 NumBox로 개별 편집 가능.
-        </div>
       </div>
 
-      {/* 프리셋 */}
-      <div className="flex flex-wrap gap-1 mb-3">
-        <span className="text-[11px] text-gray-500 mr-1 self-center">프리셋:</span>
-        {presets.map(p => {
-          const active = F_g.every((v, i) => v === p.v[i]);
-          return (
-            <button key={p.label} onClick={() => setFAll(p.v)} title={p.desc}
-              className="text-[11px] px-2 py-0.5 rounded border font-medium transition"
-              style={active ? { background: "#f5f3ff", borderColor: "#c4b5fd", color: "#6d28d9" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
-              {p.label}
-            </button>
-          );
-        })}
-        {!isDefault && (
-          <button onClick={resetF}
-            className="text-[11px] px-2 py-0.5 rounded border border-red-200 text-red-600 hover:bg-red-50 ml-auto">
-            공식안으로 초기화
-          </button>
-        )}
-      </div>
-
-      {/* 환자군별 F 입력 — 메인 */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         {SH.map((g, i) => (
-          <div key={i} className="rounded-lg px-2 py-2 text-center" style={{ background: CL[i] + "10", border: `1px solid ${CL[i]}40` }}>
-            <div className="text-[11px] font-bold mb-1" style={{ color: CL[i] }}>{g}</div>
-            <NumBox value={F_g[i]} onChange={v => updF(i, v)} color={CL[i]} suffix="원" />
-            <div className="text-[9px] text-gray-400 mt-0.5">원/년/환자</div>
+          <div key={i} className="space-y-1.5">
+            <span className="text-xs font-bold" style={{ color: CL[i] }}>{g} 기능수가</span>
+            <input type="range" min={0} max={F_MAX} step={1000} value={Math.min(F_g[i], F_MAX)}
+              onChange={e => updF(i, parseFloat(e.target.value))}
+              aria-label={`${g} 기능수가 슬라이더`}
+              className="w-full big-thumb"
+              style={{ '--thumb-bg': CL[i], accentColor: CL[i], background: `linear-gradient(to right, ${CL[i]} ${(Math.min(F_g[i], F_MAX) / F_MAX) * 100}%, #e5e7eb 0%)` }} />
+            <div className="text-center">
+              <NumBox value={F_g[i]} onChange={v => updF(i, v)} color={CL[i]} suffix="원" />
+            </div>
           </div>
         ))}
-      </div>
-
-      {/* 공단 추가 지출 요약 */}
-      <div className="mt-3 bg-amber-50 rounded px-3 py-1.5 text-xs flex justify-between items-center">
-        <span className="text-gray-600 text-[11px]">공단 추가 지출 (Σ F × 등록환자, 연)</span>
-        <span className="font-bold text-amber-700">{nhiAddFromF > 0 ? "+" : ""}{fAuto(nhiAddFromF)}</span>
-      </div>
-
-      <div className="mt-2 text-[10.5px] text-gray-600 bg-gray-50 rounded px-2 py-1.5 leading-relaxed">
-        ※ F는 행위별 수가에 얹는 add-on이 아니라, <b>환자군 기반 지불 구조 내부에 내장된 기능 상대가치 재조정 항목</b>입니다.
-        모든 Track(A/B/C)에서 등록환자에게 가산되며, 타원이용비중(L)과 무관하게 고정 지급됩니다.
       </div>
     </div>
   );
 });
 
-/* ─────────────────────────────────────────────
-   TCard — 통합 수가 (T = P + F) promoted
-   ───────────────────────────────────────────── */
+/* TCard — 접힘 아코디언 지원 */
 export const TCard = memo(function TCard({ state, G }) {
   const { F_g } = state;
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#a5b4fc" }}>
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 className="font-bold text-base" style={{ color: "#4338ca" }}>
-          통합 수가 (T = P + F)
-        </h2>
-        <span className="text-[11px] font-semibold" style={{ color: "#6366f1" }}>명목 청구수가</span>
-      </div>
-      <div className="grid grid-cols-4 gap-2">
-        {SH.map((g, i) => (
-          <div key={i} className="rounded-lg px-2 py-2 text-center bg-white/80" style={{ borderLeft: `4px solid ${CL[i]}` }}>
-            <div className="text-[11px] font-bold mb-0.5" style={{ color: CL[i] }}>{g}</div>
-            <div className="text-sm font-extrabold text-indigo-800">{f(G[i].p + F_g[i])}원</div>
-            <div className="text-[9px] text-indigo-400 mt-0.5">P {f(G[i].p)} + F {f(F_g[i])}</div>
+    <div className="rounded-xl border shadow-sm overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#c7d2fe" }}>
+      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-white/30 transition">
+        <div className="flex items-baseline gap-2">
+          <span className="font-bold text-sm" style={{ color: "#4338ca" }}>통합 수가 (T = P + F)</span>
+          <span className="text-[10px] text-indigo-500">명목 청구수가 · 환자군별</span>
+        </div>
+        <span className="text-indigo-500 text-xs">{open ? "▲ 접기" : "▼ 펼치기"}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-3 pt-1">
+          <div className="grid grid-cols-4 gap-2">
+            {SH.map((g, i) => (
+              <div key={i} className="rounded-lg px-2 py-1.5 text-center bg-white/80" style={{ borderLeft: `4px solid ${CL[i]}` }}>
+                <div className="text-[10px] font-bold" style={{ color: CL[i] }}>{g}</div>
+                <div className="text-sm font-extrabold text-indigo-800">{f(G[i].p + F_g[i])}원</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="mt-2 text-[11px] text-indigo-700 bg-white/60 rounded px-2 py-1.5 leading-relaxed">
-        ※ T는 <b>명목(청구) 수가</b>입니다. 공단 실지급 <code className="font-mono text-purple-700">A = P × (1 − L) + F</code> — F는 L과 무관하게 고정 지급 (타원이용비중 카드 참조).
-      </div>
+        </div>
+      )}
     </div>
   );
 });
 
-/* ─────────────────────────────────────────────
-   RegScaleCard — 등록환자 규모 + 환자군별 분포 (명·%)
-   ───────────────────────────────────────────── */
-export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updRegDist, setRegDistAll, scaleRegDist }) {
-  const { totalN, M_clinics, regDist, dataLabel } = state;
+/* RegScaleCard — 접힘 아코디언, 요약 한 줄 상시, 펼치면 세부 편집 */
+export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updRegDist, setRegDistAll, scaleRegDist, defaultOpen = false }) {
+  const { totalN, M_clinics, regDist } = state;
+  const [open, setOpen] = useState(defaultOpen);
   const perClinic = Math.max(1, Math.round(totalN / Math.max(1, M_clinics)));
   const n_reg_sum = regDist.reduce((s, v) => s + v, 0);
   const regPct = regDist.map(v => n_reg_sum > 0 ? (v / n_reg_sum) * 100 : 0);
@@ -175,14 +114,12 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
     set("totalN", newTotal);
     if (newTotal !== ON) set("dataLabel", "시뮬레이션 모드");
   };
-
-  // % 직접 편집: 다른 3군 합을 유지한 채 해당 군만 목표 %로 맞추기 위해 총합 재계산
   const setPctAt = (i, newPct) => {
-    const pct = Math.max(0, Math.min(100, newPct));
-    if (pct >= 100) return;
+    const p = Math.max(0, Math.min(100, newPct));
+    if (p >= 100) return;
     const others = regDist.reduce((s, v, j) => s + (j === i ? 0 : v), 0);
-    const newSum = others / (1 - pct / 100);
-    const newVal = Math.round(newSum * pct / 100);
+    const newSum = others / (1 - p / 100);
+    const newVal = Math.round(newSum * p / 100);
     const newDist = [...regDist];
     newDist[i] = newVal;
     setRegDistAll(newDist);
@@ -196,127 +133,104 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
   ];
 
   return (
-    <div className={card + " p-4"}>
-      <h2 className={H2 + " mb-3"}>등록환자 규모</h2>
-
-      {/* 의원당 실인원 */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">의원당 실인원</span>
-        <NumBox value={perClinic} onChange={setPerClinic} color="#1f2937" suffix="명" />
-        <div className="flex flex-wrap gap-1 ml-2">
-          {[1000, 1500, 2000, 3000, 5000, 7000].map(v => (
-            <button key={v} onClick={() => setPerClinic(v)}
-              className="text-[11px] px-2 py-0.5 rounded border font-medium transition"
-              style={perClinic === v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
-              {f(v)}명
-            </button>
-          ))}
+    <div className={card + " overflow-hidden"}>
+      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 transition">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="font-bold text-sm text-gray-900">등록환자 규모</span>
+          <span className="text-[11px] text-gray-500">
+            M {f(M_clinics)} · 의원당 실인원 {f(perClinic)} · 등록 {f(n_reg_sum)} (
+            {regDist.map((v, i) => (regPct[i]).toFixed(0) + "%").join("/")}
+            )
+          </span>
         </div>
-        <span className="text-[10px] text-gray-400 ml-auto">연인원 아님</span>
-      </div>
+        <span className="text-gray-400 text-xs">{open ? "▲ 접기" : "▼ 펼치기"}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-1 border-t border-gray-100">
+          {/* 의원당 실인원 */}
+          <div className="flex items-center gap-2 mb-2 flex-wrap mt-2">
+            <span className="text-xs font-semibold text-gray-700 shrink-0 w-24">의원당 실인원</span>
+            <NumBox value={perClinic} onChange={setPerClinic} color="#1f2937" suffix="명" />
+            <div className="flex flex-wrap gap-1 ml-1">
+              {[1000, 1500, 2000, 3000, 5000].map(v => (
+                <button key={v} onClick={() => setPerClinic(v)}
+                  className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                  style={perClinic === v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                  {f(v)}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* 의원 수 M */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">의원 수 (M)</span>
-        <NumBox value={M_clinics} onChange={setMPreservingPerClinic} color="#1f2937" suffix="개" />
-        <div className="flex flex-wrap gap-1 ml-2">
-          {[10, 100, 1000, 3000].map(v => (
-            <button key={v} onClick={() => setMPreservingPerClinic(v)}
-              className="text-[11px] px-2 py-0.5 rounded border font-medium transition"
-              style={M_clinics === v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
-              {f(v)}
-            </button>
-          ))}
-        </div>
-        <span className="text-[10px] text-gray-400 ml-auto">파일럿 10 · 시범사업 100 · 전국 ≈ 3,000</span>
-      </div>
+          {/* 의원 수 M */}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="text-xs font-semibold text-gray-700 shrink-0 w-24">의원 수 (M)</span>
+            <NumBox value={M_clinics} onChange={setMPreservingPerClinic} color="#1f2937" suffix="개" />
+            <div className="flex flex-wrap gap-1 ml-1">
+              {[10, 100, 1000, 3000].map(v => (
+                <button key={v} onClick={() => setMPreservingPerClinic(v)}
+                  className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                  style={M_clinics === v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                  {f(v)}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <div className="mb-3 px-2 py-1 bg-gray-50 rounded text-[11px] text-gray-600">
-        전체 실인원 N = <b className="text-gray-800">{f(totalN)}명</b>
-        <span className="text-gray-400"> = 의원당 {f(perClinic)} × M {f(M_clinics)}</span>
-      </div>
+          {/* 의원당 등록 */}
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <span className="text-xs font-semibold text-gray-700 shrink-0 w-24">의원당 등록</span>
+            <NumBox value={n_reg_sum} onChange={v => scaleRegDist(Math.max(0, Math.round(v)))} color="#2563eb" suffix="명" />
+            <div className="flex flex-wrap gap-1 ml-1">
+              {[500, 1000, 1500, 2000].map(v => (
+                <button key={v} onClick={() => scaleRegDist(v)}
+                  className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                  style={n_reg_sum === v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                  {f(v)}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* 의원당 등록환자수 (합계) */}
-      <div className="mb-2 flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">의원당 등록환자수</span>
-        <NumBox value={n_reg_sum} onChange={v => scaleRegDist(Math.max(0, Math.round(v)))} color="#2563eb" suffix="명" />
-        <div className="flex flex-wrap gap-1 ml-2">
-          {[500, 1000, 1500, 2000].map(v => (
-            <button key={v} onClick={() => scaleRegDist(v)}
-              className="text-[11px] px-2 py-0.5 rounded border font-medium transition"
-              style={n_reg_sum === v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
-              {f(v)}명
-            </button>
-          ))}
-        </div>
-        <span className="text-[10px] text-gray-400 ml-auto">= Σ 환자군별</span>
-      </div>
-
-      {/* 환자군별 등록 분포 (명 + %) */}
-      <div className="mt-3 pt-3 border-t border-gray-100">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-gray-700">환자군별 등록 분포</span>
-          <span className="text-[10px] text-gray-400">명·%를 직접 입력하여 편집</span>
-        </div>
-
-        {/* 분포 프리셋 */}
-        <div className="flex flex-wrap gap-1 mb-2">
-          {distPresets.map(p => {
-            const active = regDist.every((v, i) => v === p.v[i]);
-            return (
-              <button key={p.label} onClick={() => setRegDistAll(p.v)}
-                className="text-[11px] px-2 py-0.5 rounded border font-medium transition"
-                style={active ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="grid grid-cols-4 gap-2">
-          {SH.map((g, i) => (
-            <div key={i} className="rounded-lg px-2 py-2 text-center" style={{ background: CL[i] + "08", border: `1px solid ${CL[i]}30` }}>
-              <div className="text-[11px] font-bold mb-1" style={{ color: CL[i] }}>{g}</div>
-              <NumBox value={regDist[i]} onChange={v => updRegDist(i, v)} color={CL[i]} suffix="명" />
-              <div className="mt-1 flex items-center justify-center gap-1">
-                <input type="number" value={regPct[i].toFixed(1)}
-                  onChange={e => setPctAt(i, parseFloat(e.target.value))}
-                  step={0.1} min={0} max={100}
-                  className="w-12 text-center text-[11px] font-bold border rounded bg-white py-0.5"
-                  style={{ borderColor: CL[i] + "60", color: CL[i] }} />
-                <span className="text-[10px] text-gray-500">%</span>
+          {/* 환자군별 등록 분포 */}
+          <div className="pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-semibold text-gray-700">환자군별 분포</span>
+              <div className="flex gap-1">
+                {distPresets.map(p => {
+                  const active = regDist.every((v, i) => v === p.v[i]);
+                  return (
+                    <button key={p.label} onClick={() => setRegDistAll(p.v)}
+                      className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                      style={active ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                      {p.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          ))}
+            <div className="grid grid-cols-4 gap-2">
+              {SH.map((g, i) => (
+                <div key={i} className="rounded-lg px-2 py-1.5 text-center" style={{ background: CL[i] + "08", border: `1px solid ${CL[i]}30` }}>
+                  <div className="text-[10px] font-bold mb-0.5" style={{ color: CL[i] }}>{g}</div>
+                  <NumBox value={regDist[i]} onChange={v => updRegDist(i, v)} color={CL[i]} suffix="명" />
+                  <div className="mt-0.5 flex items-center justify-center gap-0.5">
+                    <input type="number" value={regPct[i].toFixed(1)}
+                      onChange={e => setPctAt(i, parseFloat(e.target.value))}
+                      step={0.1} min={0} max={100}
+                      className="w-11 text-center text-[11px] font-bold border rounded bg-white py-0.5"
+                      style={{ borderColor: CL[i] + "60", color: CL[i] }} />
+                    <span className="text-[10px] text-gray-500">%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-1.5 text-[10px] text-gray-500 italic">
+              ※ 환자군별 분포 실측 자료 없음. 기본값은 보고서 부록 추정치이며 변경 가능.
+            </div>
+          </div>
         </div>
-        <div className="mt-1.5 text-[10px] text-gray-500 italic">
-          ※ 환자군별 등록 분포 실측 자료는 아직 없습니다. 기본 10/60/20/10은 <b>보고서 부록의 추정치</b>이며, 다른 가정으로 얼마든지 변경 가능합니다. 명 입력 시 %가 자동 계산되고, % 입력 시 다른 군 비율을 유지한 채 해당 군만 조정됩니다.
-        </div>
-      </div>
-
-      {/* 요약 */}
-      <div className="mt-3 pt-2 border-t border-gray-100 grid grid-cols-3 gap-2 text-xs">
-        <div className="bg-gray-50 rounded px-2 py-1.5">
-          <div className="text-gray-500 text-[10px]">의원당 실인원</div>
-          <div className="font-bold text-gray-800">{f(Math.round(reg.n_total_per_clinic))}명</div>
-        </div>
-        <div className="bg-blue-50 rounded px-2 py-1.5">
-          <div className="text-blue-600 text-[10px]">의원당 등록환자</div>
-          <div className="font-bold text-blue-700">{f(Math.round(reg.n_reg_pc))}명</div>
-          <div className="text-[10px] text-blue-500">등록률 {(reg.regRate * 100).toFixed(1)}%</div>
-        </div>
-        <div className="bg-slate-50 rounded px-2 py-1.5">
-          <div className="text-slate-500 text-[10px]">의원당 비등록 (FFS)</div>
-          <div className="font-bold text-slate-700">{f(Math.round(reg.n_total_per_clinic - reg.n_reg_pc))}명</div>
-        </div>
-      </div>
-      <div className="mt-2 bg-gray-50/70 rounded px-2 py-1 text-[11px] text-gray-600 leading-snug">
-        <span className="font-mono">의원당 실인원 {f(Math.round(reg.n_total_per_clinic))} = 등록 {f(Math.round(reg.n_reg_pc))} + 비등록 {f(Math.round(reg.n_total_per_clinic - reg.n_reg_pc))}</span>
-        <span className="text-gray-400"> · 전체 N = {f(Math.round(reg.n_reg_total + reg.n_unreg_total))}명 ({f(Math.round(reg.n_reg_total))} + {f(Math.round(reg.n_unreg_total))})</span>
-      </div>
-      <div className="mt-1 text-[10px] text-gray-400 italic">
-        ※ 실인원 = 1년간 방문횟수와 무관하게 환자 1명 = 1로 집계. 연인원(방문건수) 아님.
-      </div>
+      )}
     </div>
   );
 });
