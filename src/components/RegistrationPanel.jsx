@@ -38,6 +38,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, re
   const presets = [
     { label: "균등 2만원", v: [20000, 20000, 20000, 20000] },
     { label: "차등(1·2·3·4만원)", v: [10000, 20000, 30000, 40000] },
+    { label: "차등(2·4·6·8만원)", v: [20000, 40000, 60000, 80000] },
   ];
 
   return (
