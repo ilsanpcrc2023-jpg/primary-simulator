@@ -3,12 +3,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { FCard, TCard, RegScaleCard } from "./RegistrationPanel";
-import { SH, CL, ON } from "../constants";
+import { SH, CL, ON, INIT_DATA_LABEL } from "../constants";
+import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabSimulation({ state, set, updP, updBase, updF, setFAll, resetF, updRegDist, setRegDistAll, scaleRegDist, reset, G, T, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
+export default memo(function TabSimulation({ state, set, updP, updBase, updF, setFAll, resetF, updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset, G, T, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
   const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, F_g, M_clinics } = state;
   const M = Math.max(1, M_clinics);
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
@@ -23,8 +24,8 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
           <p className="text-[11px] text-gray-500 mt-0.5">P = 환자군 기준의료비 × 의원급 외래비중</p>
         </div>
         <div className="flex items-center gap-2">
-          {totalN === ON && <span className="text-xs text-gray-400 hidden sm:inline">{dataLabel}</span>}
-          <button onClick={reset} className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded px-2 py-0.5">초기화</button>
+          <span className="text-xs text-gray-400 hidden sm:inline">{dataLabel}</span>
+          <button onClick={reset} className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded px-2 py-0.5">기본값 복귀</button>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -268,10 +269,10 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
               <div className="text-xs text-blue-400 mt-0.5">시뮬레이터 → 엑셀 Export</div>
             </div>
             <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
-              onClick={() => { if (confirm("현재 업로드·수정한 모든 값을 지우고 파일럿 데이터(10개 의원, 69,604명)로 되돌립니다. 진행할까요?")) reset(); }}>
+              onClick={() => { if (confirm(`파일럿 데이터(10개 의원, 69,604명, 2023)로 전환합니다. 현재 설정은 사라집니다. 진행할까요?`)) loadPreset(presets[0]); }}>
               <div className="text-amber-500 text-xl mb-0.5">↩</div>
-              <div className="text-xs font-semibold text-amber-700">파일럿 복귀</div>
-              <div className="text-xs text-amber-500 mt-0.5">기본 10개 의원 데이터로 초기화</div>
+              <div className="text-xs font-semibold text-amber-700">파일럿 데이터 로드</div>
+              <div className="text-xs text-amber-500 mt-0.5">10개 의원 실측(2023)으로 전환</div>
             </div>
           </div>
 

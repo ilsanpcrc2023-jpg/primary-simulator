@@ -57,7 +57,7 @@ export default function App() {
             updP={sim.updP} updBase={sim.updBase}
             updF={sim.updF} setFAll={sim.setFAll} resetF={sim.resetF}
             updRegDist={sim.updRegDist} setRegDistAll={sim.setRegDistAll} scaleRegDist={sim.scaleRegDist}
-            reset={sim.reset}
+            reset={sim.reset} loadPreset={loadPreset}
             G={sim.G} T={sim.T}
             reg={sim.reg} regRatios={sim.regRatios}
             incCurChg={sim.incCurChg} incNewChg={sim.incNewChg} nhiNewChg={sim.nhiNewChg}

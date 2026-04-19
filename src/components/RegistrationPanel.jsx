@@ -188,7 +188,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
             </button>
           ))}
         </div>
-        <span className="text-[10px] text-gray-400 ml-auto">파일럿 10 · 부록 100 · 전국 ≈ 3,000</span>
+        <span className="text-[10px] text-gray-400 ml-auto">파일럿 10 · 시범사업 100 · 전국 ≈ 3,000</span>
       </div>
 
       <div className="mb-3 px-2 py-1 bg-gray-50 rounded text-[11px] text-gray-600">
@@ -250,7 +250,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
           ))}
         </div>
         <div className="mt-1.5 text-[10px] text-gray-500 italic">
-          ※ 기본 분포 10/60/20/10은 임의 배정(부록 기준). 실측 분포가 있으면 직접 입력하세요. 명을 입력하면 %가 자동 계산되고, %를 입력하면 다른 군 비율을 유지한 채 해당 군만 조정됩니다.
+          ※ 환자군별 등록 분포 실측 자료는 아직 없습니다. 기본 10/60/20/10은 <b>보고서 부록의 추정치</b>이며, 다른 가정으로 얼마든지 변경 가능합니다. 명 입력 시 %가 자동 계산되고, % 입력 시 다른 군 비율을 유지한 채 해당 군만 조정됩니다.
         </div>
       </div>
 

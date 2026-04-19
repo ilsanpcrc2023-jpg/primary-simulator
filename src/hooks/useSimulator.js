@@ -1,13 +1,14 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, ON, COL_ALIASES } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_TOTAL_N, INIT_DATA_LABEL, ON, COL_ALIASES } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
   P: INIT_P,
   LC: -3,
-  totalN: ON,
-  dataLabel: "10개 의원 파일럿 (2023)",
+  // 복지부 시범사업안 기본: 100기관 × 의원당 1,000명
+  totalN: INIT_TOTAL_N,
+  dataLabel: INIT_DATA_LABEL,
   tab: 0,
   showDetail: false,
   showEditTable: false,
@@ -24,8 +25,8 @@ const initialState = {
   ssClinicShare: 50,
   // v2.7: 일차의료 기능수가 F (환자군별 차등, 복지부 공식안 준용)
   F_g: [...INIT_F],
-  M_clinics: 10,
-  // 의원당 환자군별 등록환자수 (부록 기준 100/600/200/100)
+  M_clinics: INIT_M_CLINICS,
+  // 의원당 환자군별 등록환자수 (부록 추정치 100/600/200/100)
   regDist: [...INIT_REG_DIST],
 };
 
