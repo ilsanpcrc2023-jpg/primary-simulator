@@ -55,6 +55,19 @@ function reducer(state, action) {
       return { ...state, F_g: action.values.map(v => Math.max(0, Math.round(v))) };
     case "RESET_F":
       return { ...state, F_g: [...INIT_F] };
+    case "RESET_P":
+      return { ...state, P: [...INIT_P] };
+    case "RESET_LC":
+      return { ...state, LC: -3 };
+    case "RESET_REG":
+      return {
+        ...state,
+        baseN_per_clinic: INIT_BASE_PER_CLINIC,
+        M_clinics: INIT_M_CLINICS,
+        totalN: INIT_TOTAL_N,
+        regDist: [...INIT_REG_DIST],
+        dataLabel: INIT_DATA_LABEL,
+      };
     case "SET_REGDIST_AT": {
       const regDist = [...state.regDist];
       regDist[action.i] = Math.max(0, Math.round(action.value));
@@ -306,6 +319,9 @@ export default function useSimulator() {
   const updF = useCallback((i, value) => dispatch({ type: "SET_F_AT", i, value }), []);
   const setFAll = useCallback((values) => dispatch({ type: "SET_F_ALL", values }), []);
   const resetF = useCallback(() => dispatch({ type: "RESET_F" }), []);
+  const resetP = useCallback(() => dispatch({ type: "RESET_P" }), []);
+  const resetLC = useCallback(() => dispatch({ type: "RESET_LC" }), []);
+  const resetReg = useCallback(() => dispatch({ type: "RESET_REG" }), []);
   const updRegDist = useCallback((i, value) => dispatch({ type: "SET_REGDIST_AT", i, value }), []);
   const setRegDistAll = useCallback((values) => dispatch({ type: "SET_REGDIST_ALL", values }), []);
   const scaleRegDist = useCallback((newTotal) => dispatch({ type: "SCALE_REGDIST", newTotal }), []);
@@ -401,7 +417,8 @@ export default function useSimulator() {
   }, []);
 
   return {
-    state, set, updP, updBase, updF, setFAll, resetF,
+    state, set, updP, updBase, updF, setFAll,
+    resetF, resetP, resetLC, resetReg,
     updRegDist, setRegDistAll, scaleRegDist,
     reset,
     handleMacroSync, handleFile, handleExport, loadPreset,

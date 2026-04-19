@@ -30,7 +30,7 @@ function PctInput({ value, onChange, color }) {
 }
 
 /* FCard — P와 동일한 4 슬라이더+NumBox 구조, 프리셋만 */
-export const FCard = memo(function FCard({ state, setFAll, updF, reg, regRatios }) {
+export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, regRatios }) {
   const { F_g } = state;
   const nhiAddFromF = F_g.reduce((s, r, i) => s + r * reg.n_reg_total * regRatios[i], 0);
   const F_mean = Math.round((F_g[0] + F_g[1] + F_g[2] + F_g[3]) / 4);
@@ -59,6 +59,12 @@ export const FCard = memo(function FCard({ state, setFAll, updF, reg, regRatios 
               );
             })}
           </div>
+          {resetF && (
+            <button onClick={resetF}
+              className="text-[11px] text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
+              ↩ 초기화
+            </button>
+          )}
         </div>
       </div>
 
@@ -90,10 +96,10 @@ export const TCard = memo(function TCard({ state, G }) {
     <div className="rounded-xl border shadow-sm overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#c7d2fe" }}>
       <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-white/30 transition">
         <div className="flex items-baseline gap-2">
+          <span className="text-indigo-500 text-xs">{open ? "▲" : "▼"}</span>
           <span className="font-bold text-sm" style={{ color: "#4338ca" }}>통합 수가 (T = P + F)</span>
           <span className="text-[10px] text-indigo-500">명목 청구수가 · 환자군별</span>
         </div>
-        <span className="text-indigo-500 text-xs">{open ? "▲ 접기" : "▼ 펼치기"}</span>
       </button>
       {open && (
         <div className="px-4 pb-3 pt-1">
@@ -112,12 +118,13 @@ export const TCard = memo(function TCard({ state, G }) {
 });
 
 /* RegScaleCard — 접힘 아코디언, 요약 한 줄 상시, 펼치면 세부 편집 */
-export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updRegDist, setRegDistAll, scaleRegDist, reset, defaultOpen = false }) {
+export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updRegDist, setRegDistAll, scaleRegDist, resetReg, defaultOpen = false }) {
   const { totalN, M_clinics, regDist, baseN_per_clinic } = state;
   const [open, setOpen] = useState(defaultOpen);
   const perClinic = Math.max(1, Math.round(totalN / Math.max(1, M_clinics)));
   const n_reg_sum = regDist.reduce((s, v) => s + v, 0);
   const regPct = regDist.map(v => n_reg_sum > 0 ? (v / n_reg_sum) * 100 : 0);
+  const n_unreg_per_clinic = Math.max(0, perClinic - Math.min(n_reg_sum, perClinic));
   const setBaseN = (v) => set("baseN_per_clinic", Math.max(0, Math.round(v)));
 
   const setPerClinic = (v) => {
@@ -155,6 +162,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
     <div className={card + " overflow-hidden"}>
       <div className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 transition cursor-pointer" onClick={() => setOpen(v => !v)}>
         <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-gray-400 text-xs">{open ? "▲" : "▼"}</span>
           <span className="font-bold text-sm text-gray-900">의원당 환자 규모</span>
           <span className="text-[11px] text-gray-500">
             M {f(M_clinics)} · 환자수 {f(perClinic)} · 등록 {f(n_reg_sum)} (
@@ -162,19 +170,13 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
             )
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          {reset && (
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                if (confirm("모든 설정을 기본값(복지부 시범사업안)으로 되돌립니다. 진행할까요?")) reset();
-              }}
-              className="text-[11px] text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
-              ↩ 전체 초기화
-            </button>
-          )}
-          <span className="text-gray-400 text-xs">{open ? "▲ 접기" : "▼ 펼치기"}</span>
-        </div>
+        {resetReg && (
+          <button
+            onClick={e => { e.stopPropagation(); resetReg(); }}
+            className="text-[11px] text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
+            ↩ 초기화
+          </button>
+        )}
       </div>
       {open && (
         <div className="px-4 pb-3 pt-2 border-t border-gray-100 space-y-2">
@@ -193,9 +195,9 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
             </div>
           </div>
 
-          {/* 참여 후 환자수 */}
+          {/* 참여 후 전체 환자수 */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">참여 후 환자수</span>
+            <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">참여 후 전체 환자수</span>
             <NumBox value={perClinic} onChange={setPerClinic} color="#1f2937" suffix="명" />
             <div className="flex flex-wrap gap-1 ml-1">
               {[1000, 1500, 2000, 3000, 5000, 7000, 10000].map(v => (
@@ -206,9 +208,10 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
                 </button>
               ))}
             </div>
+            <span className="text-[10px] text-gray-400 ml-auto">등록 + 비등록</span>
           </div>
 
-          {/* 등록 환자 */}
+          {/* 등록 환자 + 비등록 인라인 표시 */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">등록 환자</span>
             <NumBox value={n_reg_sum} onChange={v => scaleRegDist(Math.max(0, Math.round(v)))} color="#2563eb" suffix="명" />
@@ -221,6 +224,9 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
                 </button>
               ))}
             </div>
+            <span className="text-xs text-gray-500 ml-auto">
+              비등록 환자 <b className="text-slate-700">{f(n_unreg_per_clinic)}명</b>
+            </span>
           </div>
 
           {/* 환자군별 분포 — 컴팩트 (명·% 인라인) */}

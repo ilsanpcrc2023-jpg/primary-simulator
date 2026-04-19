@@ -9,7 +9,7 @@ import { f, fE, pct, diffAuto, fAuto, fMan, diffMan } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabSimulation({ state, set, updP, updBase, updF, setFAll, resetF, updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset, G, T, decomp, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
+export default memo(function TabSimulation({ state, set, updP, updBase, updF, setFAll, resetF, resetP, resetLC, resetReg, updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset, G, T, decomp, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
   const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, F_g, M_clinics } = state;
   const M = Math.max(1, M_clinics);
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
@@ -33,12 +33,9 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
         <h2 className="font-bold text-base text-gray-900">환자군 기본수가 (P)</h2>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400 hidden sm:inline">{dataLabel}</span>
-          <button
-            onClick={() => {
-              if (confirm("모든 설정을 기본값(복지부 시범사업안)으로 되돌립니다. 진행할까요?")) reset();
-            }}
+          <button onClick={resetP}
             className="text-[11px] text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
-            ↩ 전체 초기화
+            ↩ 초기화
           </button>
         </div>
       </div>
@@ -60,7 +57,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
     </div>
 
     {/* ③ 일차의료 기능수가 F — P와 동일 구조 */}
-    <FCard state={state} setFAll={setFAll} updF={updF} reg={reg} regRatios={regRatios} />
+    <FCard state={state} setFAll={setFAll} updF={updF} resetF={resetF} reg={reg} regRatios={regRatios} />
 
     {/* ④ 통합 수가 T — 접힘 */}
     <TCard state={state} G={G} />
@@ -74,6 +71,10 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
           <span className="text-purple-400">→</span>
           <span className="text-lg font-extrabold text-purple-900">{(LavgAfter * 100).toFixed(1)}%</span>
           <NumBox value={LC} onChange={v => set("LC", v)} color="#7c3aed" suffix="%p" />
+          <button onClick={resetLC}
+            className="text-[11px] text-purple-700 hover:text-red-600 border border-purple-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
+            ↩ 초기화
+          </button>
         </div>
       </div>
       <input type="range" min={-30} max={0} step={0.5} value={Math.max(-30, Math.min(0, LC))}
@@ -180,7 +181,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
     {/* ⑦ 의원당 환자 규모 (KPI 아래로 이동) */}
     <RegScaleCard state={state} set={set} reg={reg}
       updRegDist={updRegDist} setRegDistAll={setRegDistAll} scaleRegDist={scaleRegDist}
-      reset={reset} />
+      resetReg={resetReg} />
 
     {/* ⑧ 차트 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -230,9 +231,9 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
     {/* ⑨ 공식 구조 (맨 아래 토글) */}
     <div className={card + " overflow-hidden"}>
       <button onClick={() => setShowFormula(v => !v)}
-        className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
+        className="w-full flex items-center justify-start gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
+        <span className="text-gray-400 text-xs">{showFormula ? "▲" : "▼"}</span>
         <span>📐 공식 구조 및 환자군별 L 상세</span>
-        <span className="text-gray-400 text-xs">{showFormula ? "▲ 접기" : "▼ 펼치기"}</span>
       </button>
       {showFormula && (
         <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-3">
@@ -271,9 +272,9 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
     {/* ⑩ 데이터 관리 */}
     <div className={card + " overflow-hidden"}>
       <button onClick={() => set("showDetail", !showDetail)}
-        className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
+        className="w-full flex items-center justify-start gap-2 px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
+        <span className="text-gray-400 text-xs">{showDetail ? "▲" : "▼"}</span>
         <span>⚙️ 데이터 관리</span>
-        <span className="text-gray-400 text-xs">{showDetail ? "▲ 접기" : "▼ 펼치기"}</span>
       </button>
       {showDetail && (
         <div className="px-3 pb-3 border-t border-gray-100">
@@ -314,9 +315,9 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
 
           <div className="mt-3 pt-2 border-t border-gray-100">
             <button onClick={() => set("showEditTable", !showEditTable)}
-              className="w-full flex items-center justify-between py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 transition">
-              <span>📋 환자군별 상세 편집 테이블</span>
+              className="w-full flex items-center justify-start gap-2 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 transition">
               <span className="text-gray-400">{showEditTable ? "▲" : "▼"}</span>
+              <span>📋 환자군별 상세 편집 테이블</span>
             </button>
             {showEditTable && (
               <div className="mt-1">
