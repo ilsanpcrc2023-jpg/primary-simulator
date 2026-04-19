@@ -11,12 +11,12 @@ export const INIT_BASE = [
 export const INIT_P = [220000, 300000, 520000, 740000];
 export const INIT_F = [122860, 203040, 291120, 362530];
 export const INIT_REG_DIST = [100, 600, 200, 100];
-// 복지부 시범사업안 기본 (100기관 · 의원당 1,000명)
+// 복지부 시범사업안 기본 (100기관 · 의원당 실인원 6,960명 · 등록 1,000명)
 export const INIT_M_CLINICS = 100;
-export const INIT_PER_CLINIC = 1000;
-export const INIT_BASE_PER_CLINIC = 6960;   // 참여 전 기준 환자수 (의원당) — 파일럿 평균
+export const INIT_PER_CLINIC = 6960;         // 참여 후 전체 환자수 = 참여 전 기준 동일 (패널 유지 가정)
+export const INIT_BASE_PER_CLINIC = 6960;    // 참여 전 기준 환자수 — 파일럿 평균
 export const INIT_TOTAL_N = INIT_M_CLINICS * INIT_PER_CLINIC;
-export const INIT_DATA_LABEL = "복지부 시범사업안 (100기관 · 1,000명)";
+export const INIT_DATA_LABEL = "복지부 시범사업안 (100기관 · 등록 1,000명)";
 export const ON = INIT_BASE.reduce((s, g) => s + g.N, 0);
 
 export const NATIONAL_POP = 51_411_696;
