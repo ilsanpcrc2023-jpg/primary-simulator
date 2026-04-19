@@ -29,22 +29,21 @@ function PctInput({ value, onChange, color }) {
   );
 }
 
-/* FCard — P와 동일한 4 슬라이더+NumBox 구조, 프리셋만 */
+/* FCard (환자등록관리료 R) — B 카드와 동일한 4 슬라이더+NumBox 구조 */
 export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, regRatios }) {
   const { F_g } = state;
   const nhiAddFromF = F_g.reduce((s, r, i) => s + r * reg.n_reg_total * regRatios[i], 0);
   const F_mean = Math.round((F_g[0] + F_g[1] + F_g[2] + F_g[3]) / 4);
 
   const presets = [
-    { label: "공식안", v: INIT_F },
-    { label: "균등 1만원", v: [10000, 10000, 10000, 10000] },
-    { label: "중증 편중", v: [50000, 150000, 350000, 500000] },
+    { label: "균등 2만원", v: [20000, 20000, 20000, 20000] },
+    { label: "차등(1·2·3·4만원)", v: [10000, 20000, 30000, 40000] },
   ];
 
   return (
     <div className={card + " p-4"}>
-      <div className="flex items-baseline justify-between mb-2">
-        <h2 className={H2}>일차의료 기능수가 (F)</h2>
+      <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
+        <h2 className={H2}>환자등록관리료 (R)</h2>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-gray-400">평균 {f(F_mean)}원 · 공단 +{fAuto(nhiAddFromF)}</span>
           <div className="flex gap-1">
@@ -71,10 +70,10 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, re
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         {SH.map((g, i) => (
           <div key={i} className="space-y-1.5">
-            <span className="text-xs font-bold" style={{ color: CL[i] }}>{g} 기능수가</span>
+            <span className="text-xs font-bold" style={{ color: CL[i] }}>{g} R</span>
             <input type="range" min={0} max={F_MAX} step={1000} value={Math.min(F_g[i], F_MAX)}
               onChange={e => updF(i, parseFloat(e.target.value))}
-              aria-label={`${g} 기능수가 슬라이더`}
+              aria-label={`${g} 환자등록관리료 슬라이더`}
               className="w-full big-thumb"
               style={{ '--thumb-bg': CL[i], accentColor: CL[i], background: `linear-gradient(to right, ${CL[i]} ${(Math.min(F_g[i], F_MAX) / F_MAX) * 100}%, #e5e7eb 0%)` }} />
             <div className="text-center">
@@ -87,7 +86,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, re
   );
 });
 
-/* TCard — 접힘 아코디언 지원 */
+/* TCard — 일차의료수가 (P = B + R), 접힘 아코디언 */
 export const TCard = memo(function TCard({ state, G }) {
   const { F_g } = state;
   const [open, setOpen] = useState(false);
@@ -97,7 +96,7 @@ export const TCard = memo(function TCard({ state, G }) {
       <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-white/30 transition">
         <div className="flex items-baseline gap-2">
           <span className="text-indigo-500 text-xs">{open ? "▲" : "▼"}</span>
-          <span className="font-bold text-sm" style={{ color: "#4338ca" }}>통합 수가 (T = P + F)</span>
+          <span className="font-bold text-sm" style={{ color: "#4338ca" }}>일차의료수가 (P = B + R)</span>
           <span className="text-[10px] text-indigo-500">명목 청구수가 · 환자군별</span>
         </div>
       </button>
@@ -108,6 +107,7 @@ export const TCard = memo(function TCard({ state, G }) {
               <div key={i} className="rounded-lg px-2 py-1.5 text-center bg-white/80" style={{ borderLeft: `4px solid ${CL[i]}` }}>
                 <div className="text-[10px] font-bold" style={{ color: CL[i] }}>{g}</div>
                 <div className="text-sm font-extrabold text-indigo-800">{f(G[i].p + F_g[i])}원</div>
+                <div className="text-[9px] text-indigo-400">B {f(G[i].p)} + R {f(F_g[i])}</div>
               </div>
             ))}
           </div>
@@ -163,7 +163,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
       <div className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 transition cursor-pointer" onClick={() => setOpen(v => !v)}>
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-gray-400 text-xs">{open ? "▲" : "▼"}</span>
-          <span className="font-bold text-sm text-gray-900">의원당 환자 규모</span>
+          <span className="font-bold text-sm text-gray-900">의원당 환자 규모와 환자군 분포</span>
           <span className="text-[11px] text-gray-500">
             M {f(M_clinics)} · 환자수 {f(perClinic)} · 등록 {f(n_reg_sum)} (
             {regDist.map((v, i) => (regPct[i]).toFixed(0) + "%").join("/")}
@@ -185,7 +185,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
             <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">참여 전 환자수 (기준)</span>
             <NumBox value={baseN_per_clinic} onChange={setBaseN} color="#64748b" suffix="명" />
             <div className="flex flex-wrap gap-1 ml-1">
-              {[1000, 1500, 2000, 3000, 5000, 7000, 10000].map(v => (
+              {[1000, 1500, 2000, 3000, 4000, 5000, 7000, 10000].map(v => (
                 <button key={v} onClick={() => setBaseN(v)}
                   className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
                   style={baseN_per_clinic === v ? { background: "#f1f5f9", borderColor: "#94a3b8", color: "#334155" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
@@ -200,7 +200,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
             <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">참여 후 전체 환자수</span>
             <NumBox value={perClinic} onChange={setPerClinic} color="#1f2937" suffix="명" />
             <div className="flex flex-wrap gap-1 ml-1">
-              {[1000, 1500, 2000, 3000, 5000, 7000, 10000].map(v => (
+              {[1000, 1500, 2000, 3000, 4000, 5000, 7000, 10000].map(v => (
                 <button key={v} onClick={() => setPerClinic(v)}
                   className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
                   style={perClinic === v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
@@ -211,11 +211,14 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
             <span className="text-[10px] text-gray-400 ml-auto">등록 + 비등록</span>
           </div>
 
-          {/* 등록 환자 + 비등록 인라인 표시 */}
+          {/* 등록 환자 · 비등록 환자 (나란히 표시) */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">등록 환자</span>
             <NumBox value={n_reg_sum} onChange={v => scaleRegDist(Math.max(0, Math.round(v)))} color="#2563eb" suffix="명" />
-            <div className="flex flex-wrap gap-1 ml-1">
+            <span className="text-xs text-gray-600 ml-1">
+              · 비등록 <b className="text-slate-700">{f(n_unreg_per_clinic)}명</b>
+            </span>
+            <div className="flex flex-wrap gap-1 ml-2">
               {[500, 1000, 1500, 2000].map(v => (
                 <button key={v} onClick={() => scaleRegDist(v)}
                   className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
@@ -224,9 +227,6 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
                 </button>
               ))}
             </div>
-            <span className="text-xs text-gray-500 ml-auto">
-              비등록 환자 <b className="text-slate-700">{f(n_unreg_per_clinic)}명</b>
-            </span>
           </div>
 
           {/* 환자군별 분포 — 컴팩트 (명·% 인라인) */}

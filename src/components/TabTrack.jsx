@@ -7,7 +7,7 @@ import { f, fE, pct, diffAuto, fMan, diffMan } from "../utils";
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBchg, tCchg, tSchg }) {
-  const { base, hccPct, LC, M_clinics } = state;
+  const { base, hccPct, LC, M_clinics, pt_base } = state;
   const ffsPct = 100 - hccPct;
   const M = Math.max(1, M_clinics);
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
@@ -19,9 +19,11 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
   const perClinicTrack = T.tS / M;
   const perClinicGain = perClinicTrack - perClinicBase;
 
-  // PT (일차의료 전환지원금) — 1회성 첫해. Track A=0, B=1,500만, C=3,000만, 선형 보간
-  const PT_MAX = 30_000_000;
-  const PT = (hccPct / 100) * PT_MAX;
+  // PT (일차의료 전환지원금) — 1회성 첫해. Track A=10%, B=50%, C=100%.
+  // pt_base는 의원당 기준 금액 (편집 가능), 실제 지급 = pt_base × Track %
+  const getPTPct = (hc) => hc <= 50 ? 10 + hc * 0.8 : 50 + (hc - 50) * 1.0;
+  const ptPct = getPTPct(hccPct);
+  const PT = pt_base * ptPct / 100;
   const perClinicFirstYear = perClinicGain + PT;
 
   return (<>
@@ -29,13 +31,13 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
     <div className={card + " p-4"}>
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h2 className="font-bold text-base text-gray-900">Track 선택</h2>
-        <span className="text-[11px] text-gray-500">모든 Track에 F 가산 · 비등록환자는 항상 FFS</span>
+        <span className="text-[11px] text-gray-500">모든 Track에 R 가산 · 비등록환자는 항상 FFS</span>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { n: "Track A", d: "FFS + F", c: "#22c55e", bg: "#f0fdf4", v: 0 },
-          { n: "Track B", d: "혼합 + F", c: "#3b82f6", bg: "#eff6ff", v: 50 },
-          { n: "Track C", d: "환자군 + F", c: "#f97316", bg: "#fff7ed", v: 100 },
+          { n: "Track A", d: "FFS + R", c: "#22c55e", bg: "#f0fdf4", v: 0 },
+          { n: "Track B", d: "혼합 + R", c: "#3b82f6", bg: "#eff6ff", v: 50 },
+          { n: "Track C", d: "환자군 + R", c: "#f97316", bg: "#fff7ed", v: 100 },
         ].map((t, i) => (
           <button key={i} onClick={() => set("hccPct", t.v)}
             aria-selected={hccPct === t.v}
@@ -135,26 +137,31 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
       </div>
     </div>
 
-    {/* ④ PT (일차의료 전환지원금) */}
+    {/* ④ PT (일차의료 전환지원금) — 기준 금액 편집 가능, Track A=10%·B=50%·C=100% */}
     <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
-      <div className="flex items-baseline justify-between mb-2">
+      <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
         <h3 className="font-bold text-base text-amber-900">일차의료 전환지원금 (PT)</h3>
-        <span className="text-[11px] font-semibold text-amber-700">1회성 · 첫해만</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-amber-700 font-semibold">기준 금액</span>
+          <NumBox value={pt_base} onChange={v => set("pt_base", Math.max(0, Math.round(v)))} color="#b45309" suffix="원" />
+          <span className="text-[11px] font-semibold text-amber-700">· 1회성 · 첫해만</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { n: "Track A", amt: 0, hc: 0, c: "#22c55e" },
-          { n: "Track B", amt: 15_000_000, hc: 50, c: "#3b82f6" },
-          { n: "Track C", amt: 30_000_000, hc: 100, c: "#f97316" },
+          { n: "Track A", pctVal: 10, hc: 0, c: "#22c55e" },
+          { n: "Track B", pctVal: 50, hc: 50, c: "#3b82f6" },
+          { n: "Track C", pctVal: 100, hc: 100, c: "#f97316" },
         ].map(t => {
           const active = hccPct === t.hc;
+          const amt = pt_base * t.pctVal / 100;
           return (
             <div key={t.n} className="rounded-lg p-2 text-center transition"
               style={{ background: active ? "#fef9c3" : "#fffbeb", border: `2px solid ${active ? "#f59e0b" : "#fde68a"}` }}>
-              <div className="text-xs font-bold" style={{ color: t.c }}>{t.n}</div>
+              <div className="text-xs font-bold" style={{ color: t.c }}>{t.n} <span className="font-normal text-amber-700">({t.pctVal}%)</span></div>
               <div className="text-base font-extrabold text-amber-900 mt-0.5">
-                {t.amt === 0 ? "미지급" : fMan(t.amt)}
+                {fMan(amt)}
               </div>
               <div className="text-[9px] text-amber-600 mt-0.5">의원당 · 1회</div>
             </div>
@@ -164,12 +171,12 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
 
       <div className="bg-white/70 rounded-lg px-3 py-2.5">
         <div className="text-[11px] text-amber-800 font-semibold mb-1">
-          의원당 1년차 합계 <span className="font-normal text-amber-600/80">(Track 수입 + PT)</span>
+          의원당 1년차 합계 <span className="font-normal text-amber-600/80">(Track 수입 + PT {ptPct.toFixed(0)}%)</span>
         </div>
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="font-mono text-sm text-amber-800">{diffMan(perClinicGain)}</span>
           <span className="text-amber-500 font-bold">+</span>
-          <span className="font-mono text-sm text-amber-800">{PT === 0 ? "0원" : "+" + fMan(PT)}</span>
+          <span className="font-mono text-sm text-amber-800">+{fMan(PT)}</span>
           <span className="text-amber-500 font-bold">=</span>
           <span className="text-xl sm:text-2xl font-extrabold text-amber-900">{diffMan(perClinicFirstYear)}</span>
         </div>

@@ -27,10 +27,10 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
   const perClinicNet = decomp.netChange / M;
 
   return (<>
-    {/* ① 환자군 기본수가 P — 4 슬라이더 + NumBox */}
+    {/* ① 환자군 기본수가 B — 4 슬라이더 + NumBox */}
     <div className={card + " p-4"}>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-base text-gray-900">환자군 기본수가 (P)</h2>
+        <h2 className="font-bold text-base text-gray-900">환자군 기본수가 (B)</h2>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400 hidden sm:inline">{dataLabel}</span>
           <button onClick={resetP}
@@ -42,10 +42,10 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         {SH.map((g, i) => (
           <div key={i} className="space-y-1.5">
-            <span className="text-xs font-bold" style={{ color: CL[i] }}>{g} 수가</span>
+            <span className="text-xs font-bold" style={{ color: CL[i] }}>{g} B</span>
             <input type="range" min={50000} max={2000000} step={10000} value={P[i]}
               onChange={e => updP(i, parseFloat(e.target.value))}
-              aria-label={`${g} 수가 슬라이더`}
+              aria-label={`${g} 기본수가 슬라이더`}
               className="w-full big-thumb"
               style={{ '--thumb-bg': CL[i], accentColor: CL[i], background: `linear-gradient(to right, ${CL[i]} ${((P[i] - 50000) / 1950000) * 100}%, #e5e7eb 0%)` }} />
             <div className="text-center">
@@ -238,16 +238,16 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
       {showFormula && (
         <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-3">
           <div className="bg-gray-50 rounded-lg px-3 py-2 text-[11px] text-gray-700 leading-relaxed font-mono space-y-1">
-            <div><b className="text-purple-700">T = P + F</b> (명목 청구수가)</div>
-            <div><b className="text-purple-700">A = P × (1 − L) + F</b> (공단 실지급, F는 L 우회)</div>
-            <div><b className="text-purple-700">B = M1 × 30%</b> (본인부담, 고정)</div>
-            <div>의원 수입 = 등록환자(A + F + B) + 비등록환자(FFS M1)</div>
+            <div><b className="text-purple-700">P = B + R</b> (일차의료수가, 명목 청구수가)</div>
+            <div><b className="text-purple-700">A = B × (1 − L) + R</b> (공단 실지급, R은 L 우회)</div>
+            <div><b className="text-purple-700">본인부담 = M1 × 30%</b> (고정)</div>
+            <div>의원 수입 = 등록환자(A + 본인부담) + 비등록환자(FFS M1)</div>
           </div>
           <div className="bg-gray-50 rounded-lg px-3 py-2 text-[11px] text-gray-700 leading-relaxed font-mono space-y-1">
             <div className="font-semibold text-gray-800 mb-0.5">분해 (패널 효과 ↔ 지불방식 효과)</div>
             <div>기준 수입 = <b>baseN × ffsPerPerson × M</b></div>
             <div>① 패널 효과 = <b>Σ M1_g × (N_g − baseN_g)</b></div>
-            <div>② 모형 효과 = <b>Σ n_reg_g × (ab_reg_new_g − M1_g)</b></div>
+            <div>② 모형 효과 = <b>Σ n_reg_g × (A_g + 본인부담 − M1_g)</b></div>
             <div>순 변화 = ① + ② = 참여 후 수입 − 기준 수입</div>
           </div>
           <div>

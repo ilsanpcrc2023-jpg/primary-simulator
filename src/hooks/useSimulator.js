@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, ON, COL_ALIASES } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, ON, COL_ALIASES } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
@@ -30,6 +30,8 @@ const initialState = {
   regDist: [...INIT_REG_DIST],
   // 참여 전 의원당 실인원 (FFS 기준선 계산용). 패널 변화 효과 분리를 위한 독립 변수.
   baseN_per_clinic: INIT_BASE_PER_CLINIC,
+  // 일차의료 전환지원금 (PT) 기준 금액 — 의원당 1회, Track별 %로 차등
+  pt_base: INIT_PT_BASE,
 };
 
 function reducer(state, action) {
