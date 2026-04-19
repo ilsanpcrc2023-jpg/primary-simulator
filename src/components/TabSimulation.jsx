@@ -27,16 +27,20 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
   const perClinicNet = decomp.netChange / M;
 
   return (<>
-    {/* ① 등록환자 규모 — 맨 위, 접힘. 헤더에 전체 초기화 버튼 */}
-    <RegScaleCard state={state} set={set} reg={reg}
-      updRegDist={updRegDist} setRegDistAll={setRegDistAll} scaleRegDist={scaleRegDist}
-      reset={reset} />
-
-    {/* ② 환자군 기본수가 P — 4 슬라이더 + NumBox */}
+    {/* ① 환자군 기본수가 P — 4 슬라이더 + NumBox */}
     <div className={card + " p-4"}>
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-bold text-base text-gray-900">환자군 기본수가 (P)</h2>
-        <span className="text-xs text-gray-400 hidden sm:inline">{dataLabel}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400 hidden sm:inline">{dataLabel}</span>
+          <button
+            onClick={() => {
+              if (confirm("모든 설정을 기본값(복지부 시범사업안)으로 되돌립니다. 진행할까요?")) reset();
+            }}
+            className="text-[11px] text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
+            ↩ 전체 초기화
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         {SH.map((g, i) => (
@@ -173,7 +177,12 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
       </div>
     </div>
 
-    {/* ⑦ 차트 */}
+    {/* ⑦ 의원당 환자 규모 (KPI 아래로 이동) */}
+    <RegScaleCard state={state} set={set} reg={reg}
+      updRegDist={updRegDist} setRegDistAll={setRegDistAll} scaleRegDist={scaleRegDist}
+      reset={reset} />
+
+    {/* ⑧ 차트 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <div className={card + " p-3"}>
         <h3 className="text-xs font-bold text-gray-700 mb-2">의원 수입 비교 (환자군별, 억원)</h3>
