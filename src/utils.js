@@ -16,3 +16,7 @@ export const diffAuto = (a, b) => {
   const d = b - a;
   return (d >= 0 ? "+" : "") + fAuto(d);
 };
+
+// 만원 단위 고정 포매팅 (의원당 평균처럼 작은 차이 가독성 필요 시)
+export const fMan = (v) => Math.round(v / 1e4).toLocaleString("ko-KR") + "만원";
+export const diffMan = (delta) => (delta >= 0 ? "+" : "") + fMan(delta);

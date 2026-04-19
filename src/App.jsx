@@ -54,8 +54,10 @@ export default function App() {
         {tab === 0 && (
           <TabSimulation
             state={state} set={set}
-            updP={sim.updP} updBase={sim.updBase} updK={sim.updK} resetK={sim.resetK}
-            updR={sim.updR} setRUniform={sim.setRUniform} reset={sim.reset}
+            updP={sim.updP} updBase={sim.updBase}
+            updF={sim.updF} setFAll={sim.setFAll} resetF={sim.resetF}
+            updRegDist={sim.updRegDist} setRegDistAll={sim.setRegDistAll} scaleRegDist={sim.scaleRegDist}
+            reset={sim.reset} loadPreset={loadPreset}
             G={sim.G} T={sim.T}
             reg={sim.reg} regRatios={sim.regRatios}
             incCurChg={sim.incCurChg} incNewChg={sim.incNewChg} nhiNewChg={sim.nhiNewChg}
@@ -83,7 +85,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        환자군(HCC) 기반 일차의료 지불모형 시뮬레이터 v6.0 · 일산병원 일차의료개발센터 · © 2026
+        환자군(NHIS-HCC) 기반 일차의료 지불모형 시뮬레이터 v6.1 (정책 v2.7 반영) · 일산병원 일차의료개발센터 · © 2026
       </div>
     </div>
   );

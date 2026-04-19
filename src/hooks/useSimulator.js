@@ -1,13 +1,14 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, ON, COL_ALIASES } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_TOTAL_N, INIT_DATA_LABEL, ON, COL_ALIASES } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
   P: INIT_P,
   LC: -3,
-  totalN: ON,
-  dataLabel: "10개 의원 파일럿 (2023)",
+  // 복지부 시범사업안 기본: 100기관 × 의원당 1,000명
+  totalN: INIT_TOTAL_N,
+  dataLabel: INIT_DATA_LABEL,
   tab: 0,
   showDetail: false,
   showEditTable: false,
@@ -22,13 +23,11 @@ const initialState = {
   ssLtcPct: 1,
   ssMacroPct: 0.1,
   ssClinicShare: 50,
-  // v6.0
-  R_g: [10000, 10000, 10000, 10000],
-  M_clinics: 10,
-  n_reg_per_clinic: 1000,
-  k_g: [1, 1, 1, 1],
-  showAdvancedDist: false,
-  showAdvancedR: false,
+  // v2.7: 일차의료 기능수가 F (환자군별 차등, 복지부 공식안 준용)
+  F_g: [...INIT_F],
+  M_clinics: INIT_M_CLINICS,
+  // 의원당 환자군별 등록환자수 (부록 추정치 100/600/200/100)
+  regDist: [...INIT_REG_DIST],
 };
 
 function reducer(state, action) {
@@ -45,20 +44,33 @@ function reducer(state, action) {
       base[action.i] = { ...base[action.i], [action.key]: action.value };
       return { ...state, base };
     }
-    case "SET_K": {
-      const k_g = [...state.k_g];
-      k_g[action.i] = action.value;
-      return { ...state, k_g };
+    case "SET_F_AT": {
+      const F_g = [...state.F_g];
+      F_g[action.i] = Math.max(0, Math.round(action.value));
+      return { ...state, F_g };
     }
-    case "RESET_K":
-      return { ...state, k_g: [1, 1, 1, 1] };
-    case "SET_R_AT": {
-      const R_g = [...state.R_g];
-      R_g[action.i] = action.value;
-      return { ...state, R_g };
+    case "SET_F_ALL":
+      return { ...state, F_g: action.values.map(v => Math.max(0, Math.round(v))) };
+    case "RESET_F":
+      return { ...state, F_g: [...INIT_F] };
+    case "SET_REGDIST_AT": {
+      const regDist = [...state.regDist];
+      regDist[action.i] = Math.max(0, Math.round(action.value));
+      return { ...state, regDist };
     }
-    case "SET_R_UNIFORM":
-      return { ...state, R_g: [action.value, action.value, action.value, action.value] };
+    case "SET_REGDIST_ALL":
+      return { ...state, regDist: action.values.map(v => Math.max(0, Math.round(v))) };
+    case "SCALE_REGDIST": {
+      // 총합을 newTotal로 맞추되 비율 유지
+      const sum = state.regDist.reduce((s, v) => s + v, 0);
+      if (sum <= 0) {
+        const even = Math.max(0, Math.round(action.newTotal / 4));
+        return { ...state, regDist: [even, even, even, even] };
+      }
+      const scale = action.newTotal / sum;
+      const scaled = state.regDist.map(v => Math.max(0, Math.round(v * scale)));
+      return { ...state, regDist: scaled };
+    }
     case "LOAD_DATA":
       return {
         ...state,
@@ -125,7 +137,7 @@ export default function useSimulator() {
     base, P, LC, totalN, hccPct,
     ssTotalCost, ssAcute, ssEmergency, ssLtc,
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
-    R_g, M_clinics, n_reg_per_clinic, k_g,
+    F_g, M_clinics, regDist,
   } = state;
 
   const ffsPct = 100 - hccPct;
@@ -135,24 +147,24 @@ export default function useSimulator() {
     return base.map(g => g.N / t);
   }, [base]);
 
-  // v6.0: 등록환자 분포 (환자군별 조정계수 k_g 반영, 정규화)
+  // v2.7: 등록환자 분포 (의원당 환자군별 절대 등록수 regDist에서 직접 산출)
   const regRatios = useMemo(() => {
-    const w = ratios.map((r, i) => r * (k_g[i] ?? 1));
-    const sum = w.reduce((s, v) => s + v, 0);
-    return sum > 0 ? w.map(v => v / sum) : ratios;
-  }, [ratios, k_g]);
+    const sum = regDist.reduce((s, v) => s + v, 0);
+    return sum > 0 ? regDist.map(v => v / sum) : ratios;
+  }, [regDist, ratios]);
 
-  // 등록/비등록 환자 수 산출
+  // 등록/비등록 환자 수 산출 (의원당 등록 n_reg_pc = sum(regDist))
   const reg = useMemo(() => {
     const M = Math.max(1, M_clinics);
     const n_total_per_clinic = totalN / M;
-    const n_reg_pc = Math.min(n_reg_per_clinic, n_total_per_clinic);
+    const n_reg_requested = regDist.reduce((s, v) => s + v, 0);
+    const n_reg_pc = Math.min(n_reg_requested, n_total_per_clinic);
     const n_reg_total_raw = M * n_reg_pc;
     const n_reg_total = Math.min(n_reg_total_raw, totalN);
     const n_unreg_total = Math.max(0, totalN - n_reg_total);
     const regRate = totalN > 0 ? n_reg_total / totalN : 0;
-    return { M, n_total_per_clinic, n_reg_pc, n_reg_total, n_unreg_total, regRate };
-  }, [M_clinics, totalN, n_reg_per_clinic]);
+    return { M, n_total_per_clinic, n_reg_pc, n_reg_requested, n_reg_total, n_unreg_total, regRate };
+  }, [M_clinics, totalN, regDist]);
 
   const G = useMemo(() => {
     const lc = LC / 100;
@@ -167,30 +179,30 @@ export default function useSimulator() {
       const C1 = b.M1 / (1 - b.L);
       const D1 = C1 - b.M1;
 
-      // v6.0: 등록/비등록 분리
+      // v2.7: 등록/비등록 분리
       const n_reg_g = reg.n_reg_total * regRatios[i];
       const n_unreg_g = Math.max(0, N - n_reg_g);
 
-      // 환자군별 등록관리비 (R은 L 우회, 환자군별 차등 허용)
-      const R_i = R_g[i] ?? 0;
-      const ab_reg_cur = A_cur + R_i + b.M1 * 0.30;
-      const ab_reg_new = A_new + R_i + b.M1 * 0.30;
+      // 환자군별 일차의료 기능수가 F (L 우회, 환자군별 차등)
+      const F_i = F_g[i] ?? 0;
+      const ab_reg_cur = A_cur + F_i + b.M1 * 0.30;
+      const ab_reg_new = A_new + F_i + b.M1 * 0.30;
 
       // 의원 총수입: 등록=환자군 모형, 비등록=FFS(M1)
       const inc0 = b.M1 * N;                                    // baseline: 전원 FFS
-      const inc1 = ab_reg_cur * n_reg_g + b.M1 * n_unreg_g;     // v6 현 의료행태
-      const inc2 = ab_reg_new * n_reg_g + b.M1 * n_unreg_g;     // v6 LC 적용 후
+      const inc1 = ab_reg_cur * n_reg_g + b.M1 * n_unreg_g;     // 현 의료행태
+      const inc2 = ab_reg_new * n_reg_g + b.M1 * n_unreg_g;     // LC 적용 후
 
-      // 공단 총의료비 (의원급 외래 전체, v5 관점 확장)
+      // 공단 총의료비 (의원급 외래 전체)
       const nhi0 = C1 * N;
       const nhi1 = (ab_reg_cur + D1) * n_reg_g + C1 * n_unreg_g;
       const nhi2 = (ab_reg_new + D1 * (b.L > 0 ? LL / b.L : 1)) * n_reg_g + C1 * n_unreg_g;
 
-      // Track (1인당 등록환자 실지불액, 노션 Q6 재해석)
-      //   A: 등록환자도 FFS + R add-on
-      //   C: 환자군 모형 (LC 적용)
+      // Track (1인당 등록환자 실지불액, 모든 Track에 F 가산)
+      //   A: FFS + F
+      //   C: 환자군 모형 (LC 적용) + F
       //   B: A와 C의 hccPct 가중평균
-      const tA = b.M1 + R_i;
+      const tA = b.M1 + F_i;
       const tC = ab_reg_new;
       const tB = (tA + tC) / 2;
       const tS = tA * (ffsPct / 100) + tC * (hccPct / 100);
@@ -199,14 +211,14 @@ export default function useSimulator() {
         N, p, b,
         A_cur, A_new, AB_cur, AB_new, LL,
         B: b.M1 * 0.30,
-        R_per_pt: R_i,
+        F_per_pt: F_i,
         n_reg: n_reg_g, n_unreg: n_unreg_g,
         ab_reg_cur, ab_reg_new,
         inc0, inc1, inc2, nhi0, nhi1, nhi2,
         tA, tB, tC, tS,
       };
     });
-  }, [base, P, LC, totalN, hccPct, ffsPct, ratios, regRatios, reg, R_g]);
+  }, [base, P, LC, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g]);
 
   const T = useMemo(() => {
     const s = { inc0: 0, inc1: 0, inc2: 0, nhi0: 0, nhi1: 0, nhi2: 0, tA: 0, tB: 0, tC: 0, tS: 0 };
@@ -254,10 +266,12 @@ export default function useSimulator() {
   const set = useCallback((key, value) => dispatch({ type: "SET", key, value }), []);
   const updP = useCallback((i, value) => dispatch({ type: "SET_P", i, value }), []);
   const updBase = useCallback((i, key, value) => dispatch({ type: "SET_BASE", i, key, value }), []);
-  const updK = useCallback((i, value) => dispatch({ type: "SET_K", i, value }), []);
-  const resetK = useCallback(() => dispatch({ type: "RESET_K" }), []);
-  const updR = useCallback((i, value) => dispatch({ type: "SET_R_AT", i, value }), []);
-  const setRUniform = useCallback((value) => dispatch({ type: "SET_R_UNIFORM", value }), []);
+  const updF = useCallback((i, value) => dispatch({ type: "SET_F_AT", i, value }), []);
+  const setFAll = useCallback((values) => dispatch({ type: "SET_F_ALL", values }), []);
+  const resetF = useCallback(() => dispatch({ type: "RESET_F" }), []);
+  const updRegDist = useCallback((i, value) => dispatch({ type: "SET_REGDIST_AT", i, value }), []);
+  const setRegDistAll = useCallback((values) => dispatch({ type: "SET_REGDIST_ALL", values }), []);
+  const scaleRegDist = useCallback((newTotal) => dispatch({ type: "SCALE_REGDIST", newTotal }), []);
   const handleMacroSync = useCallback((newPct) => dispatch({ type: "MACRO_SYNC", newPct }), []);
   const reset = useCallback(() => dispatch({ type: "RESET" }), []);
 
@@ -350,7 +364,9 @@ export default function useSimulator() {
   }, []);
 
   return {
-    state, set, updP, updBase, updK, resetK, updR, setRUniform, reset,
+    state, set, updP, updBase, updF, setFAll, resetF,
+    updRegDist, setRegDistAll, scaleRegDist,
+    reset,
     handleMacroSync, handleFile, handleExport, loadPreset,
     fileRef,
     G, T, SS,
