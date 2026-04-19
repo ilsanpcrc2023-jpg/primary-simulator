@@ -2,14 +2,14 @@ import { memo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
-import { RCard, PPCard, RegScaleCard, RegDistCard } from "./RegistrationPanel";
+import { FCard, TCard, RegScaleCard } from "./RegistrationPanel";
 import { SH, CL, ON } from "../constants";
 import { f, fE, pct, diffAuto, fAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabSimulation({ state, set, updP, updBase, updK, resetK, updR, setRUniform, reset, G, T, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
-  const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, R_g, M_clinics } = state;
+export default memo(function TabSimulation({ state, set, updP, updBase, updF, setFAll, resetF, updRegDist, setRegDistAll, scaleRegDist, reset, G, T, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
+  const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, F_g, M_clinics } = state;
   const M = Math.max(1, M_clinics);
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
   const [showBaseline, setShowBaseline] = useState(false);
@@ -44,11 +44,11 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
       </div>
     </div>
 
-    {/* ② 주치의 등록관리비 (R) 설정 */}
-    <RCard state={state} set={set} setRUniform={setRUniform} updR={updR} reg={reg} regRatios={regRatios} />
+    {/* ② 일차의료 기능수가 (F) 설정 */}
+    <FCard state={state} setFAll={setFAll} updF={updF} resetF={resetF} reg={reg} regRatios={regRatios} />
 
-    {/* ③ 최종 일차의료수가 (PP) — 결과 (promoted) */}
-    <PPCard state={state} G={G} />
+    {/* ③ 통합 수가 (T = P + F) — 결과 (promoted) */}
+    <TCard state={state} G={G} />
 
     {/* ④ 타원이용비중 (L) 변화율 — 핵심 인센티브 (promoted) */}
     <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
@@ -106,7 +106,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
       <div className="mt-3 pt-3 border-t border-purple-200/70 space-y-1 text-[11px]">
         <div className="flex items-start gap-2">
           <span className="font-bold text-purple-700 shrink-0 w-16">공단 지급</span>
-          <code className="font-mono text-purple-900 bg-white/60 rounded px-1.5 py-0.5">A = P × (1 − L) + R</code>
+          <code className="font-mono text-purple-900 bg-white/60 rounded px-1.5 py-0.5">A = P × (1 − L) + F</code>
         </div>
         <div className="flex items-start gap-2">
           <span className="font-bold text-purple-700 shrink-0 w-16">본인부담</span>
@@ -114,16 +114,14 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
           <span className="text-purple-500 text-[10px]">(고정)</span>
         </div>
         <div className="text-[10px] text-purple-700 bg-purple-100/60 rounded px-2 py-1 mt-2 leading-relaxed">
-          ※ 등록관리비(R)는 타원이용비중(L)과 무관하게 고정 지급됩니다.
+          ※ 일차의료 기능수가(F)는 타원이용비중(L)과 무관하게 고정 지급됩니다.
         </div>
       </div>
     </div>
 
-    {/* ⑤ 등록환자 규모 */}
-    <RegScaleCard state={state} set={set} reg={reg} />
-
-    {/* ⑥ 등록환자 분포 조정 (고급) */}
-    <RegDistCard state={state} set={set} updK={updK} resetK={resetK} ratios={ratios} regRatios={regRatios} />
+    {/* ⑤ 등록환자 규모 + 환자군별 분포 */}
+    <RegScaleCard state={state} set={set} reg={reg}
+      updRegDist={updRegDist} setRegDistAll={setRegDistAll} scaleRegDist={scaleRegDist} />
 
     {/* KPI 2열 — 핵심 결과 (promoted) */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -143,7 +141,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
           <div className="text-xl sm:text-2xl font-extrabold text-green-700 leading-tight">{diffAuto(0, (T.inc2 - T.inc0) / M)}</div>
         </div>
         <div className="mt-2 text-[10.5px] text-green-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
-          의원 수입 = <b>등록환자</b>(환자군 모형 A + 본인부담 + R) + <b>비등록환자</b>(FFS M1 유지)
+          의원 수입 = <b>등록환자</b>(환자군 모형 A + 본인부담 + F) + <b>비등록환자</b>(FFS M1 유지)
         </div>
         <button onClick={() => setShowBaseline(v => !v)}
           className="mt-1.5 text-[10px] text-green-700/50 hover:text-green-800 transition flex items-center gap-0.5">
@@ -282,9 +280,9 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
               <div key={i} className="rounded-lg px-2.5 py-2 border" style={{ borderColor: CL[i] + "40", background: CL[i] + "08" }}>
                 <div className="text-xs font-bold mb-1" style={{ color: CL[i] }}>{SH[i]} <span className="font-normal text-gray-400">N={f(base[i].N)}</span></div>
                 <div className="text-xs text-gray-500 space-y-0.5">
-                  <div>P <b className="text-gray-900">{f(P[i])}</b>{R_g[i] > 0 && <span className="text-purple-600 text-[10px]"> +R {f(R_g[i])}</span>}</div>
+                  <div>P <b className="text-gray-900">{f(P[i])}</b>{F_g[i] > 0 && <span className="text-purple-600 text-[10px]"> +F {f(F_g[i])}</span>}</div>
                   <div>등록환자 1인 수입 <b className="text-blue-700">{f(Math.round(r.ab_reg_cur))}</b> → <b className="text-green-700">{f(Math.round(r.ab_reg_new))}</b></div>
-                  <div className="text-gray-400" style={{ fontSize: 10 }}>A + 본인부담 + R · LC {LC}%p</div>
+                  <div className="text-gray-400" style={{ fontSize: 10 }}>A + 본인부담 + F · LC {LC}%p</div>
                 </div>
               </div>
             ))}
@@ -315,8 +313,8 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
                         <th className="text-center px-1 py-1.5 bg-purple-50/50">의원비중</th>
                         <th className="text-center px-1 py-1.5 bg-purple-50/50">계산P</th>
                         <th className="text-center px-1 py-1.5 bg-blue-50/50">수가(P)</th>
-                        <th className="text-center px-1 py-1.5 bg-blue-50/50">R</th>
-                        <th className="text-center px-1 py-1.5 bg-blue-50/50 text-purple-700">PP=P+R</th>
+                        <th className="text-center px-1 py-1.5 bg-blue-50/50">F</th>
+                        <th className="text-center px-1 py-1.5 bg-blue-50/50 text-purple-700">T=P+F</th>
                         <th className="text-center px-1 py-1.5">L비용</th>
                         <th className="text-center px-1 py-1.5">현재외래비</th>
                         <th className="text-center px-1 py-1.5">환자수</th>
@@ -328,8 +326,8 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
                     <tbody>
                       {G.map((r, i) => {
                         const calcP = Math.round(base[i].ref * base[i].cr);
-                        const Ri = R_g[i] ?? 0;
-                        const pp = P[i] + Ri;
+                        const Fi = F_g[i] ?? 0;
+                        const t = P[i] + Fi;
                         return (
                           <tr key={i} className="border-t border-gray-100">
                             <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
@@ -340,8 +338,8 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
                               <input type="text" value={f(P[i])} className="w-16 text-center text-xs font-bold border border-blue-300 rounded bg-blue-50 py-0.5 text-blue-800"
                                 onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updP(i, v); }} />
                             </td>
-                            <td className="text-center px-1 bg-blue-50/20 text-purple-600 font-semibold">{f(Ri)}</td>
-                            <td className="text-center px-1 bg-blue-50/20 font-bold text-purple-700">{f(pp)}</td>
+                            <td className="text-center px-1 bg-blue-50/20 text-purple-600 font-semibold">{f(Fi)}</td>
+                            <td className="text-center px-1 bg-blue-50/20 font-bold text-purple-700">{f(t)}</td>
                             <td className="text-center px-1">
                               <input type="text" value={(base[i].L * 100).toFixed(1)} className="w-12 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
                                 onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 100) updBase(i, "L", v / 100); }} />%
@@ -354,7 +352,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
                               <input type="text" value={f(base[i].N)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
                                 onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
                             </td>
-                            <td className="text-right px-1 bg-green-50/20 text-gray-600">{f(Math.round(r.A_cur + Ri))}</td>
+                            <td className="text-right px-1 bg-green-50/20 text-gray-600">{f(Math.round(r.A_cur + Fi))}</td>
                             <td className="text-right px-1 bg-green-50/20 font-semibold text-blue-700">{f(Math.round(r.ab_reg_cur))}</td>
                             <td className="text-right px-1 bg-green-50/20 font-bold text-green-700">{f(Math.round(r.ab_reg_new))}</td>
                           </tr>
@@ -369,8 +367,8 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updK, re
                     <span><span className="inline-block w-3 h-3 bg-blue-50 border border-blue-300 rounded mr-1 align-middle"></span>판단·실측 = 편집 가능</span>
                   </div>
                   <div className="text-[11px] text-gray-600 bg-gray-50 rounded px-2 py-1.5 font-mono leading-relaxed">
-                    <div>계산P = 기준의료비 × 의원비중 · <b>PP = P + R</b> (명목)</div>
-                    <div><b>A = P × (1 − L) + R</b> (공단 실지급, R은 L 우회) · B = M1 × 30% · 수입 = A + B</div>
+                    <div>계산P = 기준의료비 × 의원비중 · <b>T = P + F</b> (명목)</div>
+                    <div><b>A = P × (1 − L) + F</b> (공단 실지급, F는 L 우회) · B = M1 × 30% · 수입 = A + B</div>
                   </div>
                 </div>
               </div>

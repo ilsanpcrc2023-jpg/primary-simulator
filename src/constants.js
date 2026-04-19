@@ -9,6 +9,8 @@ export const INIT_BASE = [
 ];
 
 export const INIT_P = [220000, 300000, 520000, 740000];
+export const INIT_F = [122860, 203040, 291120, 362530];
+export const INIT_REG_DIST = [100, 600, 200, 100];
 export const ON = INIT_BASE.reduce((s, g) => s + g.N, 0);
 
 export const NATIONAL_POP = 51_411_696;
