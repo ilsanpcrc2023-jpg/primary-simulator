@@ -1,8 +1,8 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import NumBox from "./shared/NumBox";
 import { SH, CL } from "../constants";
-import { f, fE, pct, diffAuto } from "../utils";
+import { f, fE, pct, diffAuto, fAuto, fMan, diffMan } from "../utils";
 
 
 
@@ -16,6 +16,16 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
   const F_uniform = F_g[0] === F_g[1] && F_g[1] === F_g[2] && F_g[2] === F_g[3];
   const F_mean = Math.round((F_g[0] + F_g[1] + F_g[2] + F_g[3]) / 4);
   const F_label = F_uniform ? F_g[0].toLocaleString() + "원" : `환자군별 차등 (평균 ${F_mean.toLocaleString()}원)`;
+  const [showBaseline, setShowBaseline] = useState(false);
+
+  // 의원당 평균 (만원 단위 가독성)
+  const perClinicGain = (T.tS - T.inc0) / M;        // 선택 Track 연간 수입 변화 (의원당)
+  const perClinicBase = T.inc0 / M;                  // 기준선 (순수 FFS)
+  const perClinicTrack = T.tS / M;                   // Track 후 수입
+  // PT (일차의료 전환지원금) — 1회성 첫해. Track A=0, B=1,500만, C=3,000만, 혼합 비율에 선형 보간
+  const PT_MAX = 30_000_000;
+  const PT = (hccPct / 100) * PT_MAX;
+  const perClinicFirstYear = perClinicGain + PT;     // 1년차 합계 (Track 변화 + PT)
 
   return (<>
     <div className={card + " p-4"}>
@@ -116,11 +126,23 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
         <div className="text-[11px] text-green-700/60 mt-0.5">{fE(T.inc0)}억 → {fE(T.tS)}억</div>
         <div className="mt-2 pt-2 border-t border-green-200/70">
           <div className="text-xs sm:text-sm text-green-700/80 font-semibold">의원당 평균 <span className="font-normal text-green-600/60">(M={f(M)})</span></div>
-          <div className="text-xl sm:text-2xl font-extrabold leading-tight" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(0, (T.tS - T.inc0) / M)}</div>
+          <div className="text-xl sm:text-2xl font-extrabold leading-tight" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffMan(perClinicGain)}</div>
         </div>
         <div className="mt-2 text-[10.5px] text-green-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
           등록환자 = Track 선택(행위별 {ffsPct}% + 환자군 {hccPct}% + F) · 비등록환자 = FFS M1 유지
         </div>
+        <button onClick={() => setShowBaseline(v => !v)}
+          className="mt-1.5 text-[10px] text-green-700/50 hover:text-green-800 transition flex items-center gap-0.5">
+          <span>{showBaseline ? "▲" : "▼"}</span>
+          <span>의원당 수입 절대값 {showBaseline ? "접기" : "보기"}</span>
+        </button>
+        {showBaseline && (
+          <div className="mt-1 bg-white/70 rounded px-2 py-1.5 text-[10.5px] text-green-900 leading-snug space-y-0.5">
+            <div>기준선 의원당 수입 <b>{fAuto(perClinicBase)}</b> / 년 (순수 FFS)</div>
+            <div>Track 후 의원당 수입 <b>{fAuto(perClinicTrack)}</b> / 년</div>
+            <div className="text-[9.5px] text-green-600/70 italic pt-0.5">※ 등록·비등록 환자 모두 포함한 외래 수입 추정치. 의사 1인 소득과 다른 개념.</div>
+          </div>
+        )}
       </div>
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
         <div className="flex items-baseline justify-between mb-2">
@@ -136,6 +158,58 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
         <div className="mt-2 text-[10.5px] text-blue-800/70 bg-white/50 rounded px-2 py-1 leading-snug">
           기준선 = 전원 FFS 의원급 외래 총액 (입원·약국·병원급 제외)
         </div>
+      </div>
+    </div>
+
+    {/* PT (일차의료 전환지원금) — 1회성 첫해만. Track 차등 지급 */}
+    <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
+      <div className="flex items-baseline justify-between mb-2">
+        <h3 className="font-bold text-base text-amber-900">일차의료 전환지원금 (PT)</h3>
+        <span className="text-[11px] font-semibold text-amber-700">1회성 · 첫해만 지급</span>
+      </div>
+      <p className="text-[11px] text-amber-800/80 mb-3 leading-relaxed">
+        정보 시스템·인력 구축 초기 투자 지원 (미국 MCP UIP 변용). Track별 차등으로 상위 Track 전환 유인 제공.
+      </p>
+
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {[
+          { n: "Track A", amt: 0, hc: 0, c: "#22c55e" },
+          { n: "Track B", amt: 15_000_000, hc: 50, c: "#3b82f6" },
+          { n: "Track C", amt: 30_000_000, hc: 100, c: "#f97316" },
+        ].map(t => {
+          const active = hccPct === t.hc;
+          return (
+            <div key={t.n} className="rounded-lg p-2 text-center transition"
+              style={{ background: active ? "#fef9c3" : "#fffbeb", border: `2px solid ${active ? "#f59e0b" : "#fde68a"}` }}>
+              <div className="text-xs font-bold" style={{ color: t.c }}>{t.n}</div>
+              <div className="text-base font-extrabold text-amber-900 mt-0.5">
+                {t.amt === 0 ? "미지급" : fMan(t.amt)}
+              </div>
+              <div className="text-[9px] text-amber-600 mt-0.5">의원당 · 1회</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="bg-white/70 rounded-lg px-3 py-2.5">
+        <div className="text-[11px] text-amber-800 font-semibold mb-1">
+          현 선택 의원당 1년차 합계 <span className="font-normal text-amber-600/80">(Track 수입 변화 + PT)</span>
+        </div>
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="font-mono text-sm text-amber-800">{diffMan(perClinicGain)}</span>
+          <span className="text-amber-500 font-bold">+</span>
+          <span className="font-mono text-sm text-amber-800">{PT === 0 ? "0원" : "+" + fMan(PT)}</span>
+          <span className="text-amber-500 font-bold">=</span>
+          <span className="text-xl sm:text-2xl font-extrabold text-amber-900">{diffMan(perClinicFirstYear)}</span>
+          <span className="text-[10px] text-amber-600 italic">(1년차만)</span>
+        </div>
+        <div className="text-[10px] text-amber-700 mt-1">
+          2년차부터 PT는 Shared Saving 절감분에서 재투자 (본 모형의 재정 선순환).
+        </div>
+      </div>
+
+      <div className="mt-2 text-[10px] text-amber-700/80 italic leading-relaxed">
+        ※ 혼합 비율(hccPct)에 따라 PT 선형 보간: A(0%)=0원, B(50%)=1,500만원, C(100%)=3,000만원. 시뮬레이터 수식과는 독립 (의원 수입·공단 지출 계산에 포함되지 않음).
       </div>
     </div>
 
