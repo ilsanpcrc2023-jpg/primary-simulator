@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import NumBox from "./shared/NumBox";
 import { SH, CL, ON, INIT_F, INIT_REG_DIST } from "../constants";
 import { f, fAuto } from "../utils";
@@ -6,6 +6,28 @@ import { f, fAuto } from "../utils";
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 const H2 = "font-bold text-base text-gray-900";
 const F_MAX = 600000;
+
+/* % 입력 — 편집 중엔 로컬 state, blur/Enter 시 commit (NumBox와 동일 패턴) */
+function PctInput({ value, onChange, color }) {
+  const [local, setLocal] = useState(value.toFixed(1));
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { if (!editing) setLocal(value.toFixed(1)); }, [value, editing]);
+  const commit = () => {
+    setEditing(false);
+    const v = parseFloat(local);
+    if (!isNaN(v)) onChange(v);
+    else setLocal(value.toFixed(1));
+  };
+  return (
+    <input type="text" inputMode="decimal" value={local}
+      onFocus={() => setEditing(true)}
+      onChange={e => setLocal(e.target.value)}
+      onBlur={commit}
+      onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
+      className="w-12 text-center text-[11px] font-bold border rounded bg-white py-0.5"
+      style={{ borderColor: color + "60", color }} />
+  );
+}
 
 /* FCard — P와 동일한 4 슬라이더+NumBox 구조, 프리셋만 */
 export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, regRatios }) {
@@ -215,11 +237,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
                   <div className="text-[10px] font-bold mb-0.5" style={{ color: CL[i] }}>{g}</div>
                   <NumBox value={regDist[i]} onChange={v => updRegDist(i, v)} color={CL[i]} suffix="명" />
                   <div className="mt-0.5 flex items-center justify-center gap-0.5">
-                    <input type="number" value={regPct[i].toFixed(1)}
-                      onChange={e => setPctAt(i, parseFloat(e.target.value))}
-                      step={0.1} min={0} max={100}
-                      className="w-11 text-center text-[11px] font-bold border rounded bg-white py-0.5"
-                      style={{ borderColor: CL[i] + "60", color: CL[i] }} />
+                    <PctInput value={regPct[i]} onChange={v => setPctAt(i, v)} color={CL[i]} />
                     <span className="text-[10px] text-gray-500">%</span>
                   </div>
                 </div>
