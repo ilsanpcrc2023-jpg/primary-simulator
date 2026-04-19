@@ -152,7 +152,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
             <span className="text-xs font-semibold text-gray-700 shrink-0 w-24">의원당 실인원</span>
             <NumBox value={perClinic} onChange={setPerClinic} color="#1f2937" suffix="명" />
             <div className="flex flex-wrap gap-1 ml-1">
-              {[1000, 1500, 2000, 3000, 5000].map(v => (
+              {[1000, 1500, 2000, 3000, 5000, 7000, 10000].map(v => (
                 <button key={v} onClick={() => setPerClinic(v)}
                   className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
                   style={perClinic === v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
