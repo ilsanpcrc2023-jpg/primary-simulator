@@ -1,7 +1,7 @@
 import { memo, useState, useEffect } from "react";
 import NumBox from "./shared/NumBox";
 import { SH, CL, ON, INIT_F, INIT_REG_DIST } from "../constants";
-import { f, fAuto } from "../utils";
+import { f } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 const H2 = "font-bold text-base text-gray-900";
@@ -24,54 +24,52 @@ function PctInput({ value, onChange, color }) {
       onChange={e => setLocal(e.target.value)}
       onBlur={commit}
       onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
-      className="w-12 text-center text-[11px] font-bold border rounded bg-white py-0.5"
+      className="w-12 text-center text-xs font-bold border rounded bg-white py-0.5"
       style={{ borderColor: color + "60", color }} />
   );
 }
 
 /* FCard (환자등록관리료 R) — B 카드와 동일한 4 슬라이더+NumBox 구조 */
-export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, regRatios }) {
+export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = false }) {
   const { F_g } = state;
-  const nhiAddFromF = F_g.reduce((s, r, i) => s + r * reg.n_reg_total * regRatios[i], 0);
-  const F_mean = Math.round((F_g[0] + F_g[1] + F_g[2] + F_g[3]) / 4);
 
   const presets = [
-    { label: "균등 2만원", v: [20000, 20000, 20000, 20000] },
-    { label: "차등(1·2·3·4만원)", v: [10000, 20000, 30000, 40000] },
-    { label: "차등(2·4·6·8만원)", v: [20000, 40000, 60000, 80000] },
+    { label: "균등 2만", v: [20000, 20000, 20000, 20000] },
+    { label: "1·2·3·4만", v: [10000, 20000, 30000, 40000] },
+    { label: "2·4·6·8만", v: [20000, 40000, 60000, 80000] },
+    { label: "연간관리료", v: [122860, 203040, 291120, 362530] },
   ];
 
   return (
-    <div className={card + " p-4"}>
-      <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
-        <h2 className={H2}>환자등록관리료 (R)</h2>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-gray-400">평균 {f(F_mean)}원 · 공단 +{fAuto(nhiAddFromF)}</span>
-          <div className="flex gap-1">
-            {presets.map(p => {
-              const active = F_g.every((v, i) => v === p.v[i]);
-              return (
-                <button key={p.label} onClick={() => setFAll(p.v)}
-                  className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
-                  style={active ? { background: "#f5f3ff", borderColor: "#c4b5fd", color: "#6d28d9" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
-                  {p.label}
-                </button>
-              );
-            })}
-          </div>
+    <div className={bare ? "" : card + " p-4"}>
+      <div className="mb-2 space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className={H2}>2. 환자등록관리료 (R)</h2>
           {resetF && (
             <button onClick={resetF}
-              className="text-[11px] text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
+              className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white shrink-0">
               ↩ 초기화
             </button>
           )}
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {presets.map(p => {
+            const active = F_g.every((v, i) => v === p.v[i]);
+            return (
+              <button key={p.label} onClick={() => setFAll(p.v)}
+                className="text-xs px-2 py-0.5 rounded border font-medium transition"
+                style={active ? { background: "#f5f3ff", borderColor: "#c4b5fd", color: "#6d28d9" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                {p.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         {SH.map((g, i) => (
           <div key={i} className="space-y-1.5">
-            <span className="text-xs font-bold" style={{ color: CL[i] }}>{g} R</span>
+            <span className="text-xs font-bold" style={{ color: CL[i] }}>{g}</span>
             <input type="range" min={0} max={F_MAX} step={1000} value={Math.min(F_g[i], F_MAX)}
               onChange={e => updF(i, parseFloat(e.target.value))}
               aria-label={`${g} 환자등록관리료 슬라이더`}
@@ -87,41 +85,32 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, reg, re
   );
 });
 
-/* TCard — 일차의료수가 (P = B + R), 접힘 아코디언 */
+/* TCard — 일차의료수가 (P = B + R), 항상 펼침 */
 export const TCard = memo(function TCard({ state, G }) {
   const { F_g } = state;
-  const [open, setOpen] = useState(false);
 
   return (
     <div className="rounded-xl border shadow-sm overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#c7d2fe" }}>
-      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-white/30 transition">
-        <div className="flex items-baseline gap-2">
-          <span className="text-indigo-500 text-xs">{open ? "▲" : "▼"}</span>
-          <span className="font-bold text-sm" style={{ color: "#4338ca" }}>일차의료수가 (P = B + R)</span>
-          <span className="text-[10px] text-indigo-500">명목 청구수가 · 환자군별</span>
+      <div className="px-4 pt-3 pb-1">
+        <h2 className="font-bold text-base" style={{ color: "#4338ca" }}>일차의료수가 (P = B + R)</h2>
+      </div>
+      <div className="px-4 pb-3 pt-1">
+        <div className="grid grid-cols-4 gap-2">
+          {SH.map((g, i) => (
+            <div key={i} className="rounded-lg px-2 py-1.5 text-center bg-white/80" style={{ borderLeft: `4px solid ${CL[i]}` }}>
+              <div className="text-[10px] font-bold" style={{ color: CL[i] }}>{g}</div>
+              <div className="text-sm font-extrabold text-indigo-800">{f(G[i].p + F_g[i])}원</div>
+            </div>
+          ))}
         </div>
-      </button>
-      {open && (
-        <div className="px-4 pb-3 pt-1">
-          <div className="grid grid-cols-4 gap-2">
-            {SH.map((g, i) => (
-              <div key={i} className="rounded-lg px-2 py-1.5 text-center bg-white/80" style={{ borderLeft: `4px solid ${CL[i]}` }}>
-                <div className="text-[10px] font-bold" style={{ color: CL[i] }}>{g}</div>
-                <div className="text-sm font-extrabold text-indigo-800">{f(G[i].p + F_g[i])}원</div>
-                <div className="text-[9px] text-indigo-400">B {f(G[i].p)} + R {f(F_g[i])}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 });
 
-/* RegScaleCard — 접힘 아코디언, 요약 한 줄 상시, 펼치면 세부 편집 */
-export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updRegDist, setRegDistAll, scaleRegDist, resetReg, defaultOpen = false }) {
+/* RegScaleCard — 항상 펼침, 박스 처리 */
+export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updRegDist, setRegDistAll, scaleRegDist, resetReg }) {
   const { totalN, M_clinics, regDist, baseN_per_clinic } = state;
-  const [open, setOpen] = useState(defaultOpen);
   const perClinic = Math.max(1, Math.round(totalN / Math.max(1, M_clinics)));
   const n_reg_sum = regDist.reduce((s, v) => s + v, 0);
   const regPct = regDist.map(v => n_reg_sum > 0 ? (v / n_reg_sum) * 100 : 0);
@@ -153,34 +142,25 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
   };
 
   const distPresets = [
-    { label: "부록(10/60/20/10)", v: INIT_REG_DIST },
-    { label: "균등(25×4)", v: [250, 250, 250, 250] },
-    { label: "건강 편중", v: [400, 400, 150, 50] },
-    { label: "고위험 편중", v: [50, 350, 300, 300] },
+    { label: "부록", v: INIT_REG_DIST },
+    { label: "균등", v: [250, 250, 250, 250] },
+    { label: "건강편중", v: [400, 400, 150, 50] },
+    { label: "고위험편중", v: [50, 350, 300, 300] },
   ];
 
   return (
     <div className={card + " overflow-hidden"}>
-      <div className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 transition cursor-pointer" onClick={() => setOpen(v => !v)}>
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-gray-400 text-xs">{open ? "▲" : "▼"}</span>
-          <span className="font-bold text-sm text-gray-900">의원당 환자 규모와 환자군 분포</span>
-          <span className="text-[11px] text-gray-500">
-            M {f(M_clinics)} · 환자수 {f(perClinic)} · 등록 {f(n_reg_sum)} (
-            {regDist.map((v, i) => (regPct[i]).toFixed(0) + "%").join("/")}
-            )
-          </span>
-        </div>
+      <div className="w-full flex items-center justify-between px-4 py-2.5">
+        <h2 className="font-bold text-base text-gray-900">환자군 패널 (환자수와 분포)</h2>
         {resetReg && (
           <button
-            onClick={e => { e.stopPropagation(); resetReg(); }}
-            className="text-[11px] text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
+            onClick={resetReg}
+            className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
             ↩ 초기화
           </button>
         )}
       </div>
-      {open && (
-        <div className="px-4 pb-3 pt-2 border-t border-gray-100 space-y-2">
+      <div className="px-4 pb-3 pt-2 border-t border-gray-100 space-y-2">
           {/* 참여 전 환자수 (기준) */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">참여 전 환자수 (기준)</span>
@@ -232,14 +212,14 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
 
           {/* 환자군별 분포 — 컴팩트 (명·% 인라인) */}
           <div className="pt-1">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold text-gray-700">환자군별 분포</span>
-              <div className="flex gap-1">
+            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+              <span className="text-xs font-semibold text-gray-700 shrink-0">환자군별 분포</span>
+              <div className="flex flex-wrap gap-1">
                 {distPresets.map(p => {
                   const active = regDist.every((v, i) => v === p.v[i]);
                   return (
                     <button key={p.label} onClick={() => setRegDistAll(p.v)}
-                      className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                      className="text-xs px-2 py-0.5 rounded border font-medium transition"
                       style={active ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
                       {p.label}
                     </button>
@@ -247,21 +227,21 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
                 })}
               </div>
             </div>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {SH.map((g, i) => (
                 <div key={i} className="rounded px-1.5 py-1 flex items-center justify-between gap-1"
                   style={{ background: CL[i] + "08", border: `1px solid ${CL[i]}30` }}>
-                  <span className="text-[11px] font-bold shrink-0" style={{ color: CL[i] }}>{g}</span>
+                  <span className="text-xs font-bold shrink-0" style={{ color: CL[i] }}>{g}</span>
                   <NumBox value={regDist[i]} onChange={v => updRegDist(i, v)} color={CL[i]} suffix="명" />
                   <PctInput value={regPct[i]} onChange={v => setPctAt(i, v)} color={CL[i]} />
-                  <span className="text-[9px] text-gray-500">%</span>
+                  <span className="text-[10px] text-gray-500">%</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* 요약 한 줄 */}
-          <div className="pt-1.5 border-t border-gray-100 text-[11px] text-gray-700 font-mono leading-snug">
+          <div className="pt-1.5 border-t border-gray-100 text-xs text-gray-700 font-mono leading-snug">
             의원당 환자수 <b>{f(Math.round(reg.n_total_per_clinic))}</b> = 등록 <b className="text-blue-700">{f(Math.round(reg.n_reg_pc))}</b> ({(reg.regRate * 100).toFixed(1)}%) + 비등록 <b>{f(Math.round(reg.n_total_per_clinic - reg.n_reg_pc))}</b> ({((1 - reg.regRate) * 100).toFixed(1)}%)
           </div>
 
@@ -280,8 +260,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, updReg
             </div>
             <span className="text-[10px] text-gray-400 ml-auto">전체 N = {f(totalN)}명</span>
           </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 });
