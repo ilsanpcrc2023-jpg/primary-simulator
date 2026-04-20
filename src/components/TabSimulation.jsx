@@ -60,7 +60,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
       {/* 구분선 */}
       <div className="border-t border-gray-200" />
 
-      {/* ② 환자등록관리료 R (bare) */}
+      {/* ② 일차의료 기능보정 F (bare) */}
       <FCard state={state} setFAll={setFAll} updF={updF} resetF={resetF} bare />
     </div>
 
@@ -224,13 +224,13 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
       <button onClick={() => setShowFormula(v => !v)}
         className="w-full flex items-center justify-start gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
         <span className="text-gray-400 text-xs">{showFormula ? "▲" : "▼"}</span>
-        <span>📐 공식 구조 및 환자군별 L 상세</span>
+        <span>📐 수가 산출 구조</span>
       </button>
       {showFormula && (
         <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-3">
           <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-700 leading-relaxed font-mono space-y-1">
-            <div><b className="text-purple-700">P = B + R</b> (일차의료수가, 명목 청구수가)</div>
-            <div><b className="text-purple-700">A = B × (1 − L) + R</b> (공단 실지급, R은 L 우회)</div>
+            <div><b className="text-purple-700">P = B + F</b></div>
+            <div><b className="text-purple-700">공단지급 = B × (1 − L) + F</b></div>
             <div><b className="text-purple-700">본인부담 = 현행 유지</b></div>
             <div>의원 수입 = 등록환자 + 비등록환자</div>
           </div>
