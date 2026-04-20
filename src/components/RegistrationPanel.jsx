@@ -90,16 +90,16 @@ export const TCard = memo(function TCard({ state, G }) {
   const { F_g } = state;
 
   return (
-    <div className="rounded-xl border shadow-sm overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#c7d2fe" }}>
+    <div className="rounded-xl border-2 shadow-md overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#4f46e5" }}>
       <div className="px-4 pt-3 pb-1">
-        <h2 className="font-bold text-base" style={{ color: "#4338ca" }}>일차의료수가 (P = B + F)</h2>
+        <h2 className="font-extrabold text-lg tracking-tight" style={{ color: "#3730a3" }}>일차의료수가 (P = B + F)</h2>
       </div>
       <div className="px-4 pb-3 pt-1">
         <div className="grid grid-cols-4 gap-2">
           {SH.map((g, i) => (
-            <div key={i} className="rounded-lg px-2 py-1.5 text-center bg-white/80" style={{ borderLeft: `4px solid ${CL[i]}` }}>
-              <div className="text-[10px] font-bold" style={{ color: CL[i] }}>{g}</div>
-              <div className="text-sm font-extrabold text-indigo-800">{f(G[i].p + F_g[i])}원</div>
+            <div key={i} className="rounded-lg px-2 py-2 text-center bg-white/90 shadow-sm" style={{ borderLeft: `5px solid ${CL[i]}` }}>
+              <div className="text-[11px] font-bold" style={{ color: CL[i] }}>{g}</div>
+              <div className="text-lg font-extrabold text-indigo-900 tabular-nums">{f(G[i].p + F_g[i])}<span className="text-sm font-bold ml-0.5">원</span></div>
             </div>
           ))}
         </div>
