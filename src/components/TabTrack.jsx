@@ -6,7 +6,7 @@ import { f, fE, pct, diffAuto, fMan, diffMan } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBchg, tCchg, tSchg }) {
+export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tSchg }) {
   const { base, hccPct, LC, M_clinics, pt_base } = state;
   const ffsPct = 100 - hccPct;
   const M = Math.max(1, M_clinics);
@@ -31,13 +31,12 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
     <div className={card + " p-4"}>
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h2 className="font-bold text-base text-gray-900">Track 선택</h2>
-        <span className="text-[11px] text-gray-500">모든 Track에 R 가산 · 비등록환자는 항상 FFS</span>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { n: "Track A", d: "FFS + R", c: "#22c55e", bg: "#f0fdf4", v: 0 },
-          { n: "Track B", d: "혼합 + R", c: "#3b82f6", bg: "#eff6ff", v: 50 },
-          { n: "Track C", d: "환자군 + R", c: "#f97316", bg: "#fff7ed", v: 100 },
+          { n: "Track A", d: "FFS", c: "#22c55e", bg: "#f0fdf4", v: 0 },
+          { n: "Track B", d: "혼합", c: "#3b82f6", bg: "#eff6ff", v: 50 },
+          { n: "Track C", d: "환자군", c: "#f97316", bg: "#fff7ed", v: 100 },
         ].map((t, i) => (
           <button key={i} onClick={() => set("hccPct", t.v)}
             aria-selected={hccPct === t.v}
@@ -112,9 +111,6 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
             <span className="text-lg font-extrabold text-green-900">{fMan(perClinicTrack)}/년</span>
           </div>
         </div>
-        <div className="mt-1.5 text-[9.5px] text-green-700/60 italic leading-tight">
-          ※ 등록·비등록 환자 모두 포함한 외래 수입 추정치. 의사 1인 소득 ≠ 의원 외래 수입.
-        </div>
       </div>
 
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
@@ -144,7 +140,6 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-amber-700 font-semibold">기준 금액</span>
           <NumBox value={pt_base} onChange={v => set("pt_base", Math.max(0, Math.round(v)))} color="#b45309" suffix="원" />
-          <span className="text-[11px] font-semibold text-amber-700">· 1회성 · 첫해만</span>
         </div>
       </div>
 
@@ -157,14 +152,15 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
           const active = hccPct === t.hc;
           const amt = pt_base * t.pctVal / 100;
           return (
-            <div key={t.n} className="rounded-lg p-2 text-center transition"
+            <button key={t.n} onClick={() => set("hccPct", t.hc)}
+              aria-selected={active}
+              className="rounded-lg p-2 text-center transition cursor-pointer"
               style={{ background: active ? "#fef9c3" : "#fffbeb", border: `2px solid ${active ? "#f59e0b" : "#fde68a"}` }}>
               <div className="text-xs font-bold" style={{ color: t.c }}>{t.n} <span className="font-normal text-amber-700">({t.pctVal}%)</span></div>
               <div className="text-base font-extrabold text-amber-900 mt-0.5">
                 {fMan(amt)}
               </div>
-              <div className="text-[9px] text-amber-600 mt-0.5">의원당 · 1회</div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -202,46 +198,5 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tAchg, tBch
       </ResponsiveContainer>
     </div>
 
-    {/* ⑥ Track 테이블 */}
-    <div className={card + " overflow-hidden"}>
-      <div className="px-3 py-2 border-b border-gray-100">
-        <h3 className="text-sm font-bold text-gray-900">Track별 1인당 실지불액 비교 <span className="text-gray-400 font-normal text-xs">(LC {LC}%p)</span></h3>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs" style={{ minWidth: 460 }}>
-          <thead><tr className="bg-gray-50 text-gray-500">
-            <th className="text-left px-2 py-2">환자군</th>
-            <th className="text-right px-2">Track A</th>
-            <th className="text-right px-2">Track B</th>
-            <th className="text-right px-2 font-bold">Track C</th>
-            <th className="text-right px-2 text-purple-600">선택</th>
-            <th className="text-right px-2">변화율</th>
-          </tr></thead>
-          <tbody>
-            {G.map((r, i) => {
-              const chg = r.b.M1 > 0 ? (r.tS - r.b.M1) / r.b.M1 : 0;
-              return (
-                <tr key={i} className="border-t border-gray-100">
-                  <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
-                  <td className="text-right px-2">{f(Math.round(r.tA))}</td>
-                  <td className="text-right px-2">{f(Math.round(r.tB))}</td>
-                  <td className="text-right px-2 font-bold">{f(Math.round(r.tC))}</td>
-                  <td className="text-right px-2 font-bold text-purple-700">{f(Math.round(r.tS))}</td>
-                  <td className="text-right px-2 font-bold" style={{ color: chg >= 0 ? "#16a34a" : "#dc2626" }}>{pct(chg)}</td>
-                </tr>
-              );
-            })}
-            <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
-              <td className="px-2 py-1.5 text-sm">총수입</td>
-              <td className="text-right px-2"><div>{fE(T.tA)}억</div><div className="text-green-600 font-normal text-xs">{pct(tAchg)}</div></td>
-              <td className="text-right px-2"><div>{fE(T.tB)}억</div><div className="text-green-600 font-normal text-xs">{pct(tBchg)}</div></td>
-              <td className="text-right px-2"><div>{fE(T.tC)}억</div><div className="text-green-600 font-normal text-xs">{pct(tCchg)}</div></td>
-              <td className="text-right px-2 text-purple-700">{fE(T.tS)}억</td>
-              <td className="text-right px-2" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{pct(tSchg)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
   </>);
 })

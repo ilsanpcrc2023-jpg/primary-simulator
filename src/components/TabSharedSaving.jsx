@@ -12,7 +12,6 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
     {/* ① 항목별 절감 — 실제 입력 (위로) */}
     <div className={card + " p-4"}>
       <h2 className="font-bold text-gray-900 text-sm mb-3">항목별 절감 시뮬레이션</h2>
-      <div className="text-xs text-gray-400 mb-3">금액·절감률을 편집하면 아래 총괄에 자동 반영</div>
 
       {[
         { label: "급성기 입원비", icon: "🏥", color: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
@@ -90,10 +89,10 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
 
     {/* 배분 비율 */}
     <div className={card + " p-4"}>
-      <h2 className="font-bold text-gray-900 text-sm mb-3">절감액 배분 비율</h2>
+      <h2 className="font-bold text-gray-900 text-sm mb-3">Shared Saving 성과 배분 비율</h2>
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { n: "공단 100%", v: 0, c: "#dc2626", bg: "#fef2f2" },
+          { n: "공단 적립 100%", v: 0, c: "#dc2626", bg: "#fef2f2" },
           { n: "50 : 50", v: 50, c: "#7c3aed", bg: "#f5f3ff" },
           { n: "일차의료 100%", v: 100, c: "#16a34a", bg: "#f0fdf4" },
         ].map((b, i) => (
@@ -107,7 +106,7 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
         ))}
       </div>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-bold text-red-600 shrink-0">공단 {100 - ssClinicShare}%</span>
+        <span className="text-xs font-bold text-red-600 shrink-0">공단 적립 {100 - ssClinicShare}%</span>
         <input type="range" min={0} max={100} step={5} value={ssClinicShare}
           onChange={e => set("ssClinicShare", parseInt(e.target.value))}
           aria-label="절감액 배분 비율 슬라이더"
@@ -116,7 +115,7 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
         <span className="text-xs font-bold text-green-600 shrink-0">일차의료 {ssClinicShare}%</span>
       </div>
       <div className="flex rounded-md overflow-hidden h-5 text-xs font-bold text-white">
-        {ssClinicShare < 100 && <div style={{ width: `${100 - ssClinicShare}%`, background: "#dc2626" }} className="flex items-center justify-center transition-all">{(100 - ssClinicShare) > 15 ? "공단" : ""}</div>}
+        {ssClinicShare < 100 && <div style={{ width: `${100 - ssClinicShare}%`, background: "#dc2626" }} className="flex items-center justify-center transition-all">{(100 - ssClinicShare) > 15 ? "공단 적립" : ""}</div>}
         {ssClinicShare > 0 && <div style={{ width: `${ssClinicShare}%`, background: "#16a34a" }} className="flex items-center justify-center transition-all">{ssClinicShare > 15 ? "일차의료" : ""}</div>}
       </div>
     </div>
@@ -148,27 +147,17 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
       <div className="flex justify-center gap-4 text-xs mt-1">
         <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#ef4444" }}></span>공단 적립 <b className="text-red-600">{fAuto(SS.nhisFromItem)}</b></span>
         <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#22c55e" }}></span>일차의료 지원 <b className="text-green-600">{fAuto(SS.clinicFromItem)}</b></span>
-        <span className="text-gray-400">합계 <b>{fAuto(SS.itemTotal)}</b></span>
       </div>
     </div>
 
     {/* Win-Win-Win */}
     <WinWinWin items={[
       { t: "국민 (환자)", c: "#059669", bg: "#ecfdf5", bd: "#a7f3d0",
-        txt: "불필요한 입원·응급 감소\n의료의 질 향상\n주치의 연속 진료" },
+        txt: "불필요한 입원·응급 감소\n의료의 질 향상\n주치의 진료" },
       { t: "의원 (의사)", c: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
-        txt: `B]축 수입 + C]축 인센티브\n절감 성과의 ${ssClinicShare}% 배분\n${fAuto(SS.clinicFromItem)} 추가` },
+        txt: `절감 성과의 ${ssClinicShare}% 배분\n${fAuto(SS.clinicFromItem)} 추가 지원` },
       { t: "공단 (정부)", c: "#dc2626", bg: "#fef2f2", bd: "#fecaca",
-        txt: `절감분의 ${100 - ssClinicShare}% 환수\n${fAuto(SS.nhisFromItem)} 절감\n의료비 예측가능성 향상` },
+        txt: `절감성과 ${100 - ssClinicShare}% 적립\n${fAuto(SS.nhisFromItem)} 절감\n의료비 예측가능성 향상` },
     ]} />
-
-    {/* 안내 문구 */}
-    <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-start gap-2">
-      <span className="text-amber-500 shrink-0 text-sm">⚠</span>
-      <span className="text-xs text-amber-800 leading-relaxed">
-        기본값은 2023 건강보험통계연보 전국 평균 기준이며 자유롭게 수정 가능합니다.
-        B]축(환자군 수가)과 독립된 C]축(성과기반 조정) 시뮬레이션입니다.
-      </span>
-    </div>
   </>);
 })

@@ -32,7 +32,7 @@ export default function App() {
     <div className="overflow-x-hidden" style={{ fontFamily: "'Pretendard','Noto Sans KR',-apple-system,sans-serif", background: "#f8fafc", minHeight: "100vh" }}>
       <style>{sliderCSS}</style>
 
-      <Header totalN={state.totalN} dataLabel={state.dataLabel} />
+      <Header />
 
       {/* FOLDER TABS */}
       <div className="max-w-4xl mx-auto px-3 sm:px-4 pt-3" style={{ borderBottom: "2px solid #94a3b8" }}>
@@ -86,7 +86,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        환자군(NHIS-HCC) 기반 일차의료 지불모형 시뮬레이터 v6.1 (정책 v2.7 반영) · 일산병원 일차의료개발센터 · © 2026
+        일차의료 지불모형 시뮬레이터 v6.1 · 일차의료개발센터 · © 2026
       </div>
     </div>
   );
