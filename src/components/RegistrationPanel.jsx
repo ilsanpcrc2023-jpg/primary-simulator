@@ -69,15 +69,15 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = 
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         {SH.map((g, i) => (
           <div key={i} className="space-y-1.5">
-            <span className="text-xs font-bold" style={{ color: CL[i] }}>{g}</span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold" style={{ color: CL[i] }}>{g}</span>
+              <NumBox value={F_g[i]} onChange={v => updF(i, v)} color={CL[i]} suffix="원" />
+            </div>
             <input type="range" min={0} max={F_MAX} step={1000} value={Math.min(F_g[i], F_MAX)}
               onChange={e => updF(i, parseFloat(e.target.value))}
               aria-label={`${g} 일차의료 기능보정 슬라이더`}
               className="w-full big-thumb"
               style={{ '--thumb-bg': CL[i], accentColor: CL[i], background: `linear-gradient(to right, ${CL[i]} ${(Math.min(F_g[i], F_MAX) / F_MAX) * 100}%, #e5e7eb 0%)` }} />
-            <div className="text-center">
-              <NumBox value={F_g[i]} onChange={v => updF(i, v)} color={CL[i]} suffix="원" />
-            </div>
           </div>
         ))}
       </div>
@@ -95,11 +95,11 @@ export const TCard = memo(function TCard({ state, G }) {
         <h2 className="font-extrabold text-lg tracking-tight" style={{ color: "#3730a3" }}>일차의료수가 (P = B + F)</h2>
       </div>
       <div className="px-4 pb-3 pt-1">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {SH.map((g, i) => (
-            <div key={i} className="rounded-lg px-2 py-2 text-center bg-white/90 shadow-sm" style={{ borderLeft: `5px solid ${CL[i]}` }}>
+            <div key={i} className="rounded-lg px-2 py-2 text-center bg-white/90 shadow-sm min-w-0" style={{ borderLeft: `5px solid ${CL[i]}` }}>
               <div className="text-[11px] font-bold" style={{ color: CL[i] }}>{g}</div>
-              <div className="text-lg font-extrabold text-indigo-900 tabular-nums">{f(G[i].p + F_g[i])}<span className="text-sm font-bold ml-0.5">원</span></div>
+              <div className="text-base sm:text-lg font-extrabold text-indigo-900 tabular-nums whitespace-nowrap">{f(G[i].p + F_g[i])}<span className="text-xs sm:text-sm font-bold ml-0.5">원</span></div>
             </div>
           ))}
         </div>

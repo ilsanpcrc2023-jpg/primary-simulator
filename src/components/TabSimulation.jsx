@@ -43,15 +43,15 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
         <div className="grid grid-cols-2 gap-x-6 gap-y-3">
           {SH.map((g, i) => (
             <div key={i} className="space-y-1.5">
-              <span className="text-xs font-bold" style={{ color: CL[i] }}>{g}</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold" style={{ color: CL[i] }}>{g}</span>
+                <NumBox value={P[i]} onChange={v => updP(i, Math.max(0, Math.round(v)))} color={CL[i]} suffix="원" />
+              </div>
               <input type="range" min={50000} max={2000000} step={10000} value={P[i]}
                 onChange={e => updP(i, parseFloat(e.target.value))}
                 aria-label={`${g} 기본수가 슬라이더`}
                 className="w-full big-thumb"
                 style={{ '--thumb-bg': CL[i], accentColor: CL[i], background: `linear-gradient(to right, ${CL[i]} ${((P[i] - 50000) / 1950000) * 100}%, #e5e7eb 0%)` }} />
-              <div className="text-center">
-                <NumBox value={P[i]} onChange={v => updP(i, Math.max(0, Math.round(v)))} color={CL[i]} suffix="원" />
-              </div>
             </div>
           ))}
         </div>
