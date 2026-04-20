@@ -31,38 +31,54 @@ function PctInput({ value, onChange, color }) {
 
 /* FCard (일차의료 기능보정 F) — B 카드와 동일한 4 슬라이더+NumBox 구조 */
 export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = false }) {
-  const { F_g } = state;
+  const { F_g, P: B_g } = state;
 
-  const presets = [
-    { label: "균등 2만", v: [20000, 20000, 20000, 20000] },
-    { label: "1·2·3·4만", v: [10000, 20000, 30000, 40000] },
-    { label: "2·4·6·8만", v: [20000, 40000, 60000, 80000] },
-    { label: "연간관리료", v: [122860, 203040, 291120, 362530] },
+  // 버튼 1: 균등 — 1군 값을 모든 군에 복사
+  const applyEqual = () => {
+    const v = F_g[0];
+    setFAll([v, v, v, v]);
+  };
+  // 버튼 2: 차등 — 1군 값 기준 1:2:3:4 비율
+  const applyGraduated = () => {
+    const v = F_g[0];
+    setFAll([v, v * 2, v * 3, v * 4]);
+  };
+  // 버튼 3: 만원 맞춤 — B를 만원 단위 올림했을 때의 차액을 F에 배정
+  // B가 이미 만원 배수인 군은 기존 F_g 유지 (덮어쓰기 방지)
+  const applyRoundUp = () => {
+    const newF = B_g.map((b, i) => {
+      const rounded = Math.ceil(b / 10000) * 10000;
+      const diff = rounded - b;
+      return diff > 0 ? diff : F_g[i];
+    });
+    setFAll(newF);
+  };
+
+  const actions = [
+    { label: "균등", onClick: applyEqual, title: "1군 값을 모든 군에 복사" },
+    { label: "차등", onClick: applyGraduated, title: "1군 값 기준 1:2:3:4 비율로 배정" },
+    { label: "만원 맞춤", onClick: applyRoundUp, title: "B를 만원 단위로 올림한 차액을 F에 배정 (P가 만원 단위로 정돈됨)" },
   ];
 
   return (
     <div className={bare ? "" : card + " p-4"}>
       <div className="mb-2 space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <h2 className={H2}>2. 일차의료 기능보정 (F)</h2>
-          {resetF && (
-            <button onClick={resetF}
-              className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white shrink-0">
-              ↩ 초기화
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {presets.map(p => {
-            const active = F_g.every((v, i) => v === p.v[i]);
-            return (
-              <button key={p.label} onClick={() => setFAll(p.v)}
-                className="text-xs px-2 py-0.5 rounded border font-medium transition"
-                style={active ? { background: "#f5f3ff", borderColor: "#c4b5fd", color: "#6d28d9" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
-                {p.label}
+          <div className="flex flex-wrap gap-1 items-center">
+            {actions.map(a => (
+              <button key={a.label} onClick={a.onClick} title={a.title}
+                className="text-xs px-2 py-0.5 rounded border font-medium transition border-gray-300 text-gray-700 hover:bg-violet-50 hover:border-violet-300 hover:text-violet-700">
+                {a.label}
               </button>
-            );
-          })}
+            ))}
+            {resetF && (
+              <button onClick={resetF}
+                className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white shrink-0">
+                ↩ 초기화
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
