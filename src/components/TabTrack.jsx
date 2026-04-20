@@ -88,26 +88,26 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tSchg }) {
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
         <div className="flex items-baseline justify-between mb-2">
           <h3 className="font-bold text-base text-green-800">Track 수입 변화</h3>
-          <span className="text-[11px] font-semibold text-green-600">행위별 {ffsPct}% / 환자군 {hccPct}%</span>
+          <span className="text-xs font-semibold text-green-600">행위별 {ffsPct}% / 환자군 {hccPct}%</span>
         </div>
-        <div className="text-[11px] text-green-700/80 font-semibold">전체 변화액</div>
+        <div className="text-xs text-green-700/80 font-semibold">전체 변화액</div>
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(T.inc0, T.tS)}</span>
           <span className="text-base sm:text-lg font-bold leading-tight" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626", opacity: 0.85 }}>{pct(tSchg)}</span>
         </div>
 
         <div className="mt-2 pt-2 border-t border-green-200/70">
-          <div className="text-[11px] text-green-700/80 font-semibold">의원당 평균 변화 <span className="font-normal text-green-600/60">(M={f(M)})</span></div>
+          <div className="text-xs text-green-700/80 font-semibold">의원당 평균 변화 <span className="font-normal text-green-600/60">(M={f(M)})</span></div>
           <div className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffMan(perClinicGain)}</div>
         </div>
 
         <div className="mt-2 pt-2 border-t border-green-200/70 space-y-0.5">
           <div className="flex items-baseline justify-between">
-            <span className="text-[11px] text-green-700/70">기준선 의원당 수입</span>
+            <span className="text-xs text-green-700/70">기준선 의원당 수입</span>
             <span className="text-base font-bold text-green-800/80">{fMan(perClinicBase)}/년</span>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-[11px] text-green-700 font-semibold">Track 후 의원당 수입</span>
+            <span className="text-xs text-green-700 font-semibold">Track 후 의원당 수입</span>
             <span className="text-lg font-extrabold text-green-900">{fMan(perClinicTrack)}/년</span>
           </div>
         </div>
@@ -116,17 +116,17 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tSchg }) {
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
         <div className="flex items-baseline justify-between mb-2">
           <h3 className="font-bold text-base text-blue-800">공단 의원급 외래 지출 변화</h3>
-          <span className="text-[11px] font-semibold text-blue-600">Track 무관 · L에 따라</span>
+          <span className="text-xs font-semibold text-blue-600">Track 무관 · L에 따라</span>
         </div>
-        <div className="text-[11px] text-blue-700/80 font-semibold">전체 변화액</div>
+        <div className="text-xs text-blue-700/80 font-semibold">전체 변화액</div>
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-2xl sm:text-3xl font-extrabold text-blue-700 leading-tight">{diffAuto(T.nhi0, T.nhi2)}</span>
           <span className="text-base sm:text-lg font-bold text-blue-700/80 leading-tight">{pct(nhiNewChg, 2)}</span>
         </div>
-        <div className="text-[11px] text-blue-700/60 mt-0.5">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
+        <div className="text-xs text-blue-700/60 mt-0.5">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
         <div className="mt-2 pt-2 border-t border-blue-200/70">
           <div className="flex items-baseline justify-between">
-            <span className="text-[11px] text-blue-700/80 font-semibold">의원당 평균 변화</span>
+            <span className="text-xs text-blue-700/80 font-semibold">의원당 평균 변화</span>
             <span className="text-lg font-bold text-blue-700">{diffMan((T.nhi2 - T.nhi0) / M)}</span>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tSchg }) {
       <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
         <h3 className="font-bold text-base text-amber-900">일차의료 전환지원금 (PT)</h3>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-amber-700 font-semibold">기준 금액</span>
+          <span className="text-xs text-amber-700 font-semibold">기준 금액</span>
           <NumBox value={pt_base} onChange={v => set("pt_base", Math.max(0, Math.round(v)))} color="#b45309" suffix="원" />
         </div>
       </div>
@@ -166,7 +166,7 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tSchg }) {
       </div>
 
       <div className="bg-white/70 rounded-lg px-3 py-2.5">
-        <div className="text-[11px] text-amber-800 font-semibold mb-1">
+        <div className="text-xs text-amber-800 font-semibold mb-1">
           의원당 1년차 합계 <span className="font-normal text-amber-600/80">(Track 수입 + PT {ptPct.toFixed(0)}%)</span>
         </div>
         <div className="flex items-baseline gap-2 flex-wrap">

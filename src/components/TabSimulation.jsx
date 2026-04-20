@@ -35,7 +35,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
           <h2 className="font-bold text-base text-gray-900">1. 환자군 기본수가 (B)</h2>
           <div className="flex items-center gap-2">
             <button onClick={resetP}
-              className="text-[11px] text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
+              className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
               ↩ 초기화
             </button>
           </div>
@@ -77,7 +77,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
           <span className="text-lg font-extrabold text-purple-900">{(LavgAfter * 100).toFixed(1)}%</span>
           <NumBox value={LC} onChange={v => set("LC", v)} color="#7c3aed" suffix="%p" />
           <button onClick={resetLC}
-            className="text-[11px] text-purple-700 hover:text-red-600 border border-purple-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
+            className="text-xs text-purple-700 hover:text-red-600 border border-purple-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
             ↩ 초기화
           </button>
         </div>
@@ -97,19 +97,19 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
         <div className="flex items-baseline justify-between mb-2">
           <h3 className="font-bold text-base text-green-800">의원 수입 변화</h3>
-          <span className="text-[11px] font-semibold text-green-600">타원이용비중 {LC}%</span>
+          <span className="text-xs font-semibold text-green-600">타원이용비중 {LC}%</span>
         </div>
 
         {/* 기준선 */}
         <div className="flex items-baseline justify-between mb-1">
-          <span className="text-[11px] text-green-700/80 font-semibold">기준 수입 (참여 전, 전원 FFS)</span>
+          <span className="text-xs text-green-700/80 font-semibold">기준 수입 (참여 전, 전원 FFS)</span>
           <span className="text-sm font-bold text-green-800/80">{fMan(perClinicBaseline)}/의원·년</span>
         </div>
 
         {/* ① 환자군 패널 변화 효과 */}
         <div className="mt-2 bg-white/60 rounded px-2 py-1.5">
           <div className="flex items-baseline justify-between">
-            <span className="text-[11px] text-slate-600">① 환자군 패널 변화 효과</span>
+            <span className="text-xs text-slate-600">① 환자군 패널 변화 효과</span>
             <span className="text-sm font-bold" style={{ color: decomp.panelEffect >= 0 ? "#16a34a" : "#dc2626" }}>
               {diffMan(perClinicPanel)}/의원
             </span>
@@ -119,7 +119,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
         {/* ② 지불방식 전환 효과 */}
         <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
           <div className="flex items-baseline justify-between">
-            <span className="text-[11px] text-indigo-700 font-semibold">② 지불방식 전환 효과</span>
+            <span className="text-xs text-indigo-700 font-semibold">② 지불방식 전환 효과</span>
             <span className="text-sm font-bold" style={{ color: decomp.modelEffect >= 0 ? "#16a34a" : "#dc2626" }}>
               {diffMan(perClinicModel)}/의원
             </span>
@@ -129,19 +129,19 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
         {/* 순 변화 */}
         <div className="mt-2 pt-2 border-t border-green-200/70">
           <div className="flex items-baseline justify-between mb-0.5">
-            <span className="text-[11px] text-green-700 font-semibold">순 변화 (① + ②)</span>
-            <span className="text-[11px] font-bold" style={{ color: decomp.netChgPct >= 0 ? "#16a34a" : "#dc2626" }}>
+            <span className="text-xs text-green-700 font-semibold">순 변화 (① + ②)</span>
+            <span className="text-xs font-bold" style={{ color: decomp.netChgPct >= 0 ? "#16a34a" : "#dc2626" }}>
               {pct(decomp.netChgPct)}
             </span>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-[11px] text-green-700/70">의원당</span>
+            <span className="text-xs text-green-700/70">의원당</span>
             <span className="text-2xl font-extrabold leading-tight" style={{ color: decomp.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
               {diffMan(perClinicNet)}
             </span>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-[11px] text-green-700/70">전체</span>
+            <span className="text-xs text-green-700/70">전체</span>
             <span className="text-base font-bold" style={{ color: decomp.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
               {diffAuto(0, decomp.netChange)}
             </span>
@@ -151,7 +151,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
         {/* 참여 후 총수입 */}
         <div className="mt-2 pt-2 border-t border-green-200/70">
           <div className="flex items-baseline justify-between">
-            <span className="text-[11px] text-green-700 font-semibold">참여 후 의원당 수입</span>
+            <span className="text-xs text-green-700 font-semibold">참여 후 의원당 수입</span>
             <span className="text-lg font-extrabold text-green-900">{fMan(perClinicAfter)}/년</span>
           </div>
         </div>
@@ -228,13 +228,13 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
       </button>
       {showFormula && (
         <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-3">
-          <div className="bg-gray-50 rounded-lg px-3 py-2 text-[11px] text-gray-700 leading-relaxed font-mono space-y-1">
+          <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-700 leading-relaxed font-mono space-y-1">
             <div><b className="text-purple-700">P = B + R</b> (일차의료수가, 명목 청구수가)</div>
             <div><b className="text-purple-700">A = B × (1 − L) + R</b> (공단 실지급, R은 L 우회)</div>
             <div><b className="text-purple-700">본인부담 = 현행 유지</b></div>
             <div>의원 수입 = 등록환자 + 비등록환자</div>
           </div>
-          <div className="bg-gray-50 rounded-lg px-3 py-2 text-[11px] text-gray-700 leading-relaxed font-mono space-y-1">
+          <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-700 leading-relaxed font-mono space-y-1">
             <div className="font-semibold text-gray-800 mb-0.5">환자군 패널 변화 효과 ↔ 지불방식 전환 효과</div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import useSimulator from "./hooks/useSimulator";
 import Header from "./components/Header";
 import TabSimulation from "./components/TabSimulation";
@@ -6,7 +7,11 @@ import TabSharedSaving from "./components/TabSharedSaving";
 import DatasetSelector from "./components/DatasetSelector";
 import { sliderCSS } from "./constants";
 
-const TABS = ["📋 수가 시뮬레이션", "📊 Track", "💰 Shared Saving"];
+const TABS = [
+  { full: "📋 수가 시뮬레이션", short: "📋 수가" },
+  { full: "📊 Track", short: "📊 Track" },
+  { full: "💰 Shared Saving", short: "💰 Saving" },
+];
 
 const tabStyle = (active) => ({
   background: active ? "#fff" : "#e2e8f0",
@@ -15,24 +20,35 @@ const tabStyle = (active) => ({
   borderBottom: active ? "2px solid #fff" : "2px solid #94a3b8",
   borderRadius: "10px 10px 0 0",
   fontWeight: active ? 800 : 600,
-  fontSize: "17px",
-  padding: "14px 10px",
+  padding: "12px 6px",
   marginBottom: "-2px",
   boxShadow: active ? "0 -2px 8px rgba(30, 64, 175, 0.15)" : "none",
   position: "relative",
   zIndex: active ? 2 : 1,
+  whiteSpace: "nowrap",
 });
+
+const ZOOM_LEVELS = [0.9, 1.0, 1.15, 1.3];
+const ZOOM_KEY = "primarySim.zoom";
 
 export default function App() {
   const sim = useSimulator();
   const { state, set, loadPreset } = sim;
   const { tab } = state;
 
+  const [zoomIdx, setZoomIdx] = useState(() => {
+    const saved = parseInt(localStorage.getItem(ZOOM_KEY) ?? "1", 10);
+    return Number.isFinite(saved) && saved >= 0 && saved < ZOOM_LEVELS.length ? saved : 1;
+  });
+  useEffect(() => { localStorage.setItem(ZOOM_KEY, String(zoomIdx)); }, [zoomIdx]);
+  const incZoom = () => setZoomIdx(i => Math.min(ZOOM_LEVELS.length - 1, i + 1));
+  const decZoom = () => setZoomIdx(i => Math.max(0, i - 1));
+
   return (
-    <div className="overflow-x-hidden" style={{ fontFamily: "'Pretendard','Noto Sans KR',-apple-system,sans-serif", background: "#f8fafc", minHeight: "100vh" }}>
+    <div className="overflow-x-hidden" style={{ fontFamily: "'Pretendard','Noto Sans KR',-apple-system,sans-serif", background: "#f8fafc", minHeight: "100vh", zoom: ZOOM_LEVELS[zoomIdx] }}>
       <style>{sliderCSS}</style>
 
-      <Header />
+      <Header zoomIdx={zoomIdx} zoomLevels={ZOOM_LEVELS} onZoomIn={incZoom} onZoomOut={decZoom} />
 
       {/* FOLDER TABS */}
       <div className="max-w-4xl mx-auto px-3 sm:px-4 pt-3" style={{ borderBottom: "2px solid #94a3b8" }}>
@@ -40,9 +56,10 @@ export default function App() {
           {TABS.map((t, i) => (
             <button key={i} onClick={() => set("tab", i)}
               aria-selected={tab === i}
-              className="flex-1 text-center cursor-pointer transition-all"
+              className="flex-1 text-center cursor-pointer transition-all text-[13px] sm:text-[17px]"
               style={tabStyle(tab === i)}>
-              {t}
+              <span className="sm:hidden">{t.short}</span>
+              <span className="hidden sm:inline">{t.full}</span>
             </button>
           ))}
         </div>
