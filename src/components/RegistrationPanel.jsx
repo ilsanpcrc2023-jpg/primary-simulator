@@ -29,7 +29,7 @@ function PctInput({ value, onChange, color }) {
   );
 }
 
-/* FCard (환자등록관리료 R) — B 카드와 동일한 4 슬라이더+NumBox 구조 */
+/* FCard (일차의료 기능보정 F) — B 카드와 동일한 4 슬라이더+NumBox 구조 */
 export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = false }) {
   const { F_g } = state;
 
@@ -44,7 +44,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = 
     <div className={bare ? "" : card + " p-4"}>
       <div className="mb-2 space-y-1.5">
         <div className="flex items-center justify-between gap-2">
-          <h2 className={H2}>2. 환자등록관리료 (R)</h2>
+          <h2 className={H2}>2. 일차의료 기능보정 (F)</h2>
           {resetF && (
             <button onClick={resetF}
               className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white shrink-0">
@@ -72,7 +72,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = 
             <span className="text-xs font-bold" style={{ color: CL[i] }}>{g}</span>
             <input type="range" min={0} max={F_MAX} step={1000} value={Math.min(F_g[i], F_MAX)}
               onChange={e => updF(i, parseFloat(e.target.value))}
-              aria-label={`${g} 환자등록관리료 슬라이더`}
+              aria-label={`${g} 일차의료 기능보정 슬라이더`}
               className="w-full big-thumb"
               style={{ '--thumb-bg': CL[i], accentColor: CL[i], background: `linear-gradient(to right, ${CL[i]} ${(Math.min(F_g[i], F_MAX) / F_MAX) * 100}%, #e5e7eb 0%)` }} />
             <div className="text-center">
@@ -85,14 +85,14 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = 
   );
 });
 
-/* TCard — 일차의료수가 (P = B + R), 항상 펼침 */
+/* TCard — 일차의료수가 (P = B + F), 항상 펼침 */
 export const TCard = memo(function TCard({ state, G }) {
   const { F_g } = state;
 
   return (
     <div className="rounded-xl border shadow-sm overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#c7d2fe" }}>
       <div className="px-4 pt-3 pb-1">
-        <h2 className="font-bold text-base" style={{ color: "#4338ca" }}>일차의료수가 (P = B + R)</h2>
+        <h2 className="font-bold text-base" style={{ color: "#4338ca" }}>일차의료수가 (P = B + F)</h2>
       </div>
       <div className="px-4 pb-3 pt-1">
         <div className="grid grid-cols-4 gap-2">
