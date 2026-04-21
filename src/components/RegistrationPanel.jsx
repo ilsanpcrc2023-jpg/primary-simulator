@@ -11,23 +11,22 @@ const F_MAX = 600000;
 export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = false }) {
   const { F_g, P: B_g } = state;
 
-  // 버튼 1: 균등 — 1군 값을 모든 군에 복사
+  // 버튼 1: 균등 — 모든 군을 2만원으로 설정
   const applyEqual = () => {
-    const v = F_g[0];
-    setFAll([v, v, v, v]);
+    setFAll([20000, 20000, 20000, 20000]);
   };
-  // 버튼 2: 차등 — 1군 값 기준 1:2:3:4 비율
+  // 버튼 2: 차등 — 1군 10,000원 고정 기준 1:2:3:4 비율 (1·2·3·4만원)
   const applyGraduated = () => {
-    const v = F_g[0];
-    setFAll([v, v * 2, v * 3, v * 4]);
+    setFAll([10000, 20000, 30000, 40000]);
   };
-  // 버튼 3: 끝자리 보정 — B의 만원 이하 끝자리를 F로 이전하여 P가 만원 단위로 정돈
-  // B가 이미 만원 배수인 군은 기존 F_g 유지 (덮어쓰기 방지)
+  // 버튼 3: 끝자리 보정 — 기존 F에 (B의 만원 이하 끝자리 올림 보정값)을 더해 P를 만원 단위로 정돈
+  // 예: B=280,832 + F=10,000 → diff=9,168 → F_new=19,168 → P=300,000
+  // B가 이미 만원 배수면 diff=0이라 F 변화 없음
   const applyRoundUp = () => {
     const newF = B_g.map((b, i) => {
       const rounded = Math.ceil(b / 10000) * 10000;
       const diff = rounded - b;
-      return diff > 0 ? diff : F_g[i];
+      return F_g[i] + diff;
     });
     setFAll(newF);
   };
@@ -35,7 +34,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = 
   const actions = [
     { label: "균등", onClick: applyEqual, title: "1군 값을 모든 군에 복사" },
     { label: "차등", onClick: applyGraduated, title: "1군 값 기준 1:2:3:4 비율로 배정" },
-    { label: "끝자리 보정", onClick: applyRoundUp, title: "B의 만원 이하 끝자리를 F로 이전하여 P가 만원 단위로 정돈됨" },
+    { label: "끝자리 보정", onClick: applyRoundUp, title: "기존 F 값에 B의 만원 이하 끝자리 올림 보정값을 더해 P가 만원 단위로 정돈됨" },
   ];
 
   return (
