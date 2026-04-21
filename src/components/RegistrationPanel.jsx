@@ -186,19 +186,22 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, scaleR
             </div>
           </div>
 
-          {/* 요약 한 줄 */}
-          <div className="pt-1.5 border-t border-gray-100 text-xs text-gray-700 font-mono leading-snug">
-            의원당 환자수 <b>{f(Math.round(reg.n_total_per_clinic))}</b> = 등록 <b className="text-blue-700">{f(Math.round(reg.n_reg_pc))}</b> ({(reg.regRate * 100).toFixed(1)}%) + 비등록 <b>{f(Math.round(reg.n_total_per_clinic - reg.n_reg_pc))}</b> ({((1 - reg.regRate) * 100).toFixed(1)}%)
-            <div className="text-[10px] text-gray-400 mt-0.5 font-sans">※ 환자군별 등록수는 데이터 관리 → 편집 테이블에서 조정</div>
+          {/* 요약 한 줄 — 핵심 정보 강조 */}
+          <div className="pt-2 border-t border-gray-100 text-sm font-semibold text-gray-800 leading-snug">
+            의원당 환자수 <b className="text-base">{f(Math.round(reg.n_total_per_clinic))}명</b> = 등록 <b className="text-base text-blue-700">{f(Math.round(reg.n_reg_pc))}명</b> ({(reg.regRate * 100).toFixed(1)}%) + 비등록 <b className="text-base">{f(Math.round(reg.n_total_per_clinic - reg.n_reg_pc))}명</b> ({((1 - reg.regRate) * 100).toFixed(1)}%)
           </div>
 
           {/* 사업 참여 의원 수 — 시스템 규모 (맥락 전환: 의원당 → 전체) */}
           <div className="mt-3 pt-3 border-t-2 border-dashed border-gray-300">
-            <div className="text-[10px] text-gray-500 mb-1.5 font-semibold">── 시스템 전체 규모 ──</div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] text-gray-500 font-semibold">── 시스템 전체 규모 ──</span>
+              <span className="text-[11px] text-gray-600 font-semibold">전체 N = <b className="text-gray-800">{f(totalN)}명</b></span>
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">사업 참여 의원 수</span>
               <NumBox value={M_clinics} onChange={setMPreservingPerClinic} color="#1f2937" suffix="개" />
-              <div className="flex flex-wrap gap-1 ml-1">
+              <span className="text-xs text-gray-600 -ml-1">의원</span>
+              <div className="flex flex-wrap gap-1 ml-1 items-center">
                 {[10, 100, 1000, 3000].map(v => (
                   <button key={v} onClick={() => setMPreservingPerClinic(v)}
                     className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
@@ -206,8 +209,8 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, scaleR
                     {f(v)}
                   </button>
                 ))}
+                <span className="text-[10px] text-gray-500 ml-0.5">개 의원</span>
               </div>
-              <span className="text-[10px] text-gray-400 ml-auto">전체 N = {f(totalN)}명</span>
             </div>
           </div>
       </div>
