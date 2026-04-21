@@ -123,18 +123,18 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
     {/* 배분 결과 파이 차트 */}
     <div className={card + " p-3"}>
       <h3 className="text-xs font-bold text-gray-700 mb-1 text-center">절감액 배분</h3>
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer width="100%" height={220}>
         <PieChart>
           <Pie
             data={[
               { name: "공단 적립", value: SS.nhisFromItem, color: "#ef4444" },
               { name: "일차의료 지원", value: SS.clinicFromItem, color: "#22c55e" },
             ].filter(d => d.value > 0)}
-            cx="50%" cy="50%" innerRadius={45} outerRadius={85}
+            cx="50%" cy="50%" innerRadius={48} outerRadius={88}
             startAngle={90} endAngle={450}
             paddingAngle={3} dataKey="value"
-            label={({ name, value }) => `${name} ${fAuto(value || 0)}`}
-            labelLine={{ stroke: "#94a3b8", strokeWidth: 1 }}
+            label={({ percent }) => percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : ""}
+            labelLine={false}
           >
             {[
               { value: SS.nhisFromItem, color: "#ef4444" },
@@ -144,9 +144,9 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
           <Tooltip formatter={v => fAuto(v)} contentStyle={{ fontSize: 12 }} />
         </PieChart>
       </ResponsiveContainer>
-      <div className="flex justify-center gap-4 text-xs mt-1">
-        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#ef4444" }}></span>공단 적립 <b className="text-red-600">{fAuto(SS.nhisFromItem)}</b></span>
-        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#22c55e" }}></span>일차의료 지원 <b className="text-green-600">{fAuto(SS.clinicFromItem)}</b></span>
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs mt-1">
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#ef4444" }}></span>공단 적립 <b className="text-red-600">{fAuto(SS.nhisFromItem)}</b></span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#22c55e" }}></span>일차의료 지원 <b className="text-green-600">{fAuto(SS.clinicFromItem)}</b></span>
       </div>
     </div>
 
