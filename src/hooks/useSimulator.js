@@ -346,145 +346,70 @@ export default function useSimulator() {
         set("uploadBanner", { success: false, msg: "데이터 부족: 4개 환자군 행이 필요합니다.", details: `시트 "${sheetName}"에서 ${data.length}행만 발견` });
         return;
       }
+      // v6.4: N·M1·L 3 필드만 읽고 base만 갱신.
+      // B(state.P)·F(state.F_g) 정책 슬라이더는 보존 — 엑셀 라운드트립 일관성 보장.
       const newBase = data.slice(0, 4).map((row, i) => {
-        let ref = findCol(row, COL_ALIASES.ref, 0);
-        let cr = findCol(row, COL_ALIASES.cr, 0);
         let N = findCol(row, COL_ALIASES.N, 0);
         let M1 = findCol(row, COL_ALIASES.M1, 0);
         let L = findCol(row, COL_ALIASES.L, 0);
-        if (cr > 1) cr = cr / 100;
         if (L > 1) L = L / 100;
-        if (cr < 0 || cr > 1) cr = INIT_BASE[i].cr;
         if (L < 0 || L > 1) L = INIT_BASE[i].L;
         return {
-          ref: ref || INIT_BASE[i].ref,
-          cr: cr || INIT_BASE[i].cr,
           N: Math.round(N) || INIT_BASE[i].N,
           M1: M1 || INIT_BASE[i].M1,
           L: L || INIT_BASE[i].L,
         };
       });
-      const newP = data.slice(0, 4).map((row, i) => {
-        const v = findCol(row, COL_ALIASES.P, 0);
-        if (v) return Math.round(v);
-        // 엑셀에 B(수가) 열이 없으면 ref × cr로 자동 산출
-        const b = newBase[i];
-        return Math.round(b.ref * b.cr);
-      });
-      const newF = data.slice(0, 4).map((row, i) => {
-        const v = findCol(row, COL_ALIASES.F, -1);
-        return v >= 0 ? Math.round(v) : INIT_F[i];
-      });
       const label = file.name.replace(/\.(xlsx|xls|csv)$/i, "");
       const det = newBase.map((b, i) => {
         const SH = ["1군", "2군", "3군", "4군"];
         const fmt = v => Math.round(v).toLocaleString("ko-KR");
-        return `${SH[i]}: N=${fmt(b.N)}, ref=${fmt(b.ref)}, cr=${(b.cr * 100).toFixed(1)}%, L=${(b.L * 100).toFixed(1)}%, B=${fmt(newP[i])}, F=${fmt(newF[i])}`;
+        return `${SH[i]}: N=${fmt(b.N)}, M1=${fmt(b.M1)}, L=${b.L.toFixed(4)}`;
       }).join("\n");
       dispatch({
         type: "LOAD_DATA",
         base: newBase,
-        P: newP,
-        F_g: newF,
+        P: state.P,
+        F_g: state.F_g,
         dataLabel: label,
-        uploadBanner: { success: true, msg: `"${sheetName}" 시트에서 4군 데이터 로딩 완료`, details: det },
+        uploadBanner: { success: true, msg: `"${sheetName}" 시트에서 4군 데이터 로딩 완료 (B·F 슬라이더 보존)`, details: det },
       });
     } catch (err) {
       set("uploadBanner", { success: false, msg: "파일 읽기 실패: " + err.message, details: null });
     }
-  }, [set]);
+  }, [set, state.P, state.F_g]);
 
   const handleExport = useCallback(async () => {
     try {
       const SH = ["1군", "2군", "3군", "4군"];
-      const headers = [
-        "환자군", "N", "T", "C", "M",
-        "HCC 평균", "의원비중", "L", "M1",
-        "B", "F", "P", "공단지급", "본인부담", "1인당 의원수입",
-      ];
+      // v6.4: 4열 (환자군 + N + M1 + L) — 업로드 템플릿과 동일 구조.
+      // B/F 정책 슬라이더는 엑셀 비반영 → 라운드트립 시 슬라이더 보존됨.
+      const headers = ["환자군", "N", "M1", "L"];
       const ws = {};
       headers.forEach((h, c) => {
         ws[XLSX.utils.encode_cell({ r: 0, c })] = { t: "s", v: h };
       });
 
-      // 원자료 역산: T = ref × N, C = T × cr, M = M1 × N
-      const derived = base.map((b, i) => {
-        const N = b.N;
-        const T = Math.round(b.ref * N);
-        const C = Math.round(T * b.cr);
-        const M = Math.round(b.M1 * N);
-        return { N, T, C, M, F: F_g[i] ?? 0, B: P[i] };
-      });
-
-      derived.forEach((d, idx) => {
+      base.forEach((b, idx) => {
         const r = idx + 1;
-        const er = r + 1;
-        const rA = (col) => `${col}${er}`;
-        const hcc = d.T / d.N;
-        const cr = d.C / d.T;
-        const L = (d.C - d.M) / d.C;
-        const M1v = d.M / d.N;
-        const Pv = d.B + d.F;
-        const gongdan = Math.round(d.B * (1 - L) + d.F);
-        const bonin = Math.round(M1v * 0.3);
-        const income = gongdan + bonin;
-
         ws[XLSX.utils.encode_cell({ r, c: 0 })] = { t: "s", v: SH[idx] };
-        ws[XLSX.utils.encode_cell({ r, c: 1 })] = { t: "n", v: d.N };
-        ws[XLSX.utils.encode_cell({ r, c: 2 })] = { t: "n", v: d.T };
-        ws[XLSX.utils.encode_cell({ r, c: 3 })] = { t: "n", v: d.C };
-        ws[XLSX.utils.encode_cell({ r, c: 4 })] = { t: "n", v: d.M };
-        ws[XLSX.utils.encode_cell({ r, c: 5 })] = { t: "n", f: `${rA("C")}/${rA("B")}`, v: hcc };
-        ws[XLSX.utils.encode_cell({ r, c: 6 })] = { t: "n", f: `${rA("D")}/${rA("C")}`, v: cr };
-        ws[XLSX.utils.encode_cell({ r, c: 7 })] = { t: "n", f: `(${rA("D")}-${rA("E")})/${rA("D")}`, v: L };
-        ws[XLSX.utils.encode_cell({ r, c: 8 })] = { t: "n", f: `${rA("E")}/${rA("B")}`, v: M1v };
-        ws[XLSX.utils.encode_cell({ r, c: 9 })] = { t: "n", f: `ROUND(${rA("F")}*${rA("G")},0)`, v: d.B };
-        ws[XLSX.utils.encode_cell({ r, c: 10 })] = { t: "n", v: d.F };
-        ws[XLSX.utils.encode_cell({ r, c: 11 })] = { t: "n", f: `${rA("J")}+${rA("K")}`, v: Pv };
-        ws[XLSX.utils.encode_cell({ r, c: 12 })] = { t: "n", f: `ROUND(${rA("J")}*(1-${rA("H")})+${rA("K")},0)`, v: gongdan };
-        ws[XLSX.utils.encode_cell({ r, c: 13 })] = { t: "n", f: `ROUND(${rA("I")}*0.3,0)`, v: bonin };
-        ws[XLSX.utils.encode_cell({ r, c: 14 })] = { t: "n", f: `${rA("M")}+${rA("N")}`, v: income };
+        ws[XLSX.utils.encode_cell({ r, c: 1 })] = { t: "n", v: b.N };
+        ws[XLSX.utils.encode_cell({ r, c: 2 })] = { t: "n", v: b.M1 };
+        ws[XLSX.utils.encode_cell({ r, c: 3 })] = { t: "n", v: b.L };
       });
 
-      // 합계/가중평균 행 (r=5, excel row 6)
-      const sumN = derived.reduce((s, d) => s + d.N, 0);
-      const sumT = derived.reduce((s, d) => s + d.T, 0);
-      const sumC = derived.reduce((s, d) => s + d.C, 0);
-      const sumM = derived.reduce((s, d) => s + d.M, 0);
-      const sumWF = derived.reduce((s, d) => s + d.N * d.F, 0);
-      const wHcc = sumT / sumN;
-      const wCr = sumC / sumT;
-      const wL = (sumC - sumM) / sumC;
-      const wM1 = sumM / sumN;
-      const wB = Math.round(wHcc * wCr);
-      const wF = Math.round(sumWF / sumN);
-      const wP = wB + wF;
-      const wGongdan = Math.round(wB * (1 - wL) + wF);
-      const wBonin = Math.round(wM1 * 0.3);
-      const wIncome = wGongdan + wBonin;
+      // 합계/가중평균 행 (r=5)
+      const sumN = base.reduce((s, b) => s + b.N, 0);
+      const wM1 = sumN > 0 ? base.reduce((s, b) => s + b.M1 * b.N, 0) / sumN : 0;
+      const wL = sumN > 0 ? base.reduce((s, b) => s + b.L * b.N, 0) / sumN : 0;
       const SR = 5, SER = 6;
-      ws[XLSX.utils.encode_cell({ r: SR, c: 0 })] = { t: "s", v: "합계" };
+      ws[XLSX.utils.encode_cell({ r: SR, c: 0 })] = { t: "s", v: "합계/가중평균" };
       ws[XLSX.utils.encode_cell({ r: SR, c: 1 })] = { t: "n", f: "SUM(B2:B5)", v: sumN };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 2 })] = { t: "n", f: "SUM(C2:C5)", v: sumT };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 3 })] = { t: "n", f: "SUM(D2:D5)", v: sumC };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 4 })] = { t: "n", f: "SUM(E2:E5)", v: sumM };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 5 })] = { t: "n", f: `C${SER}/B${SER}`, v: wHcc };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 6 })] = { t: "n", f: `D${SER}/C${SER}`, v: wCr };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 7 })] = { t: "n", f: `(D${SER}-E${SER})/D${SER}`, v: wL };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 8 })] = { t: "n", f: `E${SER}/B${SER}`, v: wM1 };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 9 })] = { t: "n", f: `ROUND(F${SER}*G${SER},0)`, v: wB };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 10 })] = { t: "n", f: `ROUND(SUMPRODUCT(B2:B5,K2:K5)/B${SER},0)`, v: wF };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 11 })] = { t: "n", f: `J${SER}+K${SER}`, v: wP };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 12 })] = { t: "n", f: `ROUND(J${SER}*(1-H${SER})+K${SER},0)`, v: wGongdan };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 13 })] = { t: "n", f: `ROUND(I${SER}*0.3,0)`, v: wBonin };
-      ws[XLSX.utils.encode_cell({ r: SR, c: 14 })] = { t: "n", f: `M${SER}+N${SER}`, v: wIncome };
+      ws[XLSX.utils.encode_cell({ r: SR, c: 2 })] = { t: "n", f: `SUMPRODUCT(B2:B5,C2:C5)/B${SER}`, v: wM1 };
+      ws[XLSX.utils.encode_cell({ r: SR, c: 3 })] = { t: "n", f: `SUMPRODUCT(B2:B5,D2:D5)/B${SER}`, v: wL };
 
-      ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 5, c: 14 } });
-      ws["!cols"] = [
-        { wch: 8 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 14 },
-        { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 10 },
-        { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 16 },
-      ];
+      ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 5, c: 3 } });
+      ws["!cols"] = [{ wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 8 }];
 
       const wb_new = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb_new, ws, "시뮬레이터_업로드");
@@ -492,7 +417,7 @@ export default function useSimulator() {
     } catch (err) {
       alert("내보내기 실패: " + err.message);
     }
-  }, [base, P, F_g]);
+  }, [base]);
 
   const loadPreset = useCallback((preset) => {
     dispatch({

@@ -294,18 +294,16 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
             {showEditTable && (
               <div className="mt-1">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs" style={{ minWidth: 880 }}>
+                  <table className="w-full text-xs" style={{ minWidth: 640 }}>
                     <thead>
                       <tr className="bg-gray-50 text-gray-500">
                         <th className="text-left px-2 py-1.5">환자군</th>
-                        <th className="text-center px-1">기준의료비</th>
-                        <th className="text-center px-1">의원비중</th>
-                        <th className="text-center px-1">P</th>
-                        <th className="text-center px-1">F</th>
-                        <th className="text-center px-1 text-purple-700">T=P+F</th>
-                        <th className="text-center px-1">L</th>
-                        <th className="text-center px-1">M1</th>
-                        <th className="text-center px-1">N</th>
+                        <th className="text-center px-1">N (실인원)</th>
+                        <th className="text-center px-1">M1 (1인당 의원외래비)</th>
+                        <th className="text-center px-1">L (타원이용비중, 0~1)</th>
+                        <th className="text-center px-1">B (슬라이더)</th>
+                        <th className="text-center px-1">F (슬라이더)</th>
+                        <th className="text-center px-1 text-purple-700">P=B+F</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -314,31 +312,29 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
                         return (
                           <tr key={i} className="border-t border-gray-100">
                             <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
-                            <td className="text-center px-1 text-gray-600">{f(base[i].ref)}</td>
-                            <td className="text-center px-1 text-gray-600">{(base[i].cr * 100).toFixed(1)}%</td>
                             <td className="text-center px-1">
-                              <input type="text" value={f(P[i])} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                                onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updP(i, v); }} />
-                            </td>
-                            <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
-                            <td className="text-center px-1 font-bold text-purple-700">{f(P[i] + Fi)}</td>
-                            <td className="text-center px-1">
-                              <input type="text" value={(base[i].L * 100).toFixed(1)} className="w-12 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                                onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 100) updBase(i, "L", v / 100); }} />%
+                              <input type="text" value={f(base[i].N)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                                onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
                             </td>
                             <td className="text-center px-1">
-                              <input type="text" value={f(base[i].M1)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                              <input type="text" value={f(base[i].M1)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
                                 onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updBase(i, "M1", v); }} />
                             </td>
                             <td className="text-center px-1">
-                              <input type="text" value={f(base[i].N)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                                onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
+                              <input type="text" value={base[i].L.toFixed(4)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                                onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updBase(i, "L", v); }} />
                             </td>
+                            <td className="text-center px-1 text-gray-700">{f(P[i])}</td>
+                            <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
+                            <td className="text-center px-1 font-bold text-purple-700">{f(P[i] + Fi)}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
+                  <div className="mt-2 text-xs text-gray-500 leading-relaxed">
+                    ※ N·M1·L만 직접 편집 — 분석가가 채워야 할 데이터입니다. B(환자군 기본수가)·F(일차의료 기능보정)는 위쪽 정책 슬라이더로만 설정합니다.
+                  </div>
                 </div>
               </div>
             )}

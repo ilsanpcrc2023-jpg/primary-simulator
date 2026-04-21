@@ -2,8 +2,8 @@
 
 국민건강보험 일산병원 일차의료개발센터. 정책 시뮬레이션 도구.
 
-**정책 기준**: 노션 「일차의료 시범사업 지불체계 보완 방안」 후속 보완 (2026-04-20)
-**시뮬레이터 버전**: **v6.3.0** (엑셀 템플릿 v1 · 시뮬레이터-보고서 겸용 15열 3층 구조 · COL_ALIASES 재정비)
+**정책 기준**: 노션 「일차의료 시범사업 지불체계 보완 방안」 후속 보완 (2026-04-21)
+**시뮬레이터 버전**: **v6.4.0** (엑셀 템플릿 v2 · 4열 단순 구조 · base = N·M1·L · B/F 슬라이더 라운드트립 보존)
 
 ## 기술 스택
 
@@ -114,9 +114,11 @@ npm test          # 단위 테스트 (vitest run)
 src/
 ├── App.jsx                      # 탭 라우팅
 ├── main.jsx                     # 엔트리
-├── constants.js                 # SH, CL, INIT_BASE, INIT_B(=INIT_P), INIT_R(=INIT_F),
-│                                # INIT_REG_DIST, INIT_M_CLINICS, INIT_PER_CLINIC,
-│                                # INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_PT_BASE, INIT_DATA_LABEL
+├── constants.js                 # SH, CL, INIT_BASE (N·M1·L only — v6.4 단순화),
+│                                # INIT_B(=INIT_P), INIT_R(=INIT_F), INIT_REG_DIST,
+│                                # INIT_M_CLINICS, INIT_PER_CLINIC, INIT_BASE_PER_CLINIC,
+│                                # INIT_TOTAL_N, INIT_PT_BASE, INIT_DATA_LABEL,
+│                                # COL_ALIASES (N · M1 · L 3개만)
 ├── utils.js                     # f, fE, fAuto, fMan, pct, diffAuto, diffMan
 ├── hooks/useSimulator.js        # 전역 상태·계산 (useReducer + useMemo)
 │                                # state.P (B 값), state.F_g (F 값), state.pt_base
@@ -231,32 +233,42 @@ KPI에서:
 - 의원당 평균 변화 → `diffMan` (만원 단위)
 - 의원당 수입 절대값 → `fMan` (만원/년)
 
-## 엑셀 포맷 호환 (v6.2.3+)
+## 엑셀 포맷 호환 (v6.4 · 단순 4열)
 
-`docs/NHIS_HCC_시뮬레이터_업로드_v1.xlsx` — 시뮬레이터 업로드용 + 연구보고서 테이블 겸용.
+`docs/NHIS_HCC_시뮬레이터_업로드_v2.xlsx` — 시뮬레이터 입력 전용 단순 템플릿.
+
+**v6.4 결정 사유**: v1/v6.3의 15열 템플릿(원자료·파생·산출 3층)이 엑셀 자동 재계산으로
+B 컬럼이 `ref×cr` 값으로 덮어써져 `state.P`를 오염시키고, 그 결과 일부 환자군에서
+`B > C1` 상태가 되어 LC↓ → 공단지출↑ 역전 현상이 발생. 데이터-정책 분리 원칙 위반.
+v6.4에서는 **시뮬레이터가 실제로 사용하는 3 필드(N·M1·L)만 엑셀로 입출력**하고
+B(환자군 기본수가)·F(일차의료 기능보정) 정책 슬라이더는 UI에서만 설정.
 
 **시트**: `시뮬레이터_업로드` (시뮬레이터가 `includes("시뮬레이터")` 자동 선택)
 **구조**: 단일 시트, 1행 헤더, 2~5행 4군 데이터, 6행 합계/가중평균
 
-**15열 (원자료 4 + 파생 4 + 산출 6 + 라벨 1)**:
-| 층 | 열 | 내용 | 시뮬레이터 파싱 |
+**4열**:
+| 열 | 내용 | 단위/형식 | 비고 |
 |---|---|---|---|
-| 라벨 | A | 환자군 (1~4군) | 무시 |
-| 원자료 | B~E | N · T · C · M | N만 읽음 |
-| 파생 (수식) | F~I | HCC 평균·의원비중·L·M1 | 모두 읽음 (ref/cr/L/M1) |
-| 산출 (수식) | J~O | B·F·P·공단지급·본인부담·1인당 의원수입 | B→state.P, F→state.F_g |
+| A | 환자군 | 1군~4군 | 라벨 (시뮬 무시) |
+| B | N | 명 (정수) | 실인원 |
+| C | M1 | 원/년 | 1인당 의원외래비 |
+| D | L | 0~1 (소수) | 타원이용비중 |
 
-**파생·산출층은 엑셀 수식**: 분석가가 N·T·C·M만 채우면 나머지 자동 재계산. 분석가 입력 최소 = 4 원자료 컬럼 × 4군 = 16 셀.
+분석가 입력 = 3 필드 × 4군 = 12 셀. 합계 행은 SUMPRODUCT 기반 가중평균(자동 계산).
 
-**COL_ALIASES 매칭 순서** ([src/constants.js](src/constants.js)): `ref=HCC 평균|HCC평균|기준의료비` · `cr=의원비중` · `L=L|타원이용비중` · `M1=M1|현재외래비` · `N=N|환자수` · `P=B|환자군 기본수가|수가` · `F=F|일차의료 기능보정`. ⚠ `P` alias는 B+F를 의미하는 v1 템플릿 P 컬럼과 충돌하므로 의도적으로 제외. 시뮬레이터의 `state.P` (내부 변수명)에는 B 컬럼 값이 들어감.
+**COL_ALIASES** ([src/constants.js](src/constants.js)): `N=N|환자수|등록환자수|실인원` · `M1=M1|1인당 의원외래비|현재외래비` · `L=L|타원이용비중`. ref/cr/P/F 별칭은 모두 제거.
 
-**파서**: `handleFile` ([src/hooks/useSimulator.js](src/hooks/useSimulator.js)). 앞 4행만 환자군으로 읽음 (합계행 자동 제외). B 컬럼 없으면 `ref × cr`로 자동 산출. F 컬럼 없으면 `INIT_F` fallback.
+**파서**: `handleFile` ([src/hooks/useSimulator.js](src/hooks/useSimulator.js)). 앞 4행만 환자군으로 읽음 (합계행 자동 제외). L > 1 자동 ÷100 보정. **state.P · state.F_g 슬라이더 보존** (업로드는 base만 갱신).
 
-**내보내기**: `handleExport`가 동일 15열 구조로 출력 (수식 포함). 왕복(export → import) 일관성 보장.
+**내보내기**: `handleExport`가 동일 4열 구조로 출력. 라운드트립(export → import → 동일 결과) 보장.
 
-**재생성 스크립트**: `scripts/gen_upload_template.cjs` (파일럿 2023 데이터 기반 참조 템플릿).
+**재생성 스크립트**: `scripts/gen_upload_template.cjs`.
 
-regDist·pt_base·baseN_per_clinic·M_clinics는 엑셀로 이관 안 됨 (UI에서 설정).
+**분석가 외부 작업**: 분석가는 본인 편의에 맞는 별도 워크북에서 N·T·C·M·HCC평균 등을
+도출하고, 본 4열 템플릿에 N·M1·L 결과만 옮겨 적어 업로드. 시뮬레이터는 분석 워크북을
+관리·표시하지 않음 (v6.3까지 동일 시트에 합쳤던 것을 분리).
+
+regDist·pt_base·baseN_per_clinic·M_clinics·B(state.P)·F(state.F_g)는 엑셀로 이관 안 됨 (UI에서만 설정).
 
 ## 배포 워크플로
 
@@ -265,7 +277,7 @@ regDist·pt_base·baseN_per_clinic·M_clinics는 엑셀로 이관 안 됨 (UI에
 - **커밋 이메일**: `59140997+shleefm@users.noreply.github.com`
 - **새 작업은 feature 브랜치 필수** (main 직접 푸시는 사용자 명시 승인 시만)
 - main 머지는 `--no-ff` 후 버전 태그 부여
-- 버전 태그 이력: `v5.0` · `v6.0.0` · `v6.1.0` · `v6.2.0` · `v6.2.1` · `v6.2.2` · `v6.2.3` · **`v6.3.0`**
+- 버전 태그 이력: `v5.0` · `v6.0.0` · `v6.1.0` · `v6.2.0` · `v6.2.1` · `v6.2.2` · `v6.2.3` · `v6.3.0` · **`v6.4.0`**
 
 ## 시뮬레이터 밖 항목 (정보 표시만)
 
