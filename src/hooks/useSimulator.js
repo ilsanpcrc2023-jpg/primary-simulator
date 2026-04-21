@@ -11,7 +11,6 @@ const initialState = {
   dataLabel: INIT_DATA_LABEL,
   tab: 0,
   showDetail: false,
-  showEditTable: false,
   hccPct: 100,
   uploadBanner: null,
   ssTotalCost: 110.8,
