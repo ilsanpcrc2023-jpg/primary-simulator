@@ -16,10 +16,10 @@ export const INIT_BASE = [
 export const INIT_B = [220000, 300000, 520000, 740000];
 export const INIT_R = [10000, 20000, 30000, 40000];   // 차등 디폴트 (환자군별 1·2·3·4만원, F 값)
 export const INIT_REG_DIST = [100, 600, 200, 100];
-// 100기관 · 참여 전·후 6,960명 (동일 · 패널 유지 가정) · 등록 1,000명
+// 100기관 · 참여 전·후 3,000명 (동일 · 패널 유지 가정) · 등록 1,000명
 export const INIT_M_CLINICS = 100;
-export const INIT_PER_CLINIC = 6960;
-export const INIT_BASE_PER_CLINIC = 6960;
+export const INIT_PER_CLINIC = 3000;
+export const INIT_BASE_PER_CLINIC = 3000;
 export const INIT_TOTAL_N = INIT_M_CLINICS * INIT_PER_CLINIC;
 export const INIT_DATA_LABEL = "복지부 시범사업안 (100기관 · 등록 1,000명)";
 export const INIT_PT_BASE = 30_000_000;   // 일차의료 전환지원금 기준 금액 (의원당 · 1회)

@@ -158,7 +158,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, scaleR
             <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">참여 전 환자수 (기준)</span>
             <NumBox value={baseN_per_clinic} onChange={setBaseN} color="#64748b" suffix="명" />
             <div className="flex flex-wrap gap-1 ml-1">
-              {[3000, 5000, 7000].map(v => (
+              {[2000, 3000, 5000, 7000].map(v => (
                 <button key={v} onClick={() => setBaseN(v)}
                   className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
                   style={baseN_per_clinic === v ? { background: "#f1f5f9", borderColor: "#94a3b8", color: "#334155" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
@@ -173,7 +173,7 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, scaleR
             <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">참여 후 전체 환자수</span>
             <NumBox value={perClinic} onChange={setPerClinic} color="#1f2937" suffix="명" />
             <div className="flex flex-wrap gap-1 ml-1">
-              {[3000, 5000, 7000].map(v => (
+              {[2000, 3000, 5000, 7000].map(v => (
                 <button key={v} onClick={() => setPerClinic(v)}
                   className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
                   style={perClinic === v ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
