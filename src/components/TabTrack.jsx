@@ -1,13 +1,14 @@
 import { memo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import NumBox from "./shared/NumBox";
-import { SH, CL } from "../constants";
-import { f, fE, pct, diffAuto, fMan, diffMan } from "../utils";
+import { SH } from "../constants";
+import { f, pct, fMan, fAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tSchg }) {
-  const { base, hccPct, LC, M_clinics, pt_base } = state;
+export default memo(function TabTrack({ state, set, G, T, SS, tAchg, tBchg, tCchg, resetPtPct, resetSsPct }) {
+  const { base, hccPct, LC, M_clinics, pt_base,
+    ptPctA, ptPctB, ptPctC, ssPctA, ssPctB, ssPctC } = state;
   const ffsPct = 100 - hccPct;
   const M = Math.max(1, M_clinics);
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
@@ -16,15 +17,30 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tSchg }) {
   const LavgAfter = Math.max(0, Math.min(1, Lavg + LC / 100));
 
   const perClinicBase = T.inc0 / M;
-  const perClinicTrack = T.tS / M;
-  const perClinicGain = perClinicTrack - perClinicBase;
 
-  // PT (일차의료 전환지원금) — 1회성 첫해. Track A=10%, B=50%, C=100%.
-  // pt_base는 의원당 기준 금액 (편집 가능), 실제 지급 = pt_base × Track %
-  const getPTPct = (hc) => hc <= 50 ? 10 + hc * 0.8 : 50 + (hc - 50) * 1.0;
-  const ptPct = getPTPct(hccPct);
-  const PT = pt_base * ptPct / 100;
-  const perClinicFirstYear = perClinicGain + PT;
+  // v6.5: Track 지급률은 A/B/C 3점만 편집 · 중간 hccPct는 선형보간 (PT와 성과배분 동일 공식)
+  const interp = (hc, a, b, c) => hc <= 50 ? a + hc * (b - a) / 50 : b + (hc - 50) * (c - b) / 50;
+
+  // 성과배분 재원 (N분의 1)
+  const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
+  const ssEnabled = (SS?.clinicFromItem ?? 0) > 0;
+
+  // Track별 의원당 수입 · 변화량 · PT · SS 지급액
+  const tracks = [
+    { n: "Track A", d: "FFS 100%",    hc: 0,   c: "#22c55e", bg: "#f0fdf4", bd: "#86efac",
+      income: T.tA / M, chg: tAchg, ptPct: ptPctA, ssPct: ssPctA },
+    { n: "Track B", d: "혼합 50:50",   hc: 50,  c: "#3b82f6", bg: "#eff6ff", bd: "#93c5fd",
+      income: T.tB / M, chg: tBchg, ptPct: ptPctB, ssPct: ssPctB },
+    { n: "Track C", d: "환자군 100%",  hc: 100, c: "#f97316", bg: "#fff7ed", bd: "#fdba74",
+      income: T.tC / M, chg: tCchg, ptPct: ptPctC, ssPct: ssPctC },
+  ].map(t => {
+    const ptAmt = pt_base * t.ptPct / 100;
+    const ssAmt = ssPerClinicFull * t.ssPct / 100;
+    // v6.5.2: 절대 수입 합계. 1년차 = Track+PT (성과는 2년차부터), 2년차 = Track+성과
+    return { ...t, ptAmt, ssAmt,
+      firstYear: t.income + ptAmt,
+      ongoing:   t.income + ssAmt };
+  });
 
   return (<>
     {/* ① Track 선택 */}
@@ -83,103 +99,164 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tSchg }) {
       </div>
     </div>
 
-    {/* ③ KPI 2카드 — 상시 표시, 의원당 수입 확대 */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
-        <div className="flex items-baseline justify-between mb-2">
-          <h3 className="font-bold text-base text-green-800">Track 수입 변화</h3>
-          <span className="text-xs font-semibold text-green-600">행위별 {ffsPct}% / 환자군 {hccPct}%</span>
-        </div>
-        <div className="text-xs text-green-700/80 font-semibold">전체 변화액</div>
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffAuto(T.inc0, T.tS)}</span>
-          <span className="text-base sm:text-lg font-bold leading-tight" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626", opacity: 0.85 }}>{pct(tSchg)}</span>
-        </div>
-
-        <div className="mt-2 pt-2 border-t border-green-200/70">
-          <div className="text-xs text-green-700/80 font-semibold">의원당 평균 변화 <span className="font-normal text-green-600/60">(M={f(M)})</span></div>
-          <div className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: tSchg >= 0 ? "#16a34a" : "#dc2626" }}>{diffMan(perClinicGain)}</div>
-        </div>
-
-        <div className="mt-2 pt-2 border-t border-green-200/70 space-y-0.5">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs text-green-700/70">기준선 의원당 수입</span>
-            <span className="text-base font-bold text-green-800/80">{fMan(perClinicBase)}/년</span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs text-green-700 font-semibold">Track 후 의원당 수입</span>
-            <span className="text-lg font-extrabold text-green-900">{fMan(perClinicTrack)}/년</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
-        <div className="flex items-baseline justify-between mb-2">
-          <h3 className="font-bold text-base text-blue-800">공단 의원급 외래 지출 변화</h3>
-          <span className="text-xs font-semibold text-blue-600">Track 무관 · L에 따라</span>
-        </div>
-        <div className="text-xs text-blue-700/80 font-semibold">전체 변화액</div>
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-2xl sm:text-3xl font-extrabold text-blue-700 leading-tight">{diffAuto(T.nhi0, T.nhi2)}</span>
-          <span className="text-base sm:text-lg font-bold text-blue-700/80 leading-tight">{pct(nhiNewChg, 2)}</span>
-        </div>
-        <div className="text-xs text-blue-700/60 mt-0.5">{fE(T.nhi0)}억 → {fE(T.nhi2)}억</div>
-        <div className="mt-2 pt-2 border-t border-blue-200/70">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs text-blue-700/80 font-semibold">의원당 평균 변화</span>
-            <span className="text-lg font-bold text-blue-700">{diffMan((T.nhi2 - T.nhi0) / M)}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* ④ PT (일차의료 전환지원금) — 기준 금액 편집 가능, Track A=10%·B=50%·C=100% */}
+    {/* ③ PT (일차의료 전환지원금) — 1년차 1회, Track별 %로 차등 (편집 가능) */}
     <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
       <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
-        <h3 className="font-bold text-base text-amber-900">일차의료 전환지원금 (PT)</h3>
+        <h3 className="font-bold text-base text-amber-900">일차의료 전환지원금 (PT) <span className="text-xs font-normal text-amber-700">· 1년차 1회</span></h3>
         <div className="flex items-center gap-2">
           <span className="text-xs text-amber-700 font-semibold">기준 금액</span>
           <NumBox value={pt_base} onChange={v => set("pt_base", Math.max(0, Math.round(v)))} color="#b45309" suffix="원" />
+          <button onClick={resetPtPct}
+            className="text-xs text-amber-700 hover:text-amber-900 hover:bg-amber-100 rounded px-2 py-1 transition"
+            title="PT Track 지급률 10/50/100%로 복귀">↩ 초기화</button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-3">
+      <div className="grid grid-cols-3 gap-2">
         {[
-          { n: "Track A", pctVal: 10, hc: 0, c: "#22c55e" },
-          { n: "Track B", pctVal: 50, hc: 50, c: "#3b82f6" },
-          { n: "Track C", pctVal: 100, hc: 100, c: "#f97316" },
+          { n: "Track A", key: "ptPctA", pctVal: ptPctA, hc: 0, c: "#22c55e" },
+          { n: "Track B", key: "ptPctB", pctVal: ptPctB, hc: 50, c: "#3b82f6" },
+          { n: "Track C", key: "ptPctC", pctVal: ptPctC, hc: 100, c: "#f97316" },
         ].map(t => {
           const active = hccPct === t.hc;
           const amt = pt_base * t.pctVal / 100;
           return (
-            <button key={t.n} onClick={() => set("hccPct", t.hc)}
-              aria-selected={active}
-              className="rounded-lg p-2 text-center transition cursor-pointer"
+            <div key={t.n}
+              className="rounded-lg p-2 text-center transition"
               style={{ background: active ? "#fef9c3" : "#fffbeb", border: `2px solid ${active ? "#f59e0b" : "#fde68a"}` }}>
-              <div className="text-xs font-bold" style={{ color: t.c }}>{t.n} <span className="font-normal text-amber-700">({t.pctVal}%)</span></div>
+              <button onClick={() => set("hccPct", t.hc)}
+                aria-selected={active}
+                className="block w-full text-xs font-bold cursor-pointer"
+                style={{ color: t.c }}>{t.n}</button>
+              <div className="flex items-center justify-center gap-1 mt-1">
+                <NumBox value={t.pctVal}
+                  onChange={v => set(t.key, Math.max(0, Math.min(500, v)))}
+                  color="#b45309" suffix="%" />
+              </div>
               <div className="text-base font-extrabold text-amber-900 mt-0.5">
                 {fMan(amt)}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
+    </div>
 
-      <div className="bg-white/70 rounded-lg px-3 py-2.5">
-        <div className="text-xs text-amber-800 font-semibold mb-1">
-          의원당 1년차 합계 <span className="font-normal text-amber-600/80">(Track 수입 + PT {ptPct.toFixed(0)}%)</span>
+    {/* ④ 참여의원 성과배분 (Shared Saving) — 2년차부터 매년 (편집 가능) */}
+    <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: ssEnabled ? "#86efac" : "#d1d5db", opacity: ssEnabled ? 1 : 0.7 }}>
+      <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
+        <h3 className="font-bold text-base text-green-800">참여의원 성과배분 <span className="text-xs font-normal text-green-700">· 2년차부터 매년</span></h3>
+        <button onClick={resetSsPct}
+          className="text-xs text-green-700 hover:text-green-900 hover:bg-green-100 rounded px-2 py-1 transition"
+          title="성과배분 Track 지급률 10/50/100%로 복귀">↩ 초기화</button>
+      </div>
+
+      {!ssEnabled && (
+        <div className="rounded-lg bg-white/70 border border-gray-300 px-3 py-2 text-xs text-gray-600 mb-2">
+          💡 Shared Saving 탭에서 <b>참여의원 성과배분 비율</b>을 0% 초과로 설정해야 활성화됩니다.
         </div>
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="font-mono text-xl sm:text-2xl font-extrabold text-amber-800">{diffMan(perClinicGain)}</span>
-          <span className="text-xl sm:text-2xl text-amber-500 font-bold">+</span>
-          <span className="font-mono text-xl sm:text-2xl font-extrabold text-amber-800">+{fMan(PT)}</span>
-          <span className="text-xl sm:text-2xl text-amber-500 font-bold">=</span>
-          <span className="text-xl sm:text-2xl font-extrabold text-amber-900">{diffMan(perClinicFirstYear)}</span>
-        </div>
+      )}
+
+      <div className="text-xs text-green-700/80 mb-2">
+        재원: <b>{fAuto(SS?.clinicFromItem ?? 0)}</b>
+        <span className="text-green-600/60"> (Shared Saving 탭 · 성과배분 {Math.round((SS?.clinicPct ?? 0) * 100)}%)</span>
+        <span className="text-green-500/70"> ÷ {f(M)}개 의원 = 의원당 <b>{fMan(ssPerClinicFull)}</b></span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { n: "Track A", key: "ssPctA", pctVal: ssPctA, hc: 0, c: "#22c55e" },
+          { n: "Track B", key: "ssPctB", pctVal: ssPctB, hc: 50, c: "#3b82f6" },
+          { n: "Track C", key: "ssPctC", pctVal: ssPctC, hc: 100, c: "#f97316" },
+        ].map(t => {
+          const active = hccPct === t.hc;
+          const amt = ssPerClinicFull * t.pctVal / 100;
+          return (
+            <div key={t.n}
+              className="rounded-lg p-2 text-center transition"
+              style={{ background: active ? "#dcfce7" : "#f0fdf4", border: `2px solid ${active ? "#22c55e" : "#bbf7d0"}` }}>
+              <button onClick={() => set("hccPct", t.hc)}
+                aria-selected={active}
+                className="block w-full text-xs font-bold cursor-pointer"
+                style={{ color: t.c }}>{t.n}</button>
+              <div className="flex items-center justify-center gap-1 mt-1">
+                <NumBox value={t.pctVal}
+                  onChange={v => set(t.key, Math.max(0, Math.min(500, v)))}
+                  color="#15803d" suffix="%" />
+              </div>
+              <div className="text-base font-extrabold text-green-900 mt-0.5">
+                {fMan(amt)}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
 
-    {/* ⑤ Track 차트 */}
+    {/* ⑤ Track별 수입 비교 (간결 요약) */}
+    <div className={card + " p-4"}>
+      <h3 className="font-bold text-base text-gray-900 mb-3">Track별 수입 비교 <span className="text-xs font-normal text-gray-500">(의원당/년)</span></h3>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="text-left text-xs text-gray-500 font-semibold pb-2 pr-2 w-28">&nbsp;</th>
+              {tracks.map(t => (
+                <th key={t.n} className="text-center pb-2 px-1">
+                  <div className="font-extrabold" style={{ color: t.c }}>{t.n}</div>
+                  <div className="text-[10px] text-gray-500">{t.d}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-t border-gray-200">
+              <td className="text-xs text-gray-600 py-2 pr-2">Track 수입</td>
+              {tracks.map(t => (
+                <td key={t.n} className="text-center font-bold text-gray-800 py-2">{fMan(t.income)}</td>
+              ))}
+            </tr>
+            <tr className="border-t border-gray-100">
+              <td className="text-xs text-gray-600 py-2 pr-2">변화 <span className="text-gray-400">(vs 기준 FFS)</span></td>
+              {tracks.map(t => (
+                <td key={t.n} className="text-center text-xs font-semibold py-2" style={{ color: t.chg >= 0 ? "#16a34a" : "#dc2626" }}>{pct(t.chg)}</td>
+              ))}
+            </tr>
+            <tr className="border-t border-gray-200 bg-amber-50/60">
+              <td className="text-xs text-amber-800 py-2 pr-2 font-semibold">PT <span className="font-normal text-amber-600">(1년차 1회)</span></td>
+              {tracks.map(t => (
+                <td key={t.n} className="text-center font-bold text-amber-800 py-2">+{fMan(t.ptAmt)}</td>
+              ))}
+            </tr>
+            <tr className="border-t border-amber-100 bg-green-50/70">
+              <td className="text-xs text-green-800 py-2 pr-2 font-semibold">성과배분 <span className="font-normal text-green-600">(매년)</span></td>
+              {tracks.map(t => (
+                <td key={t.n} className="text-center font-bold text-green-800 py-2">+{fMan(t.ssAmt)}</td>
+              ))}
+            </tr>
+            <tr className="border-t-2 border-gray-300 bg-yellow-50">
+              <td className="text-xs text-yellow-900 py-2 pr-2 font-bold">1년차 합계 <span className="font-normal text-yellow-700">(Track+PT)</span></td>
+              {tracks.map(t => (
+                <td key={t.n} className="text-center font-extrabold text-yellow-900 py-2">{fMan(t.firstYear)}</td>
+              ))}
+            </tr>
+            <tr className="border-t border-yellow-100 bg-yellow-50">
+              <td className="text-xs text-yellow-900 py-2 pr-2 font-bold">2년차 이후 <span className="font-normal text-yellow-700">(Track+성과)</span></td>
+              {tracks.map(t => (
+                <td key={t.n} className="text-center font-extrabold text-yellow-900 py-2">{fMan(t.ongoing)}</td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-2 text-[11px] text-gray-500">
+        참고: 현행 FFS 진료 형태 사업 비참여 의원 수입 = <b className="text-gray-700">{fMan(perClinicBase)}/년</b>
+      </div>
+    </div>
+
+    {/* ⑥ Track 차트 (비교 박스 뒤) */}
     <div className={card + " p-3"}>
       <h3 className="text-xs font-bold text-gray-700 mb-2">Track별 환자군 1인당 실지불액</h3>
       <ResponsiveContainer width="100%" height={220}>

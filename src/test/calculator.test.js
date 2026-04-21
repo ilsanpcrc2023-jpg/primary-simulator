@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { INIT_BASE, INIT_P, INIT_F, ON, COL_ALIASES } from '../constants';
+import { INIT_BASE, INIT_P, INIT_F, ON, COL_ALIASES,
+  INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C,
+  INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C,
+  INIT_SS_COST_BASE, INIT_SS_PROJECT_COST } from '../constants';
 
 describe('calculation engine', () => {
   it('ON: total patient count from INIT_BASE', () => {
@@ -84,5 +87,46 @@ describe('v6.4 upload schema', () => {
   it('INIT_F has 4 entries (per-group F)', () => {
     expect(INIT_F).toHaveLength(4);
     INIT_F.forEach(v => expect(v).toBeGreaterThanOrEqual(0));
+  });
+});
+
+describe('v6.5 PT/SS Track percentages', () => {
+  it('PT/SS defaults are 10/50/100 (A/B/C)', () => {
+    expect([INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C]).toEqual([10, 50, 100]);
+    expect([INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C]).toEqual([10, 50, 100]);
+  });
+
+  it('linear interpolation of Track pct at endpoints and midpoints', () => {
+    const interp = (hc, a, b, c) => hc <= 50 ? a + hc * (b - a) / 50 : b + (hc - 50) * (c - b) / 50;
+    // Endpoints return defaults exactly
+    expect(interp(0, 10, 50, 100)).toBe(10);
+    expect(interp(50, 10, 50, 100)).toBe(50);
+    expect(interp(100, 10, 50, 100)).toBe(100);
+    // Quarter points land on midpoints of each half
+    expect(interp(25, 10, 50, 100)).toBe(30);
+    expect(interp(75, 10, 50, 100)).toBe(75);
+  });
+
+  it('shared saving per-clinic payout respects Track pct', () => {
+    const clinicFromItem = 4.015e11;   // 4,015억
+    const M = 100;
+    const ssPerClinicFull = clinicFromItem / M;
+    // Track A (10%), B (50%), C (100%)
+    expect(ssPerClinicFull * 10 / 100).toBeCloseTo(4.015e8);   // 4.015억/의원
+    expect(ssPerClinicFull * 50 / 100).toBeCloseTo(2.0075e9);
+    expect(ssPerClinicFull * 100 / 100).toBeCloseTo(4.015e9);  // 40.15억/의원
+  });
+
+  it('ssCostBase default is "total" and project cost default is 1.0 조원', () => {
+    expect(INIT_SS_COST_BASE).toBe('total');
+    expect(INIT_SS_PROJECT_COST).toBe(1.0);
+  });
+
+  it('derivedMacroPct scales with selected cost base', () => {
+    const itemTotal = 4e12;   // 4조원 절감
+    // 건강보험 전체 110.8조원 기준: itemTotal / 110.8조 × 100 ≈ 3.61%
+    expect((itemTotal / (110.8 * 1e12)) * 100).toBeCloseTo(3.61, 1);
+    // 사업대상 1.0조원 기준: itemTotal / 1조 × 100 = 400% (비현실적, 분석가가 사업대상 절감액을 조정해야 함)
+    expect((itemTotal / (1.0 * 1e12)) * 100).toBeCloseTo(400, 1);
   });
 });

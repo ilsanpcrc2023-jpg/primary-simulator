@@ -86,9 +86,10 @@ export default function App() {
         {tab === 1 && (
           <TabTrack
             state={state} set={set}
-            G={sim.G} T={sim.T}
+            G={sim.G} T={sim.T} SS={sim.SS}
             nhiNewChg={sim.nhiNewChg}
             tAchg={sim.tAchg} tBchg={sim.tBchg} tCchg={sim.tCchg} tSchg={sim.tSchg}
+            resetPtPct={sim.resetPtPct} resetSsPct={sim.resetSsPct}
           />
         )}
 
@@ -97,6 +98,7 @@ export default function App() {
             state={state} set={set}
             handleMacroSync={sim.handleMacroSync}
             SS={sim.SS}
+            resetSsCost={sim.resetSsCost}
           />
         )}
       </div>
