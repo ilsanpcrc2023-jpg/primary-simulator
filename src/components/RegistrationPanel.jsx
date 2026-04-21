@@ -82,13 +82,16 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = 
 
 /* TCard — 일차의료수가 (P = B + F), 항상 펼침 */
 export const TCard = memo(function TCard({ state, G }) {
-  const { F_g } = state;
+  const { F_g, base, LC } = state;
+  const totalN = base.reduce((s, b) => s + b.N, 0);
+  const Lavg = totalN > 0 ? base.reduce((s, b) => s + (b.N / totalN) * b.L, 0) : 0;
+  const LavgAfter = Math.max(0, Math.min(1, Lavg + LC / 100));
 
   return (
     <div className="rounded-xl border-2 shadow-md overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#4f46e5" }}>
-      <div className="px-4 pt-3 pb-1 flex items-baseline justify-between gap-2 flex-wrap">
+      <div className="px-4 pt-3 pb-1 flex items-baseline gap-2 flex-wrap">
         <h2 className="font-extrabold text-lg tracking-tight" style={{ color: "#3730a3" }}>일차의료수가 (P = B + F)</h2>
-        <span className="text-[10px] font-semibold text-indigo-700/70">명목 청구수가 · 공단 실지급액 ≠ P</span>
+        <span className="text-sm font-bold text-indigo-700">→ 타원이용비중 ({(LavgAfter * 100).toFixed(1)}%) 반영 후 공단 지급</span>
       </div>
       <div className="px-4 pb-3 pt-1">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -109,10 +112,6 @@ export const TCard = memo(function TCard({ state, G }) {
               </div>
             );
           })}
-        </div>
-        <div className="mt-2 px-2 py-1.5 rounded bg-white/70 border border-indigo-200/60 text-[11px] text-indigo-900 leading-relaxed">
-          <div><b>공단지급 = B×(1−L) + F</b> · <span className="text-indigo-700/80">일차의료수가(P)에서 타원이용비중(L)만큼 차감 후 지급.</span></div>
-          <div className="mt-0.5"><b>의원 수입 = 공단지급 + 본인부담</b></div>
         </div>
       </div>
     </div>
