@@ -95,6 +95,7 @@ function reducer(state, action) {
         ...state,
         base: action.base,
         P: action.P,
+        F_g: action.F_g ?? state.F_g,
         totalN: newTotalN,
         dataLabel: action.dataLabel,
         uploadBanner: action.uploadBanner,
@@ -344,67 +345,78 @@ export default function useSimulator() {
         set("uploadBanner", { success: false, msg: "데이터 부족: 4개 환자군 행이 필요합니다.", details: `시트 "${sheetName}"에서 ${data.length}행만 발견` });
         return;
       }
+      // v6.4: N·M1·L 3 필드만 읽고 base만 갱신.
+      // B(state.P)·F(state.F_g) 정책 슬라이더는 보존 — 엑셀 라운드트립 일관성 보장.
       const newBase = data.slice(0, 4).map((row, i) => {
-        let ref = findCol(row, COL_ALIASES.ref, 0);
-        let cr = findCol(row, COL_ALIASES.cr, 0);
         let N = findCol(row, COL_ALIASES.N, 0);
         let M1 = findCol(row, COL_ALIASES.M1, 0);
         let L = findCol(row, COL_ALIASES.L, 0);
-        if (cr > 1) cr = cr / 100;
         if (L > 1) L = L / 100;
-        if (cr < 0 || cr > 1) cr = INIT_BASE[i].cr;
         if (L < 0 || L > 1) L = INIT_BASE[i].L;
         return {
-          ref: ref || INIT_BASE[i].ref,
-          cr: cr || INIT_BASE[i].cr,
           N: Math.round(N) || INIT_BASE[i].N,
           M1: M1 || INIT_BASE[i].M1,
           L: L || INIT_BASE[i].L,
         };
       });
-      const newP = data.slice(0, 4).map((row, i) => {
-        const v = findCol(row, COL_ALIASES.P, 0);
-        return v || INIT_P[i];
-      });
       const label = file.name.replace(/\.(xlsx|xls|csv)$/i, "");
       const det = newBase.map((b, i) => {
         const SH = ["1군", "2군", "3군", "4군"];
         const fmt = v => Math.round(v).toLocaleString("ko-KR");
-        return `${SH[i]}: N=${fmt(b.N)}, ref=${fmt(b.ref)}, cr=${(b.cr * 100).toFixed(1)}%, L=${(b.L * 100).toFixed(1)}%, P=${fmt(newP[i])}`;
+        return `${SH[i]}: N=${fmt(b.N)}, M1=${fmt(b.M1)}, L=${b.L.toFixed(4)}`;
       }).join("\n");
       dispatch({
         type: "LOAD_DATA",
         base: newBase,
-        P: newP,
+        P: state.P,
+        F_g: state.F_g,
         dataLabel: label,
-        uploadBanner: { success: true, msg: `"${sheetName}" 시트에서 4군 데이터 로딩 완료`, details: det },
+        uploadBanner: { success: true, msg: `"${sheetName}" 시트에서 4군 데이터 로딩 완료 (B·F 슬라이더 보존)`, details: det },
       });
     } catch (err) {
       set("uploadBanner", { success: false, msg: "파일 읽기 실패: " + err.message, details: null });
     }
-  }, [set]);
+  }, [set, state.P, state.F_g]);
 
   const handleExport = useCallback(async () => {
     try {
       const SH = ["1군", "2군", "3군", "4군"];
-      const rows = base.map((b, i) => ({
-        "환자군": SH[i],
-        "기준의료비": b.ref,
-        "의원비중": b.cr,
-        "환자수": b.N,
-        "현재외래비": b.M1,
-        "타원이용비중": b.L,
-        "수가": P[i],
-      }));
-      const ws = XLSX.utils.json_to_sheet(rows);
-      ws["!cols"] = [{ wch: 8 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }];
+      // v6.4: 4열 (환자군 + N + M1 + L) — 업로드 템플릿과 동일 구조.
+      // B/F 정책 슬라이더는 엑셀 비반영 → 라운드트립 시 슬라이더 보존됨.
+      const headers = ["환자군", "N", "M1", "L"];
+      const ws = {};
+      headers.forEach((h, c) => {
+        ws[XLSX.utils.encode_cell({ r: 0, c })] = { t: "s", v: h };
+      });
+
+      base.forEach((b, idx) => {
+        const r = idx + 1;
+        ws[XLSX.utils.encode_cell({ r, c: 0 })] = { t: "s", v: SH[idx] };
+        ws[XLSX.utils.encode_cell({ r, c: 1 })] = { t: "n", v: b.N };
+        ws[XLSX.utils.encode_cell({ r, c: 2 })] = { t: "n", v: b.M1 };
+        ws[XLSX.utils.encode_cell({ r, c: 3 })] = { t: "n", v: b.L };
+      });
+
+      // 합계/가중평균 행 (r=5)
+      const sumN = base.reduce((s, b) => s + b.N, 0);
+      const wM1 = sumN > 0 ? base.reduce((s, b) => s + b.M1 * b.N, 0) / sumN : 0;
+      const wL = sumN > 0 ? base.reduce((s, b) => s + b.L * b.N, 0) / sumN : 0;
+      const SR = 5, SER = 6;
+      ws[XLSX.utils.encode_cell({ r: SR, c: 0 })] = { t: "s", v: "합계/가중평균" };
+      ws[XLSX.utils.encode_cell({ r: SR, c: 1 })] = { t: "n", f: "SUM(B2:B5)", v: sumN };
+      ws[XLSX.utils.encode_cell({ r: SR, c: 2 })] = { t: "n", f: `SUMPRODUCT(B2:B5,C2:C5)/B${SER}`, v: wM1 };
+      ws[XLSX.utils.encode_cell({ r: SR, c: 3 })] = { t: "n", f: `SUMPRODUCT(B2:B5,D2:D5)/B${SER}`, v: wL };
+
+      ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 5, c: 3 } });
+      ws["!cols"] = [{ wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 8 }];
+
       const wb_new = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb_new, ws, "시뮬레이터_출력");
+      XLSX.utils.book_append_sheet(wb_new, ws, "시뮬레이터_업로드");
       XLSX.writeFile(wb_new, `simulator_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (err) {
       alert("내보내기 실패: " + err.message);
     }
-  }, [base, P]);
+  }, [base]);
 
   const loadPreset = useCallback((preset) => {
     dispatch({

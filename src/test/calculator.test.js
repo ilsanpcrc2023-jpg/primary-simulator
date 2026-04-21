@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { INIT_BASE, INIT_P, ON } from '../constants';
+import { INIT_BASE, INIT_P, INIT_F, ON, COL_ALIASES } from '../constants';
 
 describe('calculation engine', () => {
   it('ON: total patient count from INIT_BASE', () => {
@@ -10,6 +10,14 @@ describe('calculation engine', () => {
 
   it('INIT_BASE has 4 patient groups', () => {
     expect(INIT_BASE).toHaveLength(4);
+  });
+
+  it('INIT_BASE rows have only N, M1, L (v6.4 simplified)', () => {
+    INIT_BASE.forEach(b => {
+      expect(Object.keys(b).sort()).toEqual(['L', 'M1', 'N']);
+      expect(b).not.toHaveProperty('ref');
+      expect(b).not.toHaveProperty('cr');
+    });
   });
 
   it('INIT_P has 4 price points', () => {
@@ -24,18 +32,10 @@ describe('calculation engine', () => {
     });
   });
 
-  it('all cr values are between 0 and 1', () => {
-    INIT_BASE.forEach(b => {
-      expect(b.cr).toBeGreaterThan(0);
-      expect(b.cr).toBeLessThan(1);
-    });
-  });
-
   it('A_cur = P * (1 - L) for each group', () => {
     INIT_BASE.forEach((b, i) => {
       const A_cur = INIT_P[i] * (1 - b.L);
       expect(A_cur).toBeGreaterThan(0);
-      // AB_cur = A_cur + M1 * 0.30
       const AB_cur = A_cur + b.M1 * 0.30;
       expect(AB_cur).toBeGreaterThan(A_cur);
     });
@@ -73,5 +73,16 @@ describe('calculation engine', () => {
     const nhisPct = 1 - clinicPct;
 
     expect(itemTotal * clinicPct + itemTotal * nhisPct).toBeCloseTo(itemTotal, 0);
+  });
+});
+
+describe('v6.4 upload schema', () => {
+  it('COL_ALIASES exposes only N, M1, L (no ref/cr/P/F)', () => {
+    expect(Object.keys(COL_ALIASES).sort()).toEqual(['L', 'M1', 'N']);
+  });
+
+  it('INIT_F has 4 entries (per-group F)', () => {
+    expect(INIT_F).toHaveLength(4);
+    INIT_F.forEach(v => expect(v).toBeGreaterThanOrEqual(0));
   });
 });

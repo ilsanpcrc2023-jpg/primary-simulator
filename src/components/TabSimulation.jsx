@@ -12,16 +12,7 @@ const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 export default memo(function TabSimulation({ state, set, updP, updBase, updF, setFAll, resetF, resetP, resetLC, resetReg, updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset, G, T, decomp, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
   const { base, P, LC, totalN, showDetail, uploadBanner, dataLabel, F_g, M_clinics } = state;
 
-  // 편집 테이블: 기준의료비(ref) 또는 의원비중(cr) 변경 시 B 자동 재계산
-  // (B 슬라이더 override는 유지 — 슬라이더로 이후 독립 조정 가능)
-  const updRef = (i, v) => {
-    updBase(i, "ref", v);
-    updP(i, Math.round(v * base[i].cr));
-  };
-  const updCr = (i, v) => {
-    updBase(i, "cr", v);
-    updP(i, Math.round(base[i].ref * v));
-  };
+  // v6.4: base는 {N, M1, L}만 — ref/cr 제거됨. B(P)·F는 정책 슬라이더로만 설정.
   const M = Math.max(1, M_clinics);
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
   const [showFormula, setShowFormula] = useState(false);
@@ -299,7 +290,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
             <div className="flex items-center justify-between gap-2 py-1.5 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-600">📋 환자군별 상세 편집 테이블</span>
-                <span className="text-[10px] font-normal text-gray-400">입력 셀: HCC 평균 · 의원비중 · F · L · M1 · N · 등록 · B(슬라이더 override)</span>
+                <span className="text-[10px] font-normal text-gray-400">입력 셀: N · M1 · L · 등록 (B·F는 정책 슬라이더)</span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-[10px] text-gray-500">등록 분포 프리셋:</span>
@@ -321,18 +312,16 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs" style={{ minWidth: 1000 }}>
+              <table className="w-full text-xs" style={{ minWidth: 720 }}>
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
                     <th className="text-left px-2 py-1.5">환자군</th>
-                    <th className="text-center px-1">HCC 평균</th>
-                    <th className="text-center px-1">의원비중</th>
-                    <th className="text-center px-1 text-indigo-700">B = HCC평균×비중</th>
-                    <th className="text-center px-1">F</th>
+                    <th className="text-center px-1">N (실인원)</th>
+                    <th className="text-center px-1">M1 (1인당 의원외래비)</th>
+                    <th className="text-center px-1">L (타원이용비중, 0~1)</th>
+                    <th className="text-center px-1">B (슬라이더)</th>
+                    <th className="text-center px-1">F (슬라이더)</th>
                     <th className="text-center px-1 text-purple-700">P = B + F</th>
-                    <th className="text-center px-1">L</th>
-                    <th className="text-center px-1">M1</th>
-                    <th className="text-center px-1">N (이용·전체)</th>
                     <th className="text-center px-1 text-blue-700">등록 (의원당)</th>
                   </tr>
                 </thead>
@@ -343,34 +332,20 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
                       <tr key={i} className="border-t border-gray-100">
                         <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
                         <td className="text-center px-1">
-                          <input type="text" value={f(base[i].ref)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updRef(i, v); }} />
-                        </td>
-                        <td className="text-center px-1">
-                          <input type="text" value={base[i].cr.toFixed(3)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updCr(i, v); }} />
-                        </td>
-                        <td className="text-center px-1">
-                          <input type="text" value={f(P[i])} className="w-20 text-center text-xs border border-indigo-200 rounded bg-indigo-50 py-0.5 font-semibold text-indigo-700"
-                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updP(i, v); }} />
-                        </td>
-                        <td className="text-center px-1">
-                          <input type="text" value={f(Fi)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updF(i, v); }} />
-                        </td>
-                        <td className="text-center px-1 font-bold text-purple-700 tabular-nums">{f(P[i] + Fi)}</td>
-                        <td className="text-center px-1">
-                          <input type="text" value={base[i].L.toFixed(3)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updBase(i, "L", v); }} />
+                          <input type="text" value={f(base[i].N)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
                         </td>
                         <td className="text-center px-1">
                           <input type="text" value={f(base[i].M1)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
                             onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updBase(i, "M1", v); }} />
                         </td>
                         <td className="text-center px-1">
-                          <input type="text" value={f(base[i].N)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
+                          <input type="text" value={base[i].L.toFixed(4)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updBase(i, "L", v); }} />
                         </td>
+                        <td className="text-center px-1 text-gray-700">{f(P[i])}</td>
+                        <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
+                        <td className="text-center px-1 font-bold text-purple-700 tabular-nums">{f(P[i] + Fi)}</td>
                         <td className="text-center px-1">
                           <input type="text" value={f(state.regDist[i])} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5 text-blue-700"
                             onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updRegDist(i, v); }} />
@@ -380,6 +355,9 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
                   })}
                 </tbody>
               </table>
+              <div className="mt-2 text-xs text-gray-500 leading-relaxed">
+                ※ N·M1·L·등록만 직접 편집. B·F는 위쪽 정책 슬라이더로 설정 (엑셀 업로드 시 슬라이더 보존, base만 갱신).
+              </div>
             </div>
           </div>
         </div>
