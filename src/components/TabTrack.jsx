@@ -170,10 +170,10 @@ export default memo(function TabTrack({ state, set, G, T, nhiNewChg, tSchg }) {
           의원당 1년차 합계 <span className="font-normal text-amber-600/80">(Track 수입 + PT {ptPct.toFixed(0)}%)</span>
         </div>
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="font-mono text-sm text-amber-800">{diffMan(perClinicGain)}</span>
-          <span className="text-amber-500 font-bold">+</span>
-          <span className="font-mono text-sm text-amber-800">+{fMan(PT)}</span>
-          <span className="text-amber-500 font-bold">=</span>
+          <span className="font-mono text-xl sm:text-2xl font-extrabold text-amber-800">{diffMan(perClinicGain)}</span>
+          <span className="text-xl sm:text-2xl text-amber-500 font-bold">+</span>
+          <span className="font-mono text-xl sm:text-2xl font-extrabold text-amber-800">+{fMan(PT)}</span>
+          <span className="text-xl sm:text-2xl text-amber-500 font-bold">=</span>
           <span className="text-xl sm:text-2xl font-extrabold text-amber-900">{diffMan(perClinicFirstYear)}</span>
         </div>
       </div>
