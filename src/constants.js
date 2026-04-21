@@ -23,6 +23,16 @@ export const INIT_BASE_PER_CLINIC = 3000;
 export const INIT_TOTAL_N = INIT_M_CLINICS * INIT_PER_CLINIC;
 export const INIT_DATA_LABEL = "복지부 시범사업안 (100기관 · 등록 1,000명)";
 export const INIT_PT_BASE = 10_000_000;   // 일차의료 전환지원금 기준 금액 (의원당 · 1회)
+// PT · 성과배분 Track 지급률 (A/B/C, %) — 편집 가능, 초기화 시 복귀
+export const INIT_PT_PCT_A = 10;
+export const INIT_PT_PCT_B = 50;
+export const INIT_PT_PCT_C = 100;
+export const INIT_SS_PCT_A = 10;
+export const INIT_SS_PCT_B = 50;
+export const INIT_SS_PCT_C = 100;
+// Shared Saving 절감률 분모 — "total"=건강보험 전체(ssTotalCost) · "project"=사업대상 환자(ssProjectCost)
+export const INIT_SS_COST_BASE = "total";
+export const INIT_SS_PROJECT_COST = 1.0;  // 조원 (사업 참여 의원 환자군 총진료비 추정값)
 // 이전 명칭 유지 (하위 호환)
 export const INIT_P = INIT_B;
 export const INIT_F = INIT_R;

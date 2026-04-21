@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, ON, COL_ALIASES } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, ON, COL_ALIASES } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
@@ -31,6 +31,17 @@ const initialState = {
   baseN_per_clinic: INIT_BASE_PER_CLINIC,
   // 일차의료 전환지원금 (PT) 기준 금액 — 의원당 1회, Track별 %로 차등
   pt_base: INIT_PT_BASE,
+  // PT Track 지급률 (A/B/C, %) — 편집 가능, 중간 hccPct는 선형보간
+  ptPctA: INIT_PT_PCT_A,
+  ptPctB: INIT_PT_PCT_B,
+  ptPctC: INIT_PT_PCT_C,
+  // 성과배분 Track 지급률 (A/B/C, %) — 편집 가능
+  ssPctA: INIT_SS_PCT_A,
+  ssPctB: INIT_SS_PCT_B,
+  ssPctC: INIT_SS_PCT_C,
+  // Shared Saving 절감률 분모 기준 ("total"=건강보험 전체 / "project"=사업대상)
+  ssCostBase: INIT_SS_COST_BASE,
+  ssProjectCost: INIT_SS_PROJECT_COST,
 };
 
 function reducer(state, action) {
@@ -69,6 +80,12 @@ function reducer(state, action) {
         regDist: [...INIT_REG_DIST],
         dataLabel: INIT_DATA_LABEL,
       };
+    case "RESET_PT_PCT":
+      return { ...state, ptPctA: INIT_PT_PCT_A, ptPctB: INIT_PT_PCT_B, ptPctC: INIT_PT_PCT_C };
+    case "RESET_SS_PCT":
+      return { ...state, ssPctA: INIT_SS_PCT_A, ssPctB: INIT_SS_PCT_B, ssPctC: INIT_SS_PCT_C };
+    case "RESET_SS_COST":
+      return { ...state, ssCostBase: INIT_SS_COST_BASE, ssProjectCost: INIT_SS_PROJECT_COST };
     case "SET_REGDIST_AT": {
       const regDist = [...state.regDist];
       regDist[action.i] = Math.max(0, Math.round(action.value));
@@ -106,7 +123,8 @@ function reducer(state, action) {
     }
     case "MACRO_SYNC": {
       const { newPct } = action;
-      const totalMedCost = state.ssTotalCost * 1e12;
+      const costBaseValue = state.ssCostBase === "project" ? state.ssProjectCost : state.ssTotalCost;
+      const totalMedCost = costBaseValue * 1e12;
       const targetSaving = totalMedCost * (newPct / 100);
       const pool = state.ssAcute + state.ssEmergency + state.ssLtc;
       if (pool <= 0) return { ...state, ssMacroPct: newPct };
@@ -160,6 +178,7 @@ export default function useSimulator() {
     base, P, LC, totalN, hccPct,
     ssTotalCost, ssAcute, ssEmergency, ssLtc,
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
+    ssCostBase, ssProjectCost,
     F_g, M_clinics, regDist, baseN_per_clinic,
   } = state;
 
@@ -298,7 +317,9 @@ export default function useSimulator() {
   const tSchg = T.inc0 > 0 ? (T.tS - T.inc0) / T.inc0 : 0;
 
   const SS = useMemo(() => {
-    const totalMedCost = ssTotalCost * 1e12;
+    // v6.5: 절감률 분모 — "total"(건강보험 전체) 또는 "project"(사업대상 환자 총진료비)
+    const costBaseValue = ssCostBase === "project" ? ssProjectCost : ssTotalCost;
+    const totalMedCost = costBaseValue * 1e12;
     const acuteSaving = ssAcute * 1e12 * (ssAcutePct / 100);
     const emergencySaving = ssEmergency * 1e12 * (ssEmergencyPct / 100);
     const ltcSaving = ssLtc * 1e12 * (ssLtcPct / 100);
@@ -312,8 +333,9 @@ export default function useSimulator() {
       clinicFromItem: itemTotal * clinicPct,
       nhisFromItem: itemTotal * nhisPct,
       clinicPct, nhisPct,
+      costBaseValue, // 조원
     };
-  }, [ssTotalCost, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare]);
+  }, [ssTotalCost, ssProjectCost, ssCostBase, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare]);
 
   const set = useCallback((key, value) => dispatch({ type: "SET", key, value }), []);
   const updP = useCallback((i, value) => dispatch({ type: "SET_P", i, value }), []);
@@ -324,6 +346,9 @@ export default function useSimulator() {
   const resetP = useCallback(() => dispatch({ type: "RESET_P" }), []);
   const resetLC = useCallback(() => dispatch({ type: "RESET_LC" }), []);
   const resetReg = useCallback(() => dispatch({ type: "RESET_REG" }), []);
+  const resetPtPct = useCallback(() => dispatch({ type: "RESET_PT_PCT" }), []);
+  const resetSsPct = useCallback(() => dispatch({ type: "RESET_SS_PCT" }), []);
+  const resetSsCost = useCallback(() => dispatch({ type: "RESET_SS_COST" }), []);
   const updRegDist = useCallback((i, value) => dispatch({ type: "SET_REGDIST_AT", i, value }), []);
   const setRegDistAll = useCallback((values) => dispatch({ type: "SET_REGDIST_ALL", values }), []);
   const scaleRegDist = useCallback((newTotal) => dispatch({ type: "SCALE_REGDIST", newTotal }), []);
@@ -432,6 +457,7 @@ export default function useSimulator() {
   return {
     state, set, updP, updBase, updF, setFAll,
     resetF, resetP, resetLC, resetReg,
+    resetPtPct, resetSsPct, resetSsCost,
     updRegDist, setRegDistAll, scaleRegDist,
     reset,
     handleMacroSync, handleFile, handleExport, loadPreset,

@@ -1,12 +1,13 @@
 import { memo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import WinWinWin from "./WinWinWin";
 import { fAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }) {
-  const { ssTotalCost, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare } = state;
+export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS, resetSsCost }) {
+  const { ssTotalCost, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
+    ssCostBase, ssProjectCost } = state;
+  const isProject = ssCostBase === "project";
 
   return (<>
     {/* ① 항목별 절감 — 실제 입력 (위로) */}
@@ -58,14 +59,40 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
     <div className={card + " p-4"}>
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-bold text-gray-900 text-sm">Shared Saving 총괄</h2>
-        <span className="text-xs text-gray-400">C] 성과기반 조정</span>
       </div>
-      <div className="text-xs text-gray-500 mb-3 flex flex-wrap items-center gap-1">
-        건강보험 총진료비
-        <input type="text" value={ssTotalCost}
-          onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) set("ssTotalCost", v); }}
-          className="w-16 text-center text-xs font-bold border border-red-300 rounded px-1 py-0.5 bg-red-50 text-red-700" />
-        <span>조원 기준</span>
+      {/* v6.5: 절감률 분모 선택 — 건강보험 전체 vs 사업대상 환자 */}
+      <div className="mb-3 rounded-lg border border-red-200 bg-red-50/40 p-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-semibold text-red-700 shrink-0">기준</span>
+          <label className={`flex items-center gap-1 text-xs font-semibold cursor-pointer px-2 py-1 rounded-md border transition ${!isProject ? "bg-white border-red-400 text-red-700" : "bg-transparent border-red-100 text-red-400"}`}>
+            <input type="radio" name="ssCostBase" value="total"
+              checked={!isProject}
+              onChange={() => set("ssCostBase", "total")}
+              className="accent-red-600" />
+            건강보험 전체
+            <input type="text" value={ssTotalCost}
+              onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) set("ssTotalCost", v); }}
+              disabled={isProject}
+              className="w-14 text-center text-xs font-bold border border-red-300 rounded px-1 py-0.5 bg-white text-red-700 disabled:opacity-40" />
+            <span className="text-[10px] text-red-500">조원</span>
+          </label>
+          <span className="text-red-300 text-xs">/</span>
+          <label className={`flex items-center gap-1 text-xs font-semibold cursor-pointer px-2 py-1 rounded-md border transition ${isProject ? "bg-white border-red-400 text-red-700" : "bg-transparent border-red-100 text-red-400"}`}>
+            <input type="radio" name="ssCostBase" value="project"
+              checked={isProject}
+              onChange={() => set("ssCostBase", "project")}
+              className="accent-red-600" />
+            사업대상 환자
+            <input type="text" value={ssProjectCost}
+              onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) set("ssProjectCost", v); }}
+              disabled={!isProject}
+              className="w-14 text-center text-xs font-bold border border-red-300 rounded px-1 py-0.5 bg-white text-red-700 disabled:opacity-40" />
+            <span className="text-[10px] text-red-500">조원</span>
+          </label>
+          <button onClick={resetSsCost}
+            className="ml-auto text-xs text-red-600 hover:text-red-800 hover:bg-red-100 rounded px-2 py-1 transition"
+            title="건강보험 전체 · 110.8조원으로 복귀">↩ 초기화</button>
+        </div>
       </div>
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xs font-semibold text-gray-700 shrink-0">총의료비 절감률</span>
@@ -80,7 +107,7 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
         <span className="text-xs text-gray-500">%</span>
       </div>
       <div className="rounded-lg p-3 text-center" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
-        <div className="text-xs text-gray-500 mb-1">총 절감액</div>
+        <div className="text-xs text-gray-500 mb-1">총 절감액 <span className="text-gray-400">({isProject ? "사업대상" : "건강보험 전체"} {SS.costBaseValue}조원 기준)</span></div>
         <div className="text-2xl sm:text-3xl font-extrabold text-red-600">
           {fAuto(SS.itemTotal)}
         </div>
@@ -89,12 +116,12 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
 
     {/* 배분 비율 */}
     <div className={card + " p-4"}>
-      <h2 className="font-bold text-gray-900 text-sm mb-3">Shared Saving 성과 배분 비율</h2>
+      <h2 className="font-bold text-gray-900 text-sm mb-3">절감액 배분 비율</h2>
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { n: "공단 적립 100%", v: 0, c: "#dc2626", bg: "#fef2f2" },
+          { n: "전환지원 100%", v: 0, c: "#2563eb", bg: "#eff6ff" },
           { n: "50 : 50", v: 50, c: "#7c3aed", bg: "#f5f3ff" },
-          { n: "일차의료 100%", v: 100, c: "#16a34a", bg: "#f0fdf4" },
+          { n: "성과배분 100%", v: 100, c: "#16a34a", bg: "#f0fdf4" },
         ].map((b, i) => (
           <button key={i} onClick={() => set("ssClinicShare", b.v)}
             aria-selected={ssClinicShare === b.v}
@@ -106,17 +133,40 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
         ))}
       </div>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-bold text-red-600 shrink-0">공단 적립 {100 - ssClinicShare}%</span>
+        <span className="text-xs font-bold text-blue-600 shrink-0">일차의료 전환 지원 {100 - ssClinicShare}%</span>
         <input type="range" min={0} max={100} step={5} value={ssClinicShare}
           onChange={e => set("ssClinicShare", parseInt(e.target.value))}
           aria-label="절감액 배분 비율 슬라이더"
           className="flex-1 big-thumb"
-          style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #dc2626 0%, #dc2626 ${100 - ssClinicShare}%, #16a34a ${100 - ssClinicShare}%, #16a34a 100%)` }} />
-        <span className="text-xs font-bold text-green-600 shrink-0">일차의료 {ssClinicShare}%</span>
+          style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${100 - ssClinicShare}%, #16a34a ${100 - ssClinicShare}%, #16a34a 100%)` }} />
+        <span className="text-xs font-bold text-green-600 shrink-0">참여의원 성과배분 {ssClinicShare}%</span>
       </div>
       <div className="flex rounded-md overflow-hidden h-5 text-xs font-bold text-white">
-        {ssClinicShare < 100 && <div style={{ width: `${100 - ssClinicShare}%`, background: "#dc2626" }} className="flex items-center justify-center transition-all">{(100 - ssClinicShare) > 15 ? "공단 적립" : ""}</div>}
-        {ssClinicShare > 0 && <div style={{ width: `${ssClinicShare}%`, background: "#16a34a" }} className="flex items-center justify-center transition-all">{ssClinicShare > 15 ? "일차의료" : ""}</div>}
+        {ssClinicShare < 100 && <div style={{ width: `${100 - ssClinicShare}%`, background: "#3b82f6" }} className="flex items-center justify-center transition-all">{(100 - ssClinicShare) > 15 ? "전환 지원" : ""}</div>}
+        {ssClinicShare > 0 && <div style={{ width: `${ssClinicShare}%`, background: "#16a34a" }} className="flex items-center justify-center transition-all">{ssClinicShare > 15 ? "성과배분" : ""}</div>}
+      </div>
+
+      {/* v6.5: 배분 용도 설명 — 슬라이더 바로 아래 */}
+      <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
+        <div className="text-xs font-bold text-amber-900 mb-2">💡 Shared Saving 배분 용도</div>
+        <div className="space-y-2 text-xs">
+          <div>
+            <div className="font-bold text-green-700 mb-0.5">🟢 참여의원 성과배분</div>
+            <div className="text-gray-700 leading-relaxed pl-4">
+              사업 참여 의원에게 직접 지급되는 성과보상금.<br />
+              환자군 관리 성과(입원·응급·요양병원 이용 감소)에 대한 성과 배분.
+            </div>
+          </div>
+          <div>
+            <div className="font-bold text-blue-700 mb-0.5">🔵 일차의료 전환 지원</div>
+            <div className="text-gray-700 leading-relaxed pl-4">
+              다음해 사업 유지·확장을 위한 재투자 재원.<br />
+              ① 신규 참여 의원 전환지원금(PT, Transformation Payment)<br />
+              ② 일차의료지원센터 구축·운영비<br />
+              ③ IT 인프라·교육·질 관리 시스템 투자
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -127,8 +177,8 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
         <PieChart>
           <Pie
             data={[
-              { name: "공단 적립", value: SS.nhisFromItem, color: "#ef4444" },
-              { name: "일차의료 지원", value: SS.clinicFromItem, color: "#22c55e" },
+              { name: "일차의료 전환 지원", value: SS.nhisFromItem, color: "#3b82f6" },
+              { name: "참여의원 성과배분", value: SS.clinicFromItem, color: "#22c55e" },
             ].filter(d => d.value > 0)}
             cx="50%" cy="50%" innerRadius={48} outerRadius={88}
             startAngle={90} endAngle={450}
@@ -137,7 +187,7 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
             labelLine={false}
           >
             {[
-              { value: SS.nhisFromItem, color: "#ef4444" },
+              { value: SS.nhisFromItem, color: "#3b82f6" },
               { value: SS.clinicFromItem, color: "#22c55e" },
             ].filter(d => d.value > 0).map((d, i) => <Cell key={i} fill={d.color} />)}
           </Pie>
@@ -145,19 +195,9 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS }
         </PieChart>
       </ResponsiveContainer>
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs mt-1">
-        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#ef4444" }}></span>공단 적립 <b className="text-red-600">{fAuto(SS.nhisFromItem)}</b></span>
-        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#22c55e" }}></span>일차의료 지원 <b className="text-green-600">{fAuto(SS.clinicFromItem)}</b></span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#3b82f6" }}></span>일차의료 전환 지원 <b className="text-blue-600">{fAuto(SS.nhisFromItem)}</b></span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#22c55e" }}></span>참여의원 성과배분 <b className="text-green-600">{fAuto(SS.clinicFromItem)}</b></span>
       </div>
     </div>
-
-    {/* Win-Win-Win */}
-    <WinWinWin items={[
-      { t: "국민 (환자)", c: "#059669", bg: "#ecfdf5", bd: "#a7f3d0",
-        txt: "불필요한 입원·응급 감소\n의료의 질 향상\n주치의 진료" },
-      { t: "의원 (의사)", c: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
-        txt: `절감 성과의 ${ssClinicShare}% 배분\n${fAuto(SS.clinicFromItem)} 추가 지원` },
-      { t: "공단 (정부)", c: "#dc2626", bg: "#fef2f2", bd: "#fecaca",
-        txt: `절감성과 ${100 - ssClinicShare}% 적립\n${fAuto(SS.nhisFromItem)} 절감\n의료비 예측가능성 향상` },
-    ]} />
   </>);
 })
