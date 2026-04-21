@@ -299,16 +299,16 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
           <div className="mt-3 pt-2 border-t border-gray-100">
             <div className="flex items-center gap-2 py-1.5 text-xs font-semibold text-gray-600">
               <span>📋 환자군별 상세 편집 테이블</span>
-              <span className="text-[10px] font-normal text-gray-400">입력 셀: 기준의료비 · 의원비중 · F · L · M1 · N · B(슬라이더 override)</span>
+              <span className="text-[10px] font-normal text-gray-400">입력 셀: HCC 평균 · 의원비중 · F · L · M1 · N · B(슬라이더 override)</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs" style={{ minWidth: 920 }}>
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
                     <th className="text-left px-2 py-1.5">환자군</th>
-                    <th className="text-center px-1">기준의료비</th>
+                    <th className="text-center px-1">HCC 평균</th>
                     <th className="text-center px-1">의원비중</th>
-                    <th className="text-center px-1 text-indigo-700">B = 기준×비중</th>
+                    <th className="text-center px-1 text-indigo-700">B = HCC평균×비중</th>
                     <th className="text-center px-1">F</th>
                     <th className="text-center px-1 text-purple-700">P = B + F</th>
                     <th className="text-center px-1">L</th>
