@@ -10,7 +10,18 @@ import { f, fE, pct, diffAuto, fAuto, fMan, diffMan } from "../utils";
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabSimulation({ state, set, updP, updBase, updF, setFAll, resetF, resetP, resetLC, resetReg, updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset, G, T, decomp, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
-  const { base, P, LC, totalN, showDetail, showEditTable, uploadBanner, dataLabel, F_g, M_clinics } = state;
+  const { base, P, LC, totalN, showDetail, uploadBanner, dataLabel, F_g, M_clinics } = state;
+
+  // 편집 테이블: 기준의료비(ref) 또는 의원비중(cr) 변경 시 B 자동 재계산
+  // (B 슬라이더 override는 유지 — 슬라이더로 이후 독립 조정 가능)
+  const updRef = (i, v) => {
+    updBase(i, "ref", v);
+    updP(i, Math.round(v * base[i].cr));
+  };
+  const updCr = (i, v) => {
+    updBase(i, "cr", v);
+    updP(i, Math.round(base[i].ref * v));
+  };
   const M = Math.max(1, M_clinics);
   const ratios = base.map(g => g.N / base.reduce((s, x) => s + x.N, 0));
   const [showFormula, setShowFormula] = useState(false);
@@ -286,62 +297,66 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
           </div>
 
           <div className="mt-3 pt-2 border-t border-gray-100">
-            <button onClick={() => set("showEditTable", !showEditTable)}
-              className="w-full flex items-center justify-start gap-2 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 transition">
-              <span className="text-gray-400">{showEditTable ? "▲" : "▼"}</span>
+            <div className="flex items-center gap-2 py-1.5 text-xs font-semibold text-gray-600">
               <span>📋 환자군별 상세 편집 테이블</span>
-            </button>
-            {showEditTable && (
-              <div className="mt-1">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs" style={{ minWidth: 880 }}>
-                    <thead>
-                      <tr className="bg-gray-50 text-gray-500">
-                        <th className="text-left px-2 py-1.5">환자군</th>
-                        <th className="text-center px-1">기준의료비</th>
-                        <th className="text-center px-1">의원비중</th>
-                        <th className="text-center px-1">P</th>
-                        <th className="text-center px-1">F</th>
-                        <th className="text-center px-1 text-purple-700">T=P+F</th>
-                        <th className="text-center px-1">L</th>
-                        <th className="text-center px-1">M1</th>
-                        <th className="text-center px-1">N</th>
+              <span className="text-[10px] font-normal text-gray-400">입력 셀: 기준의료비 · 의원비중 · F · L · M1 · N · B(슬라이더 override)</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs" style={{ minWidth: 920 }}>
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500">
+                    <th className="text-left px-2 py-1.5">환자군</th>
+                    <th className="text-center px-1">기준의료비</th>
+                    <th className="text-center px-1">의원비중</th>
+                    <th className="text-center px-1 text-indigo-700">B = 기준×비중</th>
+                    <th className="text-center px-1">F</th>
+                    <th className="text-center px-1 text-purple-700">P = B + F</th>
+                    <th className="text-center px-1">L</th>
+                    <th className="text-center px-1">M1</th>
+                    <th className="text-center px-1">N</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {G.map((r, i) => {
+                    const Fi = F_g[i] ?? 0;
+                    return (
+                      <tr key={i} className="border-t border-gray-100">
+                        <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
+                        <td className="text-center px-1">
+                          <input type="text" value={f(base[i].ref)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updRef(i, v); }} />
+                        </td>
+                        <td className="text-center px-1">
+                          <input type="text" value={base[i].cr.toFixed(3)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updCr(i, v); }} />
+                        </td>
+                        <td className="text-center px-1">
+                          <input type="text" value={f(P[i])} className="w-20 text-center text-xs border border-indigo-200 rounded bg-indigo-50 py-0.5 font-semibold text-indigo-700"
+                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updP(i, v); }} />
+                        </td>
+                        <td className="text-center px-1">
+                          <input type="text" value={f(Fi)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updF(i, v); }} />
+                        </td>
+                        <td className="text-center px-1 font-bold text-purple-700 tabular-nums">{f(P[i] + Fi)}</td>
+                        <td className="text-center px-1">
+                          <input type="text" value={base[i].L.toFixed(3)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updBase(i, "L", v); }} />
+                        </td>
+                        <td className="text-center px-1">
+                          <input type="text" value={f(base[i].M1)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updBase(i, "M1", v); }} />
+                        </td>
+                        <td className="text-center px-1">
+                          <input type="text" value={f(base[i].N)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {G.map((r, i) => {
-                        const Fi = F_g[i] ?? 0;
-                        return (
-                          <tr key={i} className="border-t border-gray-100">
-                            <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
-                            <td className="text-center px-1 text-gray-600">{f(base[i].ref)}</td>
-                            <td className="text-center px-1 text-gray-600">{(base[i].cr * 100).toFixed(1)}%</td>
-                            <td className="text-center px-1">
-                              <input type="text" value={f(P[i])} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                                onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updP(i, v); }} />
-                            </td>
-                            <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
-                            <td className="text-center px-1 font-bold text-purple-700">{f(P[i] + Fi)}</td>
-                            <td className="text-center px-1">
-                              <input type="text" value={(base[i].L * 100).toFixed(1)} className="w-12 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                                onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 100) updBase(i, "L", v / 100); }} />%
-                            </td>
-                            <td className="text-center px-1">
-                              <input type="text" value={f(base[i].M1)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                                onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updBase(i, "M1", v); }} />
-                            </td>
-                            <td className="text-center px-1">
-                              <input type="text" value={f(base[i].N)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                                onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
