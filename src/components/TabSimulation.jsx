@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { FCard, TCard, RegScaleCard } from "./RegistrationPanel";
-import { SH, CL, ON } from "../constants";
+import { SH, CL, ON, INIT_REG_DIST } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fAuto, fMan, diffMan } from "../utils";
 
@@ -182,8 +182,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
 
     {/* ⑦ 의원당 환자 규모 (KPI 아래로 이동) */}
     <RegScaleCard state={state} set={set} reg={reg}
-      updRegDist={updRegDist} setRegDistAll={setRegDistAll} scaleRegDist={scaleRegDist}
-      resetReg={resetReg} />
+      scaleRegDist={scaleRegDist} resetReg={resetReg} />
 
     {/* ⑧ 차트 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -297,12 +296,32 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
           </div>
 
           <div className="mt-3 pt-2 border-t border-gray-100">
-            <div className="flex items-center gap-2 py-1.5 text-xs font-semibold text-gray-600">
-              <span>📋 환자군별 상세 편집 테이블</span>
-              <span className="text-[10px] font-normal text-gray-400">입력 셀: HCC 평균 · 의원비중 · F · L · M1 · N · B(슬라이더 override)</span>
+            <div className="flex items-center justify-between gap-2 py-1.5 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-gray-600">📋 환자군별 상세 편집 테이블</span>
+                <span className="text-[10px] font-normal text-gray-400">입력 셀: HCC 평균 · 의원비중 · F · L · M1 · N · 등록 · B(슬라이더 override)</span>
+              </div>
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-[10px] text-gray-500">등록 분포 프리셋:</span>
+                {[
+                  { label: "부록", v: INIT_REG_DIST },
+                  { label: "균등", v: [250, 250, 250, 250] },
+                  { label: "건강편중", v: [400, 400, 150, 50] },
+                  { label: "고위험편중", v: [50, 350, 300, 300] },
+                ].map(p => {
+                  const active = state.regDist.every((v, i) => v === p.v[i]);
+                  return (
+                    <button key={p.label} onClick={() => setRegDistAll(p.v)}
+                      className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                      style={active ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs" style={{ minWidth: 920 }}>
+              <table className="w-full text-xs" style={{ minWidth: 1000 }}>
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
                     <th className="text-left px-2 py-1.5">환자군</th>
@@ -313,7 +332,8 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
                     <th className="text-center px-1 text-purple-700">P = B + F</th>
                     <th className="text-center px-1">L</th>
                     <th className="text-center px-1">M1</th>
-                    <th className="text-center px-1">N</th>
+                    <th className="text-center px-1">N (이용·전체)</th>
+                    <th className="text-center px-1 text-blue-700">등록 (의원당)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -350,6 +370,10 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
                         <td className="text-center px-1">
                           <input type="text" value={f(base[i].N)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
                             onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
+                        </td>
+                        <td className="text-center px-1">
+                          <input type="text" value={f(state.regDist[i])} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5 text-blue-700"
+                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updRegDist(i, v); }} />
                         </td>
                       </tr>
                     );
