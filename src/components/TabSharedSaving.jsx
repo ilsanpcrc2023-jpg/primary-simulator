@@ -82,7 +82,7 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS, 
               checked={isProject}
               onChange={() => set("ssCostBase", "project")}
               className="accent-red-600" />
-            사업대상 환자
+            사업대상 환자 의료비
             <input type="text" value={ssProjectCost}
               onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) set("ssProjectCost", v); }}
               disabled={!isProject}
@@ -107,7 +107,7 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS, 
         <span className="text-xs text-gray-500">%</span>
       </div>
       <div className="rounded-lg p-3 text-center" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
-        <div className="text-xs text-gray-500 mb-1">총 절감액 <span className="text-gray-400">({isProject ? `사업대상 ${SS.costBaseValue.toLocaleString()}억원` : `건강보험 전체 ${SS.costBaseValue}조원`} 기준)</span></div>
+        <div className="text-xs text-gray-500 mb-1">총 절감액 <span className="text-gray-400">({isProject ? `사업대상 환자 의료비 ${SS.costBaseValue.toLocaleString()}억원` : `건강보험 전체 ${SS.costBaseValue}조원`} 기준)</span></div>
         <div className="text-2xl sm:text-3xl font-extrabold text-red-600">
           {fAuto(SS.itemTotal)}
         </div>
