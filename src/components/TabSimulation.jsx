@@ -66,10 +66,7 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
       <FCard state={state} setFAll={setFAll} updF={updF} resetF={resetF} bare />
     </div>
 
-    {/* ④ 통합 수가 T — 접힘 */}
-    <TCard state={state} G={G} />
-
-    {/* ⑤ 타원이용비중 L 변화율 — 슬림 박스 */}
+    {/* ④ 타원이용비중 L 변화율 — 슬림 박스 (L이 P 카드의 공단지급 계산에 영향 → 먼저 배치) */}
     <div className="rounded-xl border-2 shadow-sm px-4 py-3" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>3. 타원이용비중 (L) 변화율</h2>
@@ -93,6 +90,9 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
         <span>-30%p</span><span>-20%p</span><span>-10%p</span><span>0%p</span>
       </div>
     </div>
+
+    {/* ⑤ 일차의료수가 (P = B + F) — 항상 펼침 */}
+    <TCard state={state} G={G} />
 
     {/* ⑥ KPI 2카드 — 상시 표시, 의원당 수입 확대, 토글 없음 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
