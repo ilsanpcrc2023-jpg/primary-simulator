@@ -193,12 +193,11 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, scaleR
 
           {/* 사업 참여 의원 수 — 시스템 규모 (맥락 전환: 의원당 → 전체) */}
           <div className="mt-3 pt-3 border-t-2 border-dashed border-gray-300">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[10px] text-gray-500 font-semibold">── 시스템 전체 규모 ──</span>
-              <span className="text-[11px] text-gray-600 font-semibold">전체 N = <b className="text-gray-800">{f(totalN)}명</b></span>
+            <div className="text-sm font-bold text-gray-800 mb-2">
+              사업 전체 등록 환자 규모: N = <span className="text-gray-900">{f(totalN)}명</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">사업 참여 의원 수</span>
+              <span className="text-sm font-bold text-gray-800 shrink-0">사업 참여 의원 수</span>
               <NumBox value={M_clinics} onChange={setMPreservingPerClinic} color="#1f2937" suffix="개" />
               <span className="text-xs text-gray-600 -ml-1">의원</span>
               <div className="flex flex-wrap gap-1 ml-1 items-center">
