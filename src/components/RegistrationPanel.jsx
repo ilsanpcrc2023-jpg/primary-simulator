@@ -11,13 +11,15 @@ const F_MAX = 600000;
 export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = false }) {
   const { F_g, P: B_g } = state;
 
-  // 버튼 1: 균등 — 모든 군을 2만원으로 설정
+  // 버튼 1: 균등 — 1군 값 + 1만원으로 모든 군 통일 (누를 때마다 1만원씩 상승)
   const applyEqual = () => {
-    setFAll([20000, 20000, 20000, 20000]);
+    const v = F_g[0] + 10000;
+    setFAll([v, v, v, v]);
   };
-  // 버튼 2: 차등 — 1군 10,000원 고정 기준 1:2:3:4 비율 (1·2·3·4만원)
+  // 버튼 2: 차등 — 1군 값 + 1만원 기준 1:2:3:4 비율 (누를 때마다 1군이 1만원씩 상승)
   const applyGraduated = () => {
-    setFAll([10000, 20000, 30000, 40000]);
+    const v = F_g[0] + 10000;
+    setFAll([v, v * 2, v * 3, v * 4]);
   };
   // 버튼 3: 끝자리 보정 — 기존 F에 (B의 만원 이하 끝자리 올림 보정값)을 더해 P를 만원 단위로 정돈
   // 예: B=280,832 + F=10,000 → diff=9,168 → F_new=19,168 → P=300,000
