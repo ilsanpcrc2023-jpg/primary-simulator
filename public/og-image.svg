@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="50%" stop-color="#ede9fe"/>
+      <stop offset="100%" stop-color="#dcfce7"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.82"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="8" stdDeviation="18" flood-color="#1e293b" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Background gradient -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Accent shapes -->
+  <circle cx="1080" cy="90" r="180" fill="#4f46e5" opacity="0.08"/>
+  <circle cx="120" cy="560" r="160" fill="#22c55e" opacity="0.10"/>
+  <circle cx="950" cy="540" r="100" fill="#f97316" opacity="0.08"/>
+
+  <!-- Main card -->
+  <rect x="80" y="80" width="1040" height="470" rx="40" fill="url(#card)" filter="url(#shadow)"/>
+
+  <!-- Logo area (left) -->
+  <g transform="translate(140, 180)">
+    <rect width="220" height="220" rx="44" fill="#1a6fa8"/>
+    <circle cx="110" cy="70" r="25" fill="white"/>
+    <path d="M66 144 Q66 104 110 101 Q154 104 154 144 L154 152 L66 152 Z" fill="white"/>
+    <line x1="44" y1="158" x2="176" y2="158" stroke="white" stroke-width="2.5" stroke-opacity="0.3"/>
+    <rect x="44" y="188" width="26" height="24" rx="4" fill="white" opacity="0.55"/>
+    <rect x="78" y="172" width="26" height="40" rx="4" fill="white" opacity="0.75"/>
+    <rect x="112" y="154" width="26" height="58" rx="4" fill="white" opacity="0.9"/>
+    <rect x="146" y="134" width="26" height="78" rx="4" fill="#4dd9a8"/>
+    <polyline points="146,128 162,114 176,114" fill="none" stroke="#4dd9a8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="166,106 176,114 168,122" fill="none" stroke="#4dd9a8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Text content (right) -->
+  <g transform="translate(410, 180)" font-family="Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+    <text x="0" y="28" font-size="24" font-weight="600" fill="#1a6fa8" letter-spacing="-0.5">NHIS-HCC 환자군 기반</text>
+    <text x="0" y="88" font-size="54" font-weight="800" fill="#0f172a" letter-spacing="-1.5">일차의료 지불모형</text>
+    <text x="0" y="150" font-size="54" font-weight="800" fill="#0f172a" letter-spacing="-1.5">시뮬레이터</text>
+
+    <line x1="0" y1="178" x2="110" y2="178" stroke="#4f46e5" stroke-width="5" stroke-linecap="round"/>
+
+    <text x="0" y="220" font-size="22" font-weight="500" fill="#475569">수가 시뮬레이션</text>
+    <text x="0" y="252" font-size="22" font-weight="500" fill="#475569">Track A/B/C · Shared Saving</text>
+
+    <text x="0" y="312" font-size="18" font-weight="500" fill="#64748b">일차의료개발센터</text>
+  </g>
+
+  <!-- Footer bar -->
+  <rect x="0" y="570" width="1200" height="60" fill="#1a6fa8"/>
+  <text x="600" y="608" text-anchor="middle" font-size="22" font-weight="600" fill="#ffffff" font-family="Pretendard, -apple-system, sans-serif" letter-spacing="0.5">primary-simulator.vercel.app</text>
+</svg>
