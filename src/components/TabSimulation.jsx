@@ -68,18 +68,20 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
 
     {/* ④ 타원이용비중 L 변화율 — 슬림 박스 (L이 P 카드의 공단지급 계산에 영향 → 먼저 배치) */}
     <div className="rounded-xl border-2 shadow-sm px-4 py-3" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
-      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+      <div className="flex items-center mb-2 gap-3 flex-wrap">
         <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>3. 타원이용비중 (L) 변화율</h2>
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-xs text-purple-600 font-semibold">전</span>
           <span className="text-sm font-bold text-purple-700/70">{(Lavg * 100).toFixed(1)}%</span>
           <span className="text-purple-400">→</span>
+          <span className="text-xs text-purple-600 font-semibold">후</span>
           <span className="text-lg font-extrabold text-purple-900">{(LavgAfter * 100).toFixed(1)}%</span>
           <NumBox value={LC} onChange={v => set("LC", v)} color="#7c3aed" suffix="%p" />
-          <button onClick={resetLC}
-            className="text-xs text-purple-700 hover:text-red-600 border border-purple-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
-            ↩ 초기화
-          </button>
         </div>
+        <button onClick={resetLC}
+          className="ml-auto text-xs text-purple-700 hover:text-red-600 border border-purple-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
+          ↩ 초기화
+        </button>
       </div>
       <input type="range" min={-30} max={0} step={0.5} value={Math.max(-30, Math.min(0, LC))}
         onChange={e => set("LC", parseFloat(e.target.value))}
