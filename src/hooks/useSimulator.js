@@ -5,7 +5,7 @@ import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER
 const initialState = {
   base: INIT_BASE,
   P: INIT_P,
-  LC: -3,
+  LC: 0,
   // 복지부 시범사업안 기본: 100기관 × 의원당 1,000명
   totalN: INIT_TOTAL_N,
   dataLabel: INIT_DATA_LABEL,
@@ -59,7 +59,7 @@ function reducer(state, action) {
     case "RESET_P":
       return { ...state, P: [...INIT_P] };
     case "RESET_LC":
-      return { ...state, LC: -3 };
+      return { ...state, LC: 0 };
     case "RESET_REG":
       return {
         ...state,
