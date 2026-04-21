@@ -30,9 +30,10 @@ export const INIT_PT_PCT_C = 100;
 export const INIT_SS_PCT_A = 10;
 export const INIT_SS_PCT_B = 50;
 export const INIT_SS_PCT_C = 100;
-// Shared Saving 절감률 분모 — "total"=건강보험 전체(ssTotalCost) · "project"=사업대상 환자(ssProjectCost)
+// Shared Saving 절감률 분모 — "total"=건강보험 전체(ssTotalCost, 조원) · "project"=사업대상 환자(ssProjectCost, 억원)
+// v6.5.3: 사업대상 단위 조원→억원 (수천~수만억 규모라 조원은 소수점 입력 필요)
 export const INIT_SS_COST_BASE = "total";
-export const INIT_SS_PROJECT_COST = 1.0;  // 조원 (사업 참여 의원 환자군 총진료비 추정값)
+export const INIT_SS_PROJECT_COST = 10000;  // 억원 (사업 참여 의원 환자군 총진료비 추정값 · 1조원 = 10,000억원)
 // 이전 명칭 유지 (하위 호환)
 export const INIT_P = INIT_B;
 export const INIT_F = INIT_R;

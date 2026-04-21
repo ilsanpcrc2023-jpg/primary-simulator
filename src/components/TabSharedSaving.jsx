@@ -86,8 +86,8 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS, 
             <input type="text" value={ssProjectCost}
               onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) set("ssProjectCost", v); }}
               disabled={!isProject}
-              className="w-14 text-center text-xs font-bold border border-red-300 rounded px-1 py-0.5 bg-white text-red-700 disabled:opacity-40" />
-            <span className="text-[10px] text-red-500">조원</span>
+              className="w-20 text-center text-xs font-bold border border-red-300 rounded px-1 py-0.5 bg-white text-red-700 disabled:opacity-40" />
+            <span className="text-[10px] text-red-500">억원</span>
           </label>
           <button onClick={resetSsCost}
             className="ml-auto text-xs text-red-600 hover:text-red-800 hover:bg-red-100 rounded px-2 py-1 transition"
@@ -107,7 +107,7 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS, 
         <span className="text-xs text-gray-500">%</span>
       </div>
       <div className="rounded-lg p-3 text-center" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
-        <div className="text-xs text-gray-500 mb-1">총 절감액 <span className="text-gray-400">({isProject ? "사업대상" : "건강보험 전체"} {SS.costBaseValue}조원 기준)</span></div>
+        <div className="text-xs text-gray-500 mb-1">총 절감액 <span className="text-gray-400">({isProject ? `사업대상 ${SS.costBaseValue.toLocaleString()}억원` : `건강보험 전체 ${SS.costBaseValue}조원`} 기준)</span></div>
         <div className="text-2xl sm:text-3xl font-extrabold text-red-600">
           {fAuto(SS.itemTotal)}
         </div>

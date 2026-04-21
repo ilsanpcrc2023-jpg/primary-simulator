@@ -117,16 +117,16 @@ describe('v6.5 PT/SS Track percentages', () => {
     expect(ssPerClinicFull * 100 / 100).toBeCloseTo(4.015e9);  // 40.15억/의원
   });
 
-  it('ssCostBase default is "total" and project cost default is 1.0 조원', () => {
+  it('ssCostBase default is "total" and project cost default is 10000 억원 (v6.5.3)', () => {
     expect(INIT_SS_COST_BASE).toBe('total');
-    expect(INIT_SS_PROJECT_COST).toBe(1.0);
+    expect(INIT_SS_PROJECT_COST).toBe(10000);   // 억원 단위 (1조원 = 10,000억원)
   });
 
-  it('derivedMacroPct scales with selected cost base', () => {
+  it('derivedMacroPct scales with selected cost base (단위 혼용: 조원 vs 억원)', () => {
     const itemTotal = 4e12;   // 4조원 절감
-    // 건강보험 전체 110.8조원 기준: itemTotal / 110.8조 × 100 ≈ 3.61%
+    // 건강보험 전체 110.8조원 기준 (×1e12): itemTotal / (110.8×1e12) × 100 ≈ 3.61%
     expect((itemTotal / (110.8 * 1e12)) * 100).toBeCloseTo(3.61, 1);
-    // 사업대상 1.0조원 기준: itemTotal / 1조 × 100 = 400% (비현실적, 분석가가 사업대상 절감액을 조정해야 함)
-    expect((itemTotal / (1.0 * 1e12)) * 100).toBeCloseTo(400, 1);
+    // 사업대상 10,000억원 기준 (×1e8): itemTotal / (10000×1e8) × 100 = 400%
+    expect((itemTotal / (10000 * 1e8)) * 100).toBeCloseTo(400, 1);
   });
 });

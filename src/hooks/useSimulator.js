@@ -123,8 +123,10 @@ function reducer(state, action) {
     }
     case "MACRO_SYNC": {
       const { newPct } = action;
-      const costBaseValue = state.ssCostBase === "project" ? state.ssProjectCost : state.ssTotalCost;
-      const totalMedCost = costBaseValue * 1e12;
+      // v6.5.3: 사업대상은 억원(×1e8), 건강보험 전체는 조원(×1e12)
+      const totalMedCost = state.ssCostBase === "project"
+        ? state.ssProjectCost * 1e8
+        : state.ssTotalCost * 1e12;
       const targetSaving = totalMedCost * (newPct / 100);
       const pool = state.ssAcute + state.ssEmergency + state.ssLtc;
       if (pool <= 0) return { ...state, ssMacroPct: newPct };
@@ -317,9 +319,11 @@ export default function useSimulator() {
   const tSchg = T.inc0 > 0 ? (T.tS - T.inc0) / T.inc0 : 0;
 
   const SS = useMemo(() => {
-    // v6.5: 절감률 분모 — "total"(건강보험 전체) 또는 "project"(사업대상 환자 총진료비)
+    // v6.5.3: 분모 — "total"=건강보험 전체(조원, ×1e12) / "project"=사업대상 환자(억원, ×1e8)
+    const totalMedCost = ssCostBase === "project"
+      ? ssProjectCost * 1e8
+      : ssTotalCost * 1e12;
     const costBaseValue = ssCostBase === "project" ? ssProjectCost : ssTotalCost;
-    const totalMedCost = costBaseValue * 1e12;
     const acuteSaving = ssAcute * 1e12 * (ssAcutePct / 100);
     const emergencySaving = ssEmergency * 1e12 * (ssEmergencyPct / 100);
     const ltcSaving = ssLtc * 1e12 * (ssLtcPct / 100);
