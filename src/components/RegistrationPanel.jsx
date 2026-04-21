@@ -95,19 +95,23 @@ export const TCard = memo(function TCard({ state, G }) {
             const P_i = G[i].p + F_g[i];
             const nhiPay = G[i].A_new + F_g[i];   // 공단지급 = B(1-L) + F (LC 반영)
             return (
-              <div key={i} className="rounded-lg px-2 py-2 text-center bg-white/90 shadow-sm min-w-0" style={{ borderLeft: `5px solid ${CL[i]}` }}>
-                <div className="text-[11px] font-bold" style={{ color: CL[i] }}>{g}</div>
-                <div className="text-base sm:text-lg font-extrabold text-indigo-900 tabular-nums whitespace-nowrap">{f(P_i)}<span className="text-xs sm:text-sm font-bold ml-0.5">원</span></div>
-                <div className="mt-0.5 pt-0.5 border-t border-indigo-200/60 text-[10px] text-indigo-700/80 leading-tight">
-                  공단지급 <b className="text-indigo-800 tabular-nums">{f(Math.round(nhiPay))}</b>원
+              <div key={i} className="rounded-lg px-2 py-2 bg-white/90 shadow-sm min-w-0" style={{ borderLeft: `5px solid ${CL[i]}` }}>
+                <div className="text-[11px] font-bold text-center" style={{ color: CL[i] }}>{g}</div>
+                <div className="mt-1">
+                  <div className="text-[10px] font-semibold text-indigo-700/80 text-center">일차의료수가</div>
+                  <div className="text-sm sm:text-base font-extrabold text-indigo-900 tabular-nums text-center whitespace-nowrap">{f(P_i)}<span className="text-[10px] font-bold ml-0.5">원</span></div>
+                </div>
+                <div className="mt-1 pt-1 border-t border-dashed border-indigo-300/60">
+                  <div className="text-[10px] font-semibold text-rose-700/90 text-center">공단지급</div>
+                  <div className="text-sm sm:text-base font-extrabold text-rose-700 tabular-nums text-center whitespace-nowrap">{f(Math.round(nhiPay))}<span className="text-[10px] font-bold ml-0.5">원</span></div>
                 </div>
               </div>
             );
           })}
         </div>
         <div className="mt-2 px-2 py-1.5 rounded bg-white/70 border border-indigo-200/60 text-[11px] text-indigo-900 leading-relaxed">
-          <div><b>공단지급 = B×(1−L) + F</b> · <span className="text-indigo-700/80">일차의료수가(P)에서 타원이용비중(L)만큼 차감 후 지급. 단, F는 등록의원에 전액 지급(L 우회).</span></div>
-          <div className="mt-0.5"><b>의원 수입 = 공단지급 + 본인부담</b> · <span className="text-indigo-700/80">본인부담 = M1×30% (현행 유지)</span></div>
+          <div><b>공단지급 = B×(1−L) + F</b> · <span className="text-indigo-700/80">일차의료수가(P)에서 타원이용비중(L)만큼 차감 후 지급.</span></div>
+          <div className="mt-0.5"><b>의원 수입 = 공단지급 + 본인부담</b></div>
         </div>
       </div>
     </div>
