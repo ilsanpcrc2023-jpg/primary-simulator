@@ -117,16 +117,39 @@ describe('v6.5 PT/SS Track percentages', () => {
     expect(ssPerClinicFull * 100 / 100).toBeCloseTo(4.015e9);  // 40.15억/의원
   });
 
-  it('ssCostBase default is "total" and project cost default is 10000 억원 (v6.5.3)', () => {
-    expect(INIT_SS_COST_BASE).toBe('total');
-    expect(INIT_SS_PROJECT_COST).toBe(10000);   // 억원 단위 (1조원 = 10,000억원)
+  it('v6.5.4 defaults: 사업대상 환자 의료비 1,000억원', () => {
+    expect(INIT_SS_COST_BASE).toBe('project');
+    expect(INIT_SS_PROJECT_COST).toBe(1000);    // 억원
   });
 
-  it('derivedMacroPct scales with selected cost base (단위 혼용: 조원 vs 억원)', () => {
-    const itemTotal = 4e12;   // 4조원 절감
-    // 건강보험 전체 110.8조원 기준 (×1e12): itemTotal / (110.8×1e12) × 100 ≈ 3.61%
-    expect((itemTotal / (110.8 * 1e12)) * 100).toBeCloseTo(3.61, 1);
-    // 사업대상 10,000억원 기준 (×1e8): itemTotal / (10000×1e8) × 100 = 400%
-    expect((itemTotal / (10000 * 1e8)) * 100).toBeCloseTo(400, 1);
+  it('projectScale: 사업대상 기준 시 절감액이 사업대상/건보 비율로 축소', () => {
+    const ssTotalCost = 110.8;   // 조원
+    const ssProjectCost = 1000;  // 억원
+    const rawItemTotal = 8030e8;       // 8,030억원 (건보 기준)
+    const costBaseTotal = ssTotalCost * 1e12;
+    const costBaseProject = ssProjectCost * 1e8;
+    const projectScale = costBaseProject / costBaseTotal;   // 약 0.000903
+    const itemTotal_project = rawItemTotal * projectScale;
+    // 8,030억 × (1,000/110,800) ≈ 7.25억
+    expect(itemTotal_project).toBeCloseTo(7.247e8, -7);
+    // macro %는 기준 독립 (raw/total = scaled/project)
+    const macro_total = (rawItemTotal / costBaseTotal) * 100;
+    const macro_project = (itemTotal_project / costBaseProject) * 100;
+    expect(macro_project).toBeCloseTo(macro_total, 5);
+  });
+
+  it('Track 재원은 사업대상 환자 의료비 변화에 비례 연동', () => {
+    const ssTotalCost = 110.8;
+    const rawItemTotal = 8030e8;     // 건보 기준 8,030억
+    const ssClinicShare = 15;
+    const clinicPct = ssClinicShare / 100;
+    const computeFund = (projectCost) => {
+      const scale = (projectCost * 1e8) / (ssTotalCost * 1e12);
+      return rawItemTotal * scale * clinicPct;
+    };
+    // 사업대상 1,000억 → ≈ 1.087억, 2,000억 → ≈ 2.173억 (정확히 2배)
+    const f1 = computeFund(1000);
+    const f2 = computeFund(2000);
+    expect(f2 / f1).toBeCloseTo(2, 5);
   });
 });

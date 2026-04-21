@@ -157,10 +157,13 @@ export default memo(function TabTrack({ state, set, G, T, SS, tAchg, tBchg, tCch
         </div>
       )}
 
-      <div className="text-xs text-green-700/80 mb-2">
-        재원: <b>{fAuto(SS?.clinicFromItem ?? 0)}</b>
-        <span className="text-green-600/60"> (Shared Saving 탭 · 성과배분 {Math.round((SS?.clinicPct ?? 0) * 100)}%)</span>
-        <span className="text-green-500/70"> ÷ {f(M)}개 의원 = 의원당 <b>{fMan(ssPerClinicFull)}</b></span>
+      <div className="text-xs text-green-700/80 mb-2 leading-relaxed">
+        <div>재원: Shared Saving 탭에서 산정된 <b className="text-green-800">사업대상 환자 의료비 절감배분액</b></div>
+        <div className="mt-0.5">
+          = <b>{fAuto(SS?.clinicFromItem ?? 0)}</b>
+          <span className="text-green-600/60"> (성과배분 {Math.round((SS?.clinicPct ?? 0) * 100)}%)</span>
+          <span className="text-green-500/70"> ÷ {f(M)}개 의원 = 의원당 <b>{fMan(ssPerClinicFull)}</b></span>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2">

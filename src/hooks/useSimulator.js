@@ -123,10 +123,9 @@ function reducer(state, action) {
     }
     case "MACRO_SYNC": {
       const { newPct } = action;
-      // v6.5.3: 사업대상은 억원(×1e8), 건강보험 전체는 조원(×1e12)
-      const totalMedCost = state.ssCostBase === "project"
-        ? state.ssProjectCost * 1e8
-        : state.ssTotalCost * 1e12;
+      // v6.5.4: 항목별 절감은 항상 건보 기준 원자료(조원 ×1e12)로 역산.
+      // macro %는 기준 독립 (사업대상 기준일 때도 같은 % — projectScale이 상쇄되기 때문)
+      const totalMedCost = state.ssTotalCost * 1e12;
       const targetSaving = totalMedCost * (newPct / 100);
       const pool = state.ssAcute + state.ssEmergency + state.ssLtc;
       if (pool <= 0) return { ...state, ssMacroPct: newPct };
@@ -319,15 +318,26 @@ export default function useSimulator() {
   const tSchg = T.inc0 > 0 ? (T.tS - T.inc0) / T.inc0 : 0;
 
   const SS = useMemo(() => {
-    // v6.5.3: 분모 — "total"=건강보험 전체(조원, ×1e12) / "project"=사업대상 환자(억원, ×1e8)
-    const totalMedCost = ssCostBase === "project"
-      ? ssProjectCost * 1e8
-      : ssTotalCost * 1e12;
+    // v6.5.3: 분모 — "total"=건강보험 전체(조원, ×1e12) / "project"=사업대상 환자 의료비(억원, ×1e8)
+    // v6.5.4: 사업대상 기준일 때 절감액을 사업대상 비율로 축소 (참여의원 재원이 사업대상 의료비와 연동)
+    const costBaseTotal = ssTotalCost * 1e12;
+    const costBaseProject = ssProjectCost * 1e8;
+    const totalMedCost = ssCostBase === "project" ? costBaseProject : costBaseTotal;
     const costBaseValue = ssCostBase === "project" ? ssProjectCost : ssTotalCost;
-    const acuteSaving = ssAcute * 1e12 * (ssAcutePct / 100);
-    const emergencySaving = ssEmergency * 1e12 * (ssEmergencyPct / 100);
-    const ltcSaving = ssLtc * 1e12 * (ssLtcPct / 100);
-    const itemTotal = acuteSaving + emergencySaving + ltcSaving;
+    // 원시 절감액 (건강보험 전체 기준 · 항목별 입력 합)
+    const acuteSaving_raw = ssAcute * 1e12 * (ssAcutePct / 100);
+    const emergencySaving_raw = ssEmergency * 1e12 * (ssEmergencyPct / 100);
+    const ltcSaving_raw = ssLtc * 1e12 * (ssLtcPct / 100);
+    const rawItemTotal = acuteSaving_raw + emergencySaving_raw + ltcSaving_raw;
+    // 사업대상 기준 선택 시: 건보→사업대상 비례로 절감액 축소 (e.g. 8,030억 × 1,000/110,800 = 72억)
+    const projectScale = (ssCostBase === "project" && costBaseTotal > 0)
+      ? costBaseProject / costBaseTotal
+      : 1;
+    const acuteSaving = acuteSaving_raw * projectScale;
+    const emergencySaving = emergencySaving_raw * projectScale;
+    const ltcSaving = ltcSaving_raw * projectScale;
+    const itemTotal = rawItemTotal * projectScale;
+    // macro %는 기준 독립 (raw/total = scaled/project, 동일값)
     const derivedMacroPct = totalMedCost > 0 ? (itemTotal / totalMedCost) * 100 : 0;
     const clinicPct = ssClinicShare / 100;
     const nhisPct = 1 - clinicPct;
@@ -337,7 +347,7 @@ export default function useSimulator() {
       clinicFromItem: itemTotal * clinicPct,
       nhisFromItem: itemTotal * nhisPct,
       clinicPct, nhisPct,
-      costBaseValue, // 조원
+      costBaseValue,
     };
   }, [ssTotalCost, ssProjectCost, ssCostBase, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare]);
 
