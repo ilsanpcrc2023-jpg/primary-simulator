@@ -3,13 +3,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { FCard, TCard, RegScaleCard } from "./RegistrationPanel";
-import { SH, CL, ON, INIT_REG_DIST } from "../constants";
+import { SH, CL, ON, INIT_REG_DIST, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fAuto, fMan, diffMan } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabSimulation({ state, set, updP, updBase, updF, setFAll, resetF, resetP, resetLC, resetReg, updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset, G, T, decomp, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, reg, regRatios }) {
+export default memo(function TabSimulation({ state, set, updP, updBase, updF, setFAll, resetF, resetP, resetLC, resetReg, updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset, G, T, decomp, incCurChg, incNewChg, nhiNewChg, fileRef, handleFile, handleExport, handleCommitBaseline, reg, regRatios }) {
   const { base, P, LC, totalN, showDetail, uploadBanner, dataLabel, F_g, M_clinics } = state;
 
   // v6.4: base는 {N, M1, L}만 — ref/cr 제거됨. B(P)·F는 정책 슬라이더로만 설정.
@@ -285,6 +285,42 @@ export default memo(function TabSimulation({ state, set, updP, updBase, updF, se
               onClick={() => { if (confirm(`파일럿 데이터(10개 의원, 69,604명, 2023)로 전환합니다. 진행할까요?`)) loadPreset(presets[0]); }}>
               <div className="text-amber-500 text-xl mb-0.5">↩</div>
               <div className="text-xs font-semibold text-amber-700">파일럿 로드</div>
+            </div>
+          </div>
+
+          {/* v6.6: 공식 baseline 등록 (관리자) + 현재 baseline 메타 표시 */}
+          <div className="mt-3 pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+              <div className="text-xs text-gray-500">
+                현재 공식 baseline:
+                {OFFICIAL_BASELINE_META.source === "official_baseline.json" ? (
+                  <span className="ml-1 text-gray-700">
+                    <b>v{OFFICIAL_BASELINE_META.version}</b>
+                    {OFFICIAL_BASELINE_META.updated_at ? ` · ${OFFICIAL_BASELINE_META.updated_at}` : ""}
+                    {OFFICIAL_BASELINE_META.updated_by ? ` · ${OFFICIAL_BASELINE_META.updated_by}` : ""}
+                  </span>
+                ) : (
+                  <span className="ml-1 text-amber-700">fallback (official_baseline.json 없음/불완전)</span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (!handleCommitBaseline) return;
+                const SHL = ["1군","2군","3군","4군"];
+                const fmt = v => Math.round(v).toLocaleString("ko-KR");
+                const preview = state.base.map((b, i) =>
+                  `${SHL[i]}: N=${fmt(b.N)}, M1=${fmt(b.M1)}, L=${b.L.toFixed(4)}, B=${fmt(state.P[i])}`).join("\n");
+                const msg = `⚠️ 현재 값을 모든 사용자의 공식 baseline으로 등록합니다.\n\n${preview}\n\nVercel 재배포 후 (약 1~2분) 모든 사용자의 디폴트가 갱신됩니다.\n진행하시겠습니까?`;
+                if (confirm(msg)) handleCommitBaseline();
+              }}
+              className="w-full border-2 border-dashed border-rose-300 rounded-lg py-2.5 text-center hover:border-rose-500 hover:bg-rose-50 transition cursor-pointer bg-rose-50/30">
+              <span className="text-rose-500 text-base mr-1.5">🏛️</span>
+              <span className="text-xs font-bold text-rose-700">현재 값을 공식 baseline으로 등록 (전역 · 관리자)</span>
+            </button>
+            <div className="mt-1 text-[10px] text-gray-400 leading-relaxed">
+              ※ 이 버튼을 누르면 <code>src/data/presets/official_baseline.json</code>이 GitHub에 커밋되고 Vercel이 재배포됩니다.
+              슬라이더 조정·엑셀 업로드만으로는 다른 세션에 영향 없음. 버튼 클릭 시에만 전역 디폴트로 고정.
             </div>
           </div>
 

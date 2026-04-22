@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { INIT_BASE, INIT_P, INIT_F, ON, COL_ALIASES,
   INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C,
   INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C,
-  INIT_SS_COST_BASE, INIT_SS_PROJECT_COST } from '../constants';
+  INIT_SS_COST_BASE, INIT_SS_PROJECT_COST,
+  B_MIN, B_MAX, OFFICIAL_BASELINE_META } from '../constants';
 
 describe('calculation engine', () => {
   it('ON: total patient count from INIT_BASE', () => {
@@ -79,14 +80,94 @@ describe('calculation engine', () => {
   });
 });
 
-describe('v6.4 upload schema', () => {
-  it('COL_ALIASES exposes only N, M1, L (no ref/cr/P/F)', () => {
-    expect(Object.keys(COL_ALIASES).sort()).toEqual(['L', 'M1', 'N']);
+describe('v6.6 upload schema', () => {
+  it('COL_ALIASES includes 5 fields: N, M1, L, HCC, CR', () => {
+    expect(Object.keys(COL_ALIASES).sort()).toEqual(['CR', 'HCC', 'L', 'M1', 'N']);
   });
 
   it('INIT_F has 4 entries (per-group F)', () => {
     expect(INIT_F).toHaveLength(4);
     INIT_F.forEach(v => expect(v).toBeGreaterThanOrEqual(0));
+  });
+
+  it('HCC aliases match typical 분석 허브 헤더 (substring)', () => {
+    const key = 'HCC예측\n평균의료비';
+    const nk = key.replace(/[\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+    const matched = COL_ALIASES.HCC.some(a => {
+      const na = a.replace(/[\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+      return nk.includes(na) || na.includes(nk);
+    });
+    expect(matched).toBe(true);
+  });
+
+  it('CR aliases match 의원급외래 비중 헤더 (with/without newline)', () => {
+    const keys = ['의원급외래\n비중', '의원비중', '의원급외래비중'];
+    keys.forEach(key => {
+      const nk = key.replace(/[\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+      const matched = COL_ALIASES.CR.some(a => {
+        const na = a.replace(/[\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+        return nk.includes(na) || na.includes(nk);
+      });
+      expect(matched).toBe(true);
+    });
+  });
+
+  it('CR aliases do NOT cross-match 타원이용비중 (L column)', () => {
+    // "비중" 단독 별칭을 안 넣는 이유: 타원이용비중·의원급외래비중 혼동 방지
+    const lKey = '타원이용비중\nL';
+    const nk = lKey.replace(/[\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+    const falsePositive = COL_ALIASES.CR.some(a => {
+      const na = a.replace(/[\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+      return nk.includes(na) || na.includes(nk);
+    });
+    expect(falsePositive).toBe(false);
+  });
+});
+
+describe('v6.6 B 자동 유도 (HCC × 의원비중)', () => {
+  it('B_MIN/B_MAX 범위가 슬라이더 범위와 일치', () => {
+    expect(B_MIN).toBe(50_000);
+    expect(B_MAX).toBe(2_000_000);
+  });
+
+  it('HCC × CR = B_suggested (clamp 적용)', () => {
+    const clamp = v => Math.max(B_MIN, Math.min(B_MAX, Math.round(v)));
+    // 정상 범위
+    expect(clamp(400538 * 0.701)).toBeCloseTo(280777, 0);    // 1군 예시
+    expect(clamp(1246438 * 0.589)).toBeCloseTo(734152, 0);   // 3군 예시
+    // 하한 clamp
+    expect(clamp(100000 * 0.1)).toBe(B_MIN);   // 10,000 < 50,000
+    // 상한 clamp
+    expect(clamp(5000000 * 0.8)).toBe(B_MAX);  // 4,000,000 > 2,000,000
+  });
+
+  it('HCC=0 또는 CR=0이면 B 유도 안 함 (기존 slider값 유지)', () => {
+    const deriveB = (HCC, CR, currentP) => {
+      if (HCC > 0 && CR > 0) {
+        return Math.max(B_MIN, Math.min(B_MAX, Math.round(HCC * CR)));
+      }
+      return currentP;
+    };
+    expect(deriveB(0, 0.7, 280000)).toBe(280000);
+    expect(deriveB(400000, 0, 280000)).toBe(280000);
+    expect(deriveB(400000, 0.7, 280000)).toBe(280000);   // 400000*0.7=280000
+  });
+});
+
+describe('v6.6 official_baseline.json 로더', () => {
+  it('OFFICIAL_BASELINE_META 구조 확인', () => {
+    expect(OFFICIAL_BASELINE_META).toHaveProperty('source');
+    expect(['official_baseline.json', 'fallback']).toContain(OFFICIAL_BASELINE_META.source);
+  });
+
+  it('INIT_BASE·INIT_B는 항상 4군 배열', () => {
+    expect(INIT_BASE).toHaveLength(4);
+    expect(INIT_P).toHaveLength(4);
+    INIT_BASE.forEach(b => {
+      expect(typeof b.N).toBe('number');
+      expect(typeof b.M1).toBe('number');
+      expect(typeof b.L).toBe('number');
+    });
   });
 });
 
