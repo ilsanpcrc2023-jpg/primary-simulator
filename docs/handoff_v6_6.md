@@ -66,41 +66,92 @@
   - "전역 공식 baseline (v6.6)" 새 섹션 (저장 위치·갱신 경로·환경변수·영속성 규칙)
   - 버전 태그 이력에 `v6.6.0` 추가
 
-## 배포 후 필수 수동 작업 (사용자 해야 함)
+## 배포 후 필수 수동 작업 (사용자 해야 함) — 약 10분 소요
 
-### Vercel 환경변수 설정 — **이거 안 하면 버튼이 503 반환**
+🏛️ **버튼이 작동하려면 GitHub PAT 발급 + Vercel 환경변수 설정 필요**. 이 작업 안 하면 버튼 클릭 시 503 에러 배너만 표시됨. 나머지 v6.6 기능(HCC×의원비중 자동유도 등)은 env 없이도 정상 작동.
 
-1. [Vercel 대시보드](https://vercel.com/) 로그인 → `primary-simulator` 프로젝트
-2. Settings → Environment Variables
-3. 추가:
+---
 
-| Name | Value | Environments |
-|---|---|---|
-| `GITHUB_PAT` | GitHub PAT (fine-grained, scope: `primary-simulator` repo의 Contents `Read & Write`) | Production |
+### 단계 1: GitHub Personal Access Token 발급
 
-- PAT 발급: GitHub 프로필 → Settings → Developer settings → Personal access tokens → Fine-grained tokens
-- Resource owner: `shleefm`, Repository access: `shleefm/primary-simulator`만
-- Permissions → Repository permissions → **Contents: Read and write**
-- 만료 기간 선택 (1년 권장)
+1. https://github.com/settings/personal-access-tokens/new 접속
+2. 입력:
+   - **Token name**: `primary-simulator-baseline-commit`
+   - **Expiration**: 1년 (또는 원하는 기간)
+   - **Repository access**: "Only select repositories" → `shleefm/primary-simulator` 선택
+   - **Permissions** → **Repository permissions**:
+     - **Contents**: **Read and write** (이 하나만)
+     - 나머지는 No access 그대로
+3. 하단 `Generate token` 클릭
+4. **생성된 토큰 값** (형식: `github_pat_xxxxxxxxx...`) **복사** — 이 화면 닫으면 다시 못 봅니다
+   (잃어버리면 같은 페이지에서 새로 발급하면 됨)
 
-4. **Redeploy** — 환경변수 변경 후 Vercel이 자동 재배포 필요 (최신 커밋의 Redeploy 버튼 클릭)
+### 단계 2: Vercel 환경변수 설정
 
-### 검증 절차 (환경변수 설정 후)
+1. https://vercel.com/dashboard 접속 → `primary-simulator` 프로젝트 클릭
+2. 상단 탭에서 **Settings** 클릭
+3. 좌측 사이드바에서 **Environment Variables** 클릭
+4. 입력:
+   - **Key**: `GITHUB_PAT`
+   - **Value**: (단계 1에서 복사한 `github_pat_...` 값 붙여넣기)
+   - **Environments**: **Production** 체크 (Preview·Development는 선택사항)
+5. `Save` 클릭
 
-1. https://primary-simulator.vercel.app/ 접속
-2. 데이터 관리 카드 펼침 → "현재 공식 baseline: v6.6.0 · 2026-04-23 · initial seed (v6.6.0)" 확인
-3. B 슬라이더 1군 값을 280832 → 290000 등으로 살짝 조정
-4. 🏛️ "현재 값을 공식 baseline으로 등록" 버튼 클릭 → 확인 모달에서 확인
-5. 수 초 내 배너: "✅ 공식 baseline 갱신 완료. Vercel 재배포가 자동 시작됩니다 (1~2분)."
-6. GitHub에서 `src/data/presets/official_baseline.json` 커밋 확인
-7. 1~2분 후 새 브라우저에서 접속 → 1군 B 값이 290000으로 표시되면 성공
+### 단계 3: 재배포 (env 반영)
+
+환경변수 변경은 **재배포해야 적용됨**.
+
+1. 좌측 사이드바 위쪽 **Deployments** 탭 클릭
+2. 맨 위 "Production" 배지가 달린 최신 배포 (v6.6.0 커밋) 우측 `⋯` 메뉴 → **Redeploy**
+3. 모달에서 "Use existing Build Cache" 체크 해제 권장 → `Redeploy`
+4. 1~2분 대기 (배포 화면에서 초록 "Ready" 표시 확인)
+
+### 단계 4: 동작 검증
+
+1. https://primary-simulator.vercel.app/ 접속 (강력 새로고침: Ctrl+F5)
+2. 데이터 관리 아코디언 펼침
+3. "현재 공식 baseline: v6.6.0 · 2026-04-23 · initial seed" 표시 확인
+4. 1군 B 슬라이더 살짝 조정 (예: 280,832 → 285,000)
+5. 🏛️ **현재 값을 공식 baseline으로 등록** 버튼 클릭 → 확인 모달에서 확인
+6. 수 초 내 녹색 배너:
+   ```
+   ✅ 공식 baseline 갱신 완료. Vercel 재배포가 자동 시작됩니다 (1~2분).
+   commit: [7자리 SHA]
+   url: https://github.com/...
+   ```
+7. GitHub https://github.com/shleefm/primary-simulator/commits/main 확인 → 새 커밋 `chore(baseline): official baseline 갱신 2026-04-23` 보이면 성공
+8. 2분 후 **시크릿 창에서 사이트 재오픈** → 1군 기본값이 285,000으로 표시되면 최종 성공
+
+---
 
 ### 문제 발생 시 체크포인트
 
-- **503 "GITHUB_PAT 환경변수가 설정되지 않았습니다"** → env 설정 후 Redeploy 필요
-- **401 "관리자 비밀번호가 일치하지 않습니다"** → `ADMIN_PWD` 설정돼 있으면 요청 본문에 `password` 필요 (현재 UI에서 비번 모달 미구현 → `ADMIN_PWD` 설정하지 말 것, 또는 UI 확장 필요)
-- **502 커밋 실패** → PAT 권한(`contents:write`) 재확인
-- **baseline 갱신됐는데 디폴트가 안 바뀜** → Vercel 재배포 완료 여부 확인 (커밋 후 1~2분). 브라우저 강력 새로고침(Ctrl+F5)
+| 증상 | 원인 | 해결 |
+|---|---|---|
+| 503 "GITHUB_PAT 환경변수가 설정되지 않았습니다" | env 설정 후 재배포 안 됨 | Deployments → Redeploy 다시 (단계 3) |
+| 401 "관리자 비밀번호가 일치하지 않습니다" | `ADMIN_PWD` env를 실수로 설정함 | Vercel env에서 `ADMIN_PWD` 항목 삭제 → Redeploy |
+| 502 "커밋 실패" | PAT 권한 부족 | 단계 1에서 Contents: Read and write 재확인. 새 PAT 발급 후 Vercel env 갱신 |
+| 커밋 됐는데 디폴트 안 바뀜 | Vercel 재배포 미완료 | Deployments 화면에서 baseline 커밋 트리거된 신규 배포 "Ready" 대기 (1~2분) |
+| 브라우저에 옛 값 계속 표시 | 캐시 | 시크릿 창 / Ctrl+F5 강력 새로고침 |
+| GitHub 페이지 UI가 본 인계장과 다름 | GitHub UI 개편 | Claude Code에 스크린샷 첨부하여 도움 요청 |
+
+---
+
+### CLI로 자동화하고 싶으면 (선택 · 다음 세션 작업)
+
+매번 브라우저 안 거치고 터미널에서 처리하려면:
+```bash
+# Vercel CLI 설치
+npm install -g vercel
+# 프로젝트 폴더에서
+vercel login
+vercel link
+# env 추가 (대화형)
+vercel env add GITHUB_PAT production
+# 재배포
+vercel --prod
+```
+처음 한 번만 셋업하면 추후 PAT 갱신·env 변경이 1줄로 끝남. 셋업 자체를 다음 세션에서 도와드릴 수 있음.
 
 ## 다음 작업 후보 (우선순위 낮음)
 
