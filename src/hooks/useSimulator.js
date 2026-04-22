@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, ON, COL_ALIASES } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
@@ -384,33 +384,59 @@ export default function useSimulator() {
         set("uploadBanner", { success: false, msg: "데이터 부족: 4개 환자군 행이 필요합니다.", details: `시트 "${sheetName}"에서 ${data.length}행만 발견` });
         return;
       }
-      // v6.4: N·M1·L 3 필드만 읽고 base만 갱신.
-      // B(state.P)·F(state.F_g) 정책 슬라이더는 보존 — 엑셀 라운드트립 일관성 보장.
-      const newBase = data.slice(0, 4).map((row, i) => {
+      // v6.6: N·M1·L·HCC·CR 5 필드 인식.
+      //   - base 갱신: N·M1·L
+      //   - HCC × CR → B_suggested 자동 유도 (슬라이더 초기값으로 주입, clamp [5만, 200만])
+      //   - HCC 또는 CR이 0/누락이면 해당 군의 B는 기존 slider값(state.P[i]) 유지
+      //   - F(state.F_g) 정책 슬라이더는 보존 — 엑셀 비반영 일관성 유지
+      const rows = data.slice(0, 4).map((row, i) => {
         let N = findCol(row, COL_ALIASES.N, 0);
         let M1 = findCol(row, COL_ALIASES.M1, 0);
         let L = findCol(row, COL_ALIASES.L, 0);
+        const HCC = findCol(row, COL_ALIASES.HCC, 0);
+        let CR = findCol(row, COL_ALIASES.CR, 0);
         if (L > 1) L = L / 100;
         if (L < 0 || L > 1) L = INIT_BASE[i].L;
+        if (CR > 1) CR = CR / 100;   // 퍼센트 입력 방어
+        if (CR < 0 || CR > 1) CR = 0;
         return {
           N: Math.round(N) || INIT_BASE[i].N,
           M1: M1 || INIT_BASE[i].M1,
           L: L || INIT_BASE[i].L,
+          HCC,
+          CR,
         };
       });
+      const newBase = rows.map(r => ({ N: r.N, M1: r.M1, L: r.L }));
+      // B 자동 유도: HCC × CR, [B_MIN, B_MAX] clamp. 둘 중 하나라도 0이면 기존 slider값 유지.
+      const derivedCount = rows.reduce((s, r) => s + ((r.HCC > 0 && r.CR > 0) ? 1 : 0), 0);
+      const newB = rows.map((r, i) => {
+        if (r.HCC > 0 && r.CR > 0) {
+          const raw = Math.round(r.HCC * r.CR);
+          return Math.max(B_MIN, Math.min(B_MAX, raw));
+        }
+        return state.P[i];
+      });
       const label = file.name.replace(/\.(xlsx|xls|csv)$/i, "");
-      const det = newBase.map((b, i) => {
-        const SH = ["1군", "2군", "3군", "4군"];
-        const fmt = v => Math.round(v).toLocaleString("ko-KR");
-        return `${SH[i]}: N=${fmt(b.N)}, M1=${fmt(b.M1)}, L=${b.L.toFixed(4)}`;
+      const SHL = ["1군", "2군", "3군", "4군"];
+      const fmt = v => Math.round(v).toLocaleString("ko-KR");
+      const det = rows.map((r, i) => {
+        const base = `${SHL[i]}: N=${fmt(r.N)}, M1=${fmt(r.M1)}, L=${r.L.toFixed(4)}`;
+        if (r.HCC > 0 && r.CR > 0) {
+          return `${base}, HCC=${fmt(r.HCC)}, CR=${r.CR.toFixed(3)} → B=${fmt(newB[i])}`;
+        }
+        return `${base}  (B 유지: ${fmt(newB[i])})`;
       }).join("\n");
+      const bannerMsg = derivedCount > 0
+        ? `"${sheetName}" 시트에서 4군 데이터 로딩 완료 — B 권장값 ${derivedCount}/4군 자동 유도 (HCC × 의원비중)`
+        : `"${sheetName}" 시트에서 4군 데이터 로딩 완료 (HCC·의원비중 없음 → B 슬라이더 보존)`;
       dispatch({
         type: "LOAD_DATA",
         base: newBase,
-        P: state.P,
+        P: newB,
         F_g: state.F_g,
         dataLabel: label,
-        uploadBanner: { success: true, msg: `"${sheetName}" 시트에서 4군 데이터 로딩 완료 (B·F 슬라이더 보존)`, details: det },
+        uploadBanner: { success: true, msg: bannerMsg, details: det },
       });
     } catch (err) {
       set("uploadBanner", { success: false, msg: "파일 읽기 실패: " + err.message, details: null });
@@ -457,6 +483,40 @@ export default function useSimulator() {
     }
   }, [base]);
 
+  // v6.6: 관리자 "공식 baseline으로 등록" — /api/commit-baseline로 POST.
+  // 서버리스 함수가 GitHub API로 src/data/presets/official_baseline.json 갱신 → Vercel 재배포.
+  // env.GITHUB_PAT 미설정 시 서버리스 함수가 친절한 에러 반환.
+  const handleCommitBaseline = useCallback(async () => {
+    try {
+      set("uploadBanner", { success: true, msg: "공식 baseline 등록 요청 중...", details: "GitHub API 호출 중 (수 초)" });
+      const res = await fetch("/api/commit-baseline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base: state.base, P: state.P }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        set("uploadBanner", {
+          success: false,
+          msg: `공식 baseline 등록 실패 (HTTP ${res.status})`,
+          details: data?.error || data?.message || "서버 응답 확인 필요. Vercel 환경변수 GITHUB_PAT 설정 여부 점검.",
+        });
+        return;
+      }
+      set("uploadBanner", {
+        success: true,
+        msg: data?.message || "✅ 공식 baseline 갱신 완료",
+        details: [
+          data?.commit_sha ? `commit: ${String(data.commit_sha).slice(0, 7)}` : null,
+          data?.commit_url ? `url: ${data.commit_url}` : null,
+          "Vercel 재배포 완료 후 모든 사용자에게 새 디폴트 반영 (1~2분)",
+        ].filter(Boolean).join("\n"),
+      });
+    } catch (err) {
+      set("uploadBanner", { success: false, msg: "요청 실패: " + err.message, details: "네트워크 또는 서버리스 함수 미배포 상태일 수 있음." });
+    }
+  }, [set, state.base, state.P]);
+
   const loadPreset = useCallback((preset) => {
     dispatch({
       type: "LOAD_DATA",
@@ -474,7 +534,7 @@ export default function useSimulator() {
     resetPtPct, resetSsPct, resetSsCost,
     updRegDist, setRegDistAll, scaleRegDist,
     reset,
-    handleMacroSync, handleFile, handleExport, loadPreset,
+    handleMacroSync, handleFile, handleExport, loadPreset, handleCommitBaseline,
     fileRef,
     G, T, SS, decomp,
     ffsPct,
