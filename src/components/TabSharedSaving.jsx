@@ -58,7 +58,7 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS, 
     {/* ② 거시 총괄 — 종합 결과 (아래로) */}
     <div className={card + " p-4"}>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-900 text-sm">Shared Saving 총괄</h2>
+        <h2 className="font-bold text-gray-900 text-sm">의료비 절감</h2>
       </div>
       {/* v6.5: 절감률 분모 선택 — 건강보험 전체 vs 사업대상 환자 */}
       <div className="mb-3 rounded-lg border border-red-200 bg-red-50/40 p-2">
@@ -145,29 +145,6 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS, 
         {ssClinicShare < 100 && <div style={{ width: `${100 - ssClinicShare}%`, background: "#3b82f6" }} className="flex items-center justify-center transition-all">{(100 - ssClinicShare) > 15 ? "전환 지원" : ""}</div>}
         {ssClinicShare > 0 && <div style={{ width: `${ssClinicShare}%`, background: "#16a34a" }} className="flex items-center justify-center transition-all">{ssClinicShare > 15 ? "성과배분" : ""}</div>}
       </div>
-
-      {/* v6.5: 배분 용도 설명 — 슬라이더 바로 아래 */}
-      <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
-        <div className="text-xs font-bold text-amber-900 mb-2">💡 Shared Saving 배분 용도</div>
-        <div className="space-y-2 text-xs">
-          <div>
-            <div className="font-bold text-green-700 mb-0.5">🟢 참여의원 성과배분</div>
-            <div className="text-gray-700 leading-relaxed pl-4">
-              사업 참여 의원에게 직접 지급되는 성과보상금.<br />
-              환자군 관리 성과(입원·응급·요양병원 이용 감소)에 대한 성과 배분.
-            </div>
-          </div>
-          <div>
-            <div className="font-bold text-blue-700 mb-0.5">🔵 일차의료 전환 지원</div>
-            <div className="text-gray-700 leading-relaxed pl-4">
-              다음해 사업 유지·확장을 위한 재투자 재원.<br />
-              ① 신규 참여 의원 전환지원금(PT, Transformation Payment)<br />
-              ② 일차의료지원센터 구축·운영비<br />
-              ③ IT 인프라·교육·질 관리 시스템 투자
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
     {/* 배분 결과 파이 차트 */}
@@ -197,6 +174,31 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS, 
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs mt-1">
         <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#3b82f6" }}></span>일차의료 전환 지원 <b className="text-blue-600">{fAuto(SS.nhisFromItem)}</b></span>
         <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#22c55e" }}></span>참여의원 성과배분 <b className="text-green-600">{fAuto(SS.clinicFromItem)}</b></span>
+      </div>
+    </div>
+
+    {/* 절감 배분 분류 — 파이 차트 뒤 */}
+    <div className={card + " p-4"}>
+      <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3">
+        <div className="text-xs font-bold text-amber-900 mb-2">💡 절감 배분 분류</div>
+        <div className="space-y-2 text-xs">
+          <div>
+            <div className="font-bold text-green-700 mb-0.5">🟢 참여의원 성과배분</div>
+            <div className="text-gray-700 leading-relaxed pl-4">
+              사업 참여 의원에게 직접 지급되는 성과보상금.<br />
+              환자군 관리 성과(입원·응급·요양병원 이용 감소)에 대한 성과 배분.
+            </div>
+          </div>
+          <div>
+            <div className="font-bold text-blue-700 mb-0.5">🔵 일차의료 전환 지원</div>
+            <div className="text-gray-700 leading-relaxed pl-4">
+              다음해 사업 유지·확장을 위한 재투자 재원.<br />
+              ① 신규 참여 의원 전환지원금(PT, Transformation Payment)<br />
+              ② 일차의료지원센터 구축·운영비<br />
+              ③ IT 인프라·교육·질 관리 시스템 투자
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </>);
