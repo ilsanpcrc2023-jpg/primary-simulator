@@ -59,12 +59,7 @@ export default function App() {
 
   const [mode, setMode] = useState(readInitialMode);
   useEffect(() => { localStorage.setItem(MODE_KEY, mode); }, [mode]);
-  useEffect(() => {
-    // 모드 전환 시 해당 모드의 기본 진입 탭으로 이동
-    // 정책 모드 → 수가(0), 의원 모드 → Track(1)
-    set("tab", mode === "policy" ? 0 : 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  // v6.8.1: 첫 진입은 useSimulator 초기 state(tab=0, 수가 탭)로. 모드 전환 시 현재 탭 유지.
 
   return (
     <div className="overflow-x-hidden" style={{ fontFamily: "'Pretendard','Noto Sans KR',-apple-system,sans-serif", background: "#f8fafc", minHeight: "100vh", zoom: ZOOM_LEVELS[zoomIdx] }}>
@@ -91,19 +86,22 @@ export default function App() {
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 space-y-3">
         <DatasetSelector currentLabel={state.dataLabel} onSelect={loadPreset} />
 
-        {/* 모드 안내 배너 */}
-        <div className="rounded-lg px-3 py-2 text-[11px] sm:text-xs leading-relaxed flex items-start gap-2"
+        {/* 모드 안내 배너 (v6.8.1 — 모드별 문구 교체) */}
+        <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
           style={mode === "policy"
-            ? { background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e40af" }
-            : { background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534" }}>
-          <span className="font-semibold shrink-0">
-            {mode === "policy" ? "🏛️ 정책 입안자 모드" : "🩺 의원 운영자 모드"}
-          </span>
-          <span className="opacity-85">
-            {mode === "policy"
-              ? "재정 안정과 의료계 수용성이 맞닿는 수가(B·F·L1) 조합을 탐색하세요. 우측 상단 토글로 의원 모드로 전환할 수 있습니다."
-              : "Track 선택과 타원이용(L2) 관리가 의원 수입에 미치는 영향을 확인하세요. B·F·L1은 정책으로 고정된 값이며 수가 탭 상단에서 접힘 상태로 제공됩니다."}
-          </span>
+            ? { background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e3a8a" }
+            : { background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46" }}>
+          {mode === "policy" ? (
+            <>
+              <div className="font-bold mb-1">🏛️ 정책 모드 — 재정 안정과 의료계 수용성이 맞닿는 수가 조합을 탐색하세요.</div>
+              <div className="opacity-90">B·F·L1을 직접 조정하며 공단 지출 변화와 의원당 수입 변화를 동시에 확인할 수 있습니다. 좌측 상단 토글로 의원 모드로 전환할 수 있습니다.</div>
+            </>
+          ) : (
+            <>
+              <div className="font-bold mb-1">🏥 의원 모드 — 우리 의원에 이 제도가 어떻게 작용할지 확인하세요.</div>
+              <div className="opacity-90">현재 표시된 수가는 정부 협상을 통해 확정된 값입니다. Track 선택과 포괄관리 지표(L2) 관리로 수입이 어떻게 변하는지 확인할 수 있습니다.</div>
+            </>
+          )}
         </div>
 
         {tab === 0 && (

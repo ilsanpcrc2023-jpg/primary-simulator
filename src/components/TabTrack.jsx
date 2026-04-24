@@ -137,7 +137,7 @@ export default memo(function TabTrack({
       return (
         <div className="rounded-xl border-2 shadow-sm px-4 py-3" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
           <div className="flex items-center mb-2 gap-3 flex-wrap">
-            <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>타원이용비중 (L2) 변화율</h2>
+            <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>포괄관리 지표 (L2) 변화율</h2>
             <div className="flex items-baseline gap-1.5">
               <span className="text-xs text-purple-600 font-semibold">전</span>
               <span className="text-sm font-bold text-purple-700/70">{(L1avg * 100).toFixed(1)}%</span>
@@ -153,14 +153,15 @@ export default memo(function TabTrack({
           </div>
           <input type="range" min={-50} max={0} step={0.5} value={L2delta}
             onChange={e => setL2FromDelta(parseFloat(e.target.value))}
-            aria-label="Track 탭 타원이용비중 L2 변화율 슬라이더"
+            aria-label="Track 탭 포괄관리 지표 L2 변화율 슬라이더"
             className="w-full big-thumb"
             style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: sliderBg }} />
           <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
             <span>-50%p</span><span>-40%p</span><span>-30%p</span><span>-20%p</span><span>-10%p</span><span>0%p</span>
           </div>
-          <div className="mt-1 text-[10px] text-purple-700/70 leading-relaxed">
-            ※ 0%p = L1 수준(성과급 0) · 음수로 갈수록 L2 절감 → 성과급 발생. 수가 시뮬레이션 탭과 값 공유.
+          <div className="mt-1 text-[10px] text-purple-700/70 leading-relaxed space-y-0.5">
+            <div>※ 0%p = L1 수준(가산 0 기준점) · 음수로 갈수록 포괄관리 지표 개선 → 포괄관리 성과가산 발생 (no-downside)</div>
+            <div>※ 주치의의 포괄적·지속적 진료로 닥터쇼핑·중복검사가 감소한 성과를 수가에 반영 · 수가 시뮬레이션 탭과 값 공유</div>
           </div>
         </div>
       );
@@ -169,12 +170,12 @@ export default memo(function TabTrack({
     {/* ④ 성과급 L2 (v6.7) — 의원 100% 환원 · 2년차부터 · SS 위로 재배치 */}
     <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)", borderColor: perfEnabled ? "#06b6d4" : "#d1d5db", opacity: perfEnabled ? 1 : 0.7 }}>
       <div className="mb-2">
-        <h3 className="font-bold text-base text-cyan-800">성과급 L2 (타원이용 절감) <span className="text-xs font-normal text-cyan-700">· 2년차부터 매년</span></h3>
+        <h3 className="font-bold text-base text-cyan-800">포괄관리 성과가산 (L2 기반) <span className="text-xs font-normal text-cyan-700">· 2년차부터 매년</span></h3>
       </div>
 
       {!perfEnabled && (
         <div className="rounded-lg bg-white/70 border border-gray-300 px-3 py-2 text-xs text-gray-600 mb-2">
-          💡 위 <b>L2 슬라이더</b>를 L1보다 낮게 설정해야 성과급 발생 (no-downside).
+          💡 위 <b>L2 슬라이더</b>를 L1보다 낮게 설정해야 포괄관리 성과가산 발생 (no-downside).
         </div>
       )}
 
@@ -308,7 +309,7 @@ export default memo(function TabTrack({
               ))}
             </tr>
             <tr className="border-t border-green-100 bg-cyan-50/70">
-              <td className="text-xs text-cyan-800 py-2 pr-2 font-semibold">성과급 L2 <span className="font-normal text-cyan-600">(매년)</span></td>
+              <td className="text-xs text-cyan-800 py-2 pr-2 font-semibold">포괄관리 성과가산 <span className="font-normal text-cyan-600">(매년)</span></td>
               {tracks.map(t => (
                 <td key={t.n} className="text-center font-bold text-cyan-800 py-2">+{fMan(t.perfAmt)}</td>
               ))}

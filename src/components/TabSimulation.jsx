@@ -117,34 +117,11 @@ export default memo(function TabSimulation({
   </>);
 
   return (<>
-    {/* 정책 고정값 (B · F · L1) — 의원 모드에서는 접힘 래퍼로, 정책 모드에서는 그대로 펼침 */}
-    {mode === "clinic" ? (
-      <div className={card + " overflow-hidden"}>
-        <button onClick={() => setPolicyExpanded(v => !v)}
-          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-          <span className="flex items-center gap-2 flex-wrap">
-            <span className="text-gray-400 text-xs">{policyExpanded ? "▲" : "▼"}</span>
-            <span>🏛️ 정책 고정값 (B · F · L1)</span>
-            <span className="text-[11px] font-normal text-gray-500">
-              B 평균 {f(Math.round(P.reduce((a, v) => a + v, 0) / P.length))}원 · F 평균 {f(Math.round(F_g.reduce((a, v) => a + v, 0) / F_g.length))}원 · L1 평균 {(perfMemo.L1avg * 100).toFixed(1)}%
-            </span>
-          </span>
-          <span className="text-[11px] font-normal text-gray-400">{policyExpanded ? "접기" : "펼쳐서 확인"}</span>
-        </button>
-        {policyExpanded && (
-          <div className="border-t border-gray-100 p-3 space-y-3 bg-gray-50/50">
-            <div className="rounded-lg px-3 py-2 text-[11px] leading-relaxed"
-              style={{ background: "#fef3c7", border: "1px solid #fcd34d", color: "#78350f" }}>
-              ※ 이 값들은 <b>정책 입안자가 설정</b>하는 지불체계 고정값입니다. 의원 모드에서는 참고용으로 제공되며, 조정은 상단 토글에서 정책 모드로 전환하세요.
-            </div>
-            {policyVariables}
-          </div>
-        )}
-      </div>
-    ) : policyVariables}
+    {/* 정책 고정값 (B · F · L1) — v6.8.1: 의원 모드에서는 완전히 숨김 (공단지급 수가는 TCard에서 금액만 노출) */}
+    {mode === "policy" && policyVariables}
 
-    {/* ④ 일차의료수가 (P = B(1−L1) + F) */}
-    <TCard state={state} G={G} />
+    {/* ④ 일차의료수가 — 의원 모드에서는 "환자군별 공단지급 수가" 라벨, 공식·L1 개별 표시 숨김 */}
+    <TCard state={state} G={G} mode={mode} />
 
     {/* ⑤ 타원이용비중 (L2) 변화율 — 0%p=L1, 음수=개선 → 성과급 */}
     {(() => {
@@ -158,7 +135,7 @@ export default memo(function TabSimulation({
       return (
         <div className="rounded-xl border-2 shadow-sm px-4 py-3" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
           <div className="flex items-center mb-2 gap-3 flex-wrap">
-            <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>5. 타원이용비중 (L2) 변화율</h2>
+            <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>5. 포괄관리 지표 (L2) 변화율</h2>
             <div className="flex items-baseline gap-1.5">
               <span className="text-xs text-purple-600 font-semibold">전</span>
               <span className="text-sm font-bold text-purple-700/70">{(L1avg * 100).toFixed(1)}%</span>
@@ -174,14 +151,15 @@ export default memo(function TabSimulation({
           </div>
           <input type="range" min={-50} max={0} step={0.5} value={L2delta}
             onChange={e => setL2FromDelta(parseFloat(e.target.value))}
-            aria-label="타원이용비중 L2 변화율 슬라이더"
+            aria-label="포괄관리 지표 L2 변화율 슬라이더"
             className="w-full big-thumb"
             style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: sliderBg }} />
           <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
             <span>-50%p</span><span>-40%p</span><span>-30%p</span><span>-20%p</span><span>-10%p</span><span>0%p</span>
           </div>
-          <div className="mt-1.5 text-[10px] text-purple-700/70 leading-relaxed">
-            ※ 0%p = L1 수준(성과급 0 기준점) · 음수로 갈수록 L2 절감 → 성과급 발생 (no-downside).
+          <div className="mt-1.5 text-[10px] text-purple-700/70 leading-relaxed space-y-0.5">
+            <div>※ 0%p = L1 수준(가산 0 기준점) · 음수로 갈수록 포괄관리 지표 개선 → 포괄관리 성과가산 발생 (no-downside)</div>
+            <div>※ 주치의의 포괄적·지속적 진료로 닥터쇼핑·중복검사가 감소한 성과를 수가에 반영</div>
           </div>
         </div>
       );
@@ -220,7 +198,7 @@ export default memo(function TabSimulation({
 
         <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
           <div className="flex items-baseline justify-between">
-            <span className="text-xs text-amber-700 font-semibold">③ 성과급 효과 (L2 기반)</span>
+            <span className="text-xs text-amber-700 font-semibold">③ 포괄관리 성과가산 (L2 기반)</span>
             <span className="text-sm font-bold" style={{ color: decomp.performanceEffect > 0 ? "#16a34a" : "#6b7280" }}>
               {diffMan(perClinicPerf)}/의원
             </span>
@@ -267,7 +245,7 @@ export default memo(function TabSimulation({
         <div className="text-sm sm:text-base text-blue-700/70 font-semibold mt-1">{fE(T.nhi0)}억 → <b className="text-blue-800">{fE(T.nhi + perfMemo.perf_blended)}억</b></div>
         <div className="mt-2 pt-2 border-t border-blue-200/70 text-xs text-blue-700/70 leading-relaxed">
           <div>· 등록환자 공단지급 + L2 기반 타원 외래비 반영</div>
-          <div>· 성과급 {fE(perfMemo.perf_blended)}억 (현재 Track 반영) 포함</div>
+          <div>· 포괄관리 성과가산 {fE(perfMemo.perf_blended)}억 (현재 Track 반영) 포함</div>
         </div>
       </div>
     </div>
@@ -316,12 +294,13 @@ export default memo(function TabSimulation({
       { t: "국민 (환자)", c: "#059669", bg: "#ecfdf5", bd: "#a7f3d0",
         txt: "주치의 환자관리\n본인부담 현행 유지\n불필요한 병원 이용 감소" },
       { t: "의원 (의사)", c: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
-        txt: `환자군 기반 적절 보상\n의원당 ${diffMan(perClinicNet)}\n성과급 ${fMan(perClinicPerf)}/년` },
+        txt: `환자군 기반 적절 보상\n의원당 ${diffMan(perClinicNet)}\n포괄관리 성과가산 ${fMan(perClinicPerf)}/년` },
       { t: "공단 (정부)", c: "#dc2626", bg: "#fef2f2", bd: "#fecaca",
         txt: `지출 ${pct(nhiChg, 2)}\n예측 가능성 향상\n*Saving 효과 별도` },
     ]} />
 
-    {/* ⑪ 공식 구조 */}
+    {/* ⑪ 공식 구조 — v6.8.1: 의원 모드에서는 숨김 (정책 모드 전용) */}
+    {mode === "policy" && (
     <div className={card + " overflow-hidden"}>
       <button onClick={() => setShowFormula(v => !v)}
         className="w-full flex items-center justify-start gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
@@ -335,14 +314,15 @@ export default memo(function TabSimulation({
             <div><b className="text-indigo-700">공단지급 = P</b>  (단일화)</div>
             <div><b className="text-indigo-700">본인부담 = M1 × 30%</b>  (고정)</div>
             <div className="pt-1 mt-1 border-t border-gray-300">
-              <b className="text-amber-700">성과급_L2 = Σ max(0, L1_g − L2) × B_g × n_reg_g × TrackMul</b>
+              <b className="text-amber-700">포괄관리_성과가산 = Σ max(0, L1_g − L2) × B_g × n_reg_g × TrackMul</b>
             </div>
             <div className="text-gray-500">n_reg_g = 의원당 환자군별 등록환자수 · TrackMul: A=0 / B=0.5 / C=1.0</div>
-            <div className="text-gray-500">no-downside: L2 &gt; L1이면 성과급 0 (환수 없음) · 의원 100% 환원 (공유율 없음)</div>
+            <div className="text-gray-500">no-downside: L2 &gt; L1이면 가산 0 (환수 없음) · 의원 100% 환원 (공유율 없음)</div>
           </div>
         </div>
       )}
     </div>
+    )}
 
     {/* ⑫ 데이터 관리 */}
     <div className={card + " overflow-hidden"}>
