@@ -80,34 +80,40 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = 
   );
 });
 
-/* TCard — 일차의료수가 (P = B + F), 항상 펼침 */
+/* TCard — 일차의료수가 (v6.7: P = B(1−L1) + F, 공단지급 = P 단일화) */
 export const TCard = memo(function TCard({ state, G }) {
-  const { F_g, base, LC } = state;
+  const { base, L1 } = state;
   const totalN = base.reduce((s, b) => s + b.N, 0);
-  const Lavg = totalN > 0 ? base.reduce((s, b) => s + (b.N / totalN) * b.L, 0) : 0;
-  const LavgAfter = Math.max(0, Math.min(1, Lavg + LC / 100));
+  const L1avg = totalN > 0
+    ? base.reduce((s, b, i) => s + (b.N / totalN) * (L1?.[i] ?? 0.7), 0)
+    : 0.7;
 
   return (
     <div className="rounded-xl border-2 shadow-md overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#4f46e5" }}>
       <div className="px-4 pt-3 pb-1 flex items-baseline gap-2 flex-wrap">
-        <h2 className="font-extrabold text-lg tracking-tight" style={{ color: "#3730a3" }}>일차의료수가 (P = B + F)</h2>
-        <span className="text-sm font-bold text-indigo-700">→ 타원이용비중 ({(LavgAfter * 100).toFixed(1)}%) 반영 후 공단 지급</span>
+        <h2 className="font-extrabold text-lg tracking-tight" style={{ color: "#3730a3" }}>
+          일차의료수가 (P = B × (1 − L1) + F)
+        </h2>
+        <span className="text-sm font-bold text-indigo-700">
+          L1 평균 {(L1avg * 100).toFixed(1)}% · 공단지급 = P (단일화)
+        </span>
       </div>
       <div className="px-4 pb-3 pt-1">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {SH.map((g, i) => {
-            const P_i = G[i].p + F_g[i];
-            const nhiPay = G[i].A_new + F_g[i];   // 공단지급 = B(1-L) + F (LC 반영)
+            const pay_gov = G[i].pay_gov;   // 공단지급 = P_g = B(1-L1)+F
             return (
               <div key={i} className="rounded-lg px-2 py-2 bg-white/90 shadow-sm min-w-0" style={{ borderLeft: `5px solid ${CL[i]}` }}>
                 <div className="text-[11px] font-bold text-center" style={{ color: CL[i] }}>{g}</div>
                 <div className="mt-1">
-                  <div className="text-[10px] font-semibold text-indigo-700/80 text-center">일차의료수가</div>
-                  <div className="text-sm sm:text-base font-extrabold text-indigo-900 tabular-nums text-center whitespace-nowrap">{f(P_i)}<span className="text-[10px] font-bold ml-0.5">원</span></div>
+                  <div className="text-[10px] font-semibold text-indigo-700/80 text-center">P = 공단지급</div>
+                  <div className="text-sm sm:text-base font-extrabold text-indigo-900 tabular-nums text-center whitespace-nowrap">{f(Math.round(pay_gov))}<span className="text-[10px] font-bold ml-0.5">원</span></div>
                 </div>
                 <div className="mt-1 pt-1 border-t border-dashed border-indigo-300/60">
-                  <div className="text-[10px] font-semibold text-rose-700/90 text-center">공단지급</div>
-                  <div className="text-sm sm:text-base font-extrabold text-rose-700 tabular-nums text-center whitespace-nowrap">{f(Math.round(nhiPay))}<span className="text-[10px] font-bold ml-0.5">원</span></div>
+                  <div className="text-[10px] font-semibold text-slate-600 text-center">L1_{i + 1}</div>
+                  <div className="text-xs font-bold text-slate-700 tabular-nums text-center">
+                    {((L1?.[i] ?? 0.7) * 100).toFixed(1)}%
+                  </div>
                 </div>
               </div>
             );

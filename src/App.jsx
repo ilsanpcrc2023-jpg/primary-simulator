@@ -73,12 +73,15 @@ export default function App() {
             state={state} set={set}
             updP={sim.updP} updBase={sim.updBase}
             updF={sim.updF} setFAll={sim.setFAll}
-            resetF={sim.resetF} resetP={sim.resetP} resetLC={sim.resetLC} resetReg={sim.resetReg}
+            resetF={sim.resetF} resetP={sim.resetP} resetReg={sim.resetReg}
+            updL1={sim.updL1} setL1All={sim.setL1All} resetL1={sim.resetL1}
+            setL2={sim.setL2} resetL2={sim.resetL2}
+            setAlpha={sim.setAlpha} resetAlpha={sim.resetAlpha}
             updRegDist={sim.updRegDist} setRegDistAll={sim.setRegDistAll} scaleRegDist={sim.scaleRegDist}
             reset={sim.reset} loadPreset={loadPreset}
-            G={sim.G} T={sim.T} decomp={sim.decomp}
+            G={sim.G} T={sim.T} decomp={sim.decomp} performance={sim.performance}
             reg={sim.reg} regRatios={sim.regRatios}
-            incCurChg={sim.incCurChg} incNewChg={sim.incNewChg} nhiNewChg={sim.nhiNewChg}
+            incChg={sim.incChg} nhiChg={sim.nhiChg}
             fileRef={sim.fileRef} handleFile={sim.handleFile} handleExport={sim.handleExport}
             handleCommitBaseline={sim.handleCommitBaseline}
           />
@@ -87,10 +90,11 @@ export default function App() {
         {tab === 1 && (
           <TabTrack
             state={state} set={set}
-            G={sim.G} T={sim.T} SS={sim.SS}
-            nhiNewChg={sim.nhiNewChg}
+            G={sim.G} T={sim.T} SS={sim.SS} performance={sim.performance}
+            nhiChg={sim.nhiChg}
             tAchg={sim.tAchg} tBchg={sim.tBchg} tCchg={sim.tCchg} tSchg={sim.tSchg}
             resetPtPct={sim.resetPtPct} resetSsPct={sim.resetSsPct}
+            setAlpha={sim.setAlpha} resetAlpha={sim.resetAlpha}
           />
         )}
 
@@ -106,7 +110,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        일차의료 지불모형 시뮬레이터 v6.6.0 · 일차의료개발센터 · © 2026
+        일차의료 지불모형 시뮬레이터 v6.7.0 · 일차의료개발센터 · © 2026
       </div>
     </div>
   );

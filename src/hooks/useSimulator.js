@@ -1,11 +1,17 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_ALPHA, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
   P: INIT_P,
-  LC: 0,
+  // v6.7: L1·L2 분리. LC(변화율) 제거.
+  // L1 = 선지급 기준 (환자군별, 0~1). P_g = B(1−L1_g) + F_g.
+  // L2 = 실측 타원이용 (단일 스칼라, 0~1). null이면 L1 가중평균 사용 (성과급 0 기준점).
+  // alpha = 공유율 (성과급 = max(0, L1−L2) × B × n_reg × α × TrackMul).
+  L1: [...INIT_L1],
+  L2: null,
+  alpha: INIT_ALPHA,
   // 복지부 시범사업안 기본: 100기관 × 의원당 1,000명
   totalN: INIT_TOTAL_N,
   dataLabel: INIT_DATA_LABEL,
@@ -69,8 +75,24 @@ function reducer(state, action) {
       return { ...state, F_g: [...INIT_F] };
     case "RESET_P":
       return { ...state, P: [...INIT_P] };
-    case "RESET_LC":
-      return { ...state, LC: 0 };
+    // v6.7: L1·L2·α 액션
+    case "SET_L1_AT": {
+      const L1 = [...state.L1];
+      L1[action.i] = Math.max(0, Math.min(1, action.value));
+      return { ...state, L1 };
+    }
+    case "SET_L1_ALL":
+      return { ...state, L1: action.values.map(v => Math.max(0, Math.min(1, v))) };
+    case "RESET_L1":
+      return { ...state, L1: [...INIT_L1] };
+    case "SET_L2":
+      return { ...state, L2: action.value == null ? null : Math.max(0, Math.min(1, action.value)) };
+    case "RESET_L2":
+      return { ...state, L2: null };
+    case "SET_ALPHA":
+      return { ...state, alpha: Math.max(0, Math.min(1, action.value)) };
+    case "RESET_ALPHA":
+      return { ...state, alpha: INIT_ALPHA };
     case "RESET_REG":
       return {
         ...state,
@@ -176,7 +198,7 @@ export default function useSimulator() {
   const fileRef = useRef(null);
 
   const {
-    base, P, LC, totalN, hccPct,
+    base, P, L1, L2, alpha, totalN, hccPct,
     ssTotalCost, ssAcute, ssEmergency, ssLtc,
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
     ssCostBase, ssProjectCost,
@@ -209,69 +231,61 @@ export default function useSimulator() {
     return { M, n_total_per_clinic, n_reg_pc, n_reg_requested, n_reg_total, n_unreg_total, regRate };
   }, [M_clinics, totalN, regDist]);
 
+  // v6.7: L1 환자군별 배열에서 P_g 산출. LC(변화율) 제거.
+  // 의원 선지급 = P_g = B(1−L1_g) + F_g, 공단지급 = P_g (단일화).
+  // L2는 여기서 쓰이지 않음 (성과급 메모에서만 사용).
   const G = useMemo(() => {
-    const lc = LC / 100;
     return base.map((b, i) => {
       const N = Math.round(totalN * ratios[i]);
-      const p = P[i];
-      const A_cur = p * (1 - b.L);
-      const AB_cur = A_cur + b.M1 * 0.30;
-      const LL = b.L + lc;
-      const A_new = p * (1 - LL);
-      const AB_new = A_new + b.M1 * 0.30;
+      const p = P[i];                                    // B value (state.P = B 기호 유지)
+      const L1_g = L1[i] ?? 0.7;
+      const F_i = F_g[i] ?? 0;
+      const pay_gov = p * (1 - L1_g) + F_i;              // 공단지급 = P_g
+      const ab_reg = pay_gov + b.M1 * 0.30;              // 등록환자 1인당 의원수입
+
+      // 공단 KPI용 외래비 상수 (base.L 기반 · 실측 타원 구조는 base.L 유지)
       const C1 = b.M1 / (1 - b.L);
       const D1 = C1 - b.M1;
 
-      // v2.7: 등록/비등록 분리
-      // clamp: 환자군별 등록환자는 해당 환자군 총 이용환자를 초과할 수 없음
-      // (등록 ⊆ 이용 제약). 이용분포와 등록분포가 다르면 특정 군에서 초과 요청 발생
+      // 등록/비등록 (등록 ⊆ 이용 clamp)
       const n_reg_g_raw = reg.n_reg_total * regRatios[i];
       const n_reg_g = Math.min(n_reg_g_raw, N);
       const n_unreg_g = Math.max(0, N - n_reg_g);
 
-      // 환자군별 일차의료 기능수가 F (L 우회, 환자군별 차등)
-      const F_i = F_g[i] ?? 0;
-      const ab_reg_cur = A_cur + F_i + b.M1 * 0.30;
-      const ab_reg_new = A_new + F_i + b.M1 * 0.30;
+      // 의원 수입 (선지급만 · 성과급은 별도 축)
+      const inc0 = b.M1 * N;                              // baseline: 전원 FFS
+      const inc = ab_reg * n_reg_g + b.M1 * n_unreg_g;    // 참여 후 선지급 수입
 
-      // 의원 총수입: 등록=환자군 모형, 비등록=FFS(M1)
-      const inc0 = b.M1 * N;                                    // baseline: 전원 FFS
-      const inc1 = ab_reg_cur * n_reg_g + b.M1 * n_unreg_g;     // 현 의료행태
-      const inc2 = ab_reg_new * n_reg_g + b.M1 * n_unreg_g;     // LC 적용 후
-
-      // 공단 총의료비 (의원급 외래 전체)
+      // 공단 의원급 외래 지출
       const nhi0 = C1 * N;
-      const nhi1 = (ab_reg_cur + D1) * n_reg_g + C1 * n_unreg_g;
-      const nhi2 = (ab_reg_new + D1 * (b.L > 0 ? LL / b.L : 1)) * n_reg_g + C1 * n_unreg_g;
+      const nhi = (ab_reg + D1) * n_reg_g + C1 * n_unreg_g;
 
-      // Track (1인당 등록환자 실지불액, 모든 Track에 F 가산)
-      //   A: FFS + F
-      //   C: 환자군 모형 (LC 적용) + F
-      //   B: A와 C의 hccPct 가중평균
+      // Track (1인당 등록환자 실지불액 · 선지급만, 성과급은 T 레벨)
+      //   A: FFS + F             (L1 미적용)
+      //   B: 0.5 FFS + 0.5 C     (혼합 50:50)
+      //   C: 환자군 모형 (B(1−L1) + F + 본인부담)
       const tA = b.M1 + F_i;
-      const tC = ab_reg_new;
-      const tB = (tA + tC) / 2;
+      const tC = ab_reg;
+      const tB = 0.5 * tA + 0.5 * tC;
       const tS = tA * (ffsPct / 100) + tC * (hccPct / 100);
 
       return {
-        N, p, b,
-        A_cur, A_new, AB_cur, AB_new, LL,
+        N, p, b, L1_g,
+        pay_gov, ab_reg,
         B: b.M1 * 0.30,
         F_per_pt: F_i,
         n_reg: n_reg_g, n_unreg: n_unreg_g,
-        ab_reg_cur, ab_reg_new,
-        inc0, inc1, inc2, nhi0, nhi1, nhi2,
+        inc0, inc, nhi0, nhi,
         tA, tB, tC, tS,
       };
     });
-  }, [base, P, LC, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g]);
+  }, [base, P, L1, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g]);
 
   const T = useMemo(() => {
-    const s = { inc0: 0, inc1: 0, inc2: 0, nhi0: 0, nhi1: 0, nhi2: 0, tA: 0, tB: 0, tC: 0, tS: 0 };
+    const s = { inc0: 0, inc: 0, nhi0: 0, nhi: 0, tA: 0, tB: 0, tC: 0, tS: 0 };
     G.forEach(r => {
-      s.inc0 += r.inc0; s.inc1 += r.inc1; s.inc2 += r.inc2;
-      s.nhi0 += r.nhi0; s.nhi1 += r.nhi1; s.nhi2 += r.nhi2;
-      // Track 총액: 등록환자 Track별 + 비등록환자 FFS 고정
+      s.inc0 += r.inc0; s.inc += r.inc;
+      s.nhi0 += r.nhi0; s.nhi += r.nhi;
       const unregFFS = r.b.M1 * r.n_unreg;
       s.tA += r.tA * r.n_reg + unregFFS;
       s.tB += r.tB * r.n_reg + unregFFS;
@@ -281,35 +295,65 @@ export default function useSimulator() {
     return s;
   }, [G]);
 
-  const incCurChg = T.inc0 > 0 ? (T.inc1 - T.inc0) / T.inc0 : 0;
-  const incNewChg = T.inc0 > 0 ? (T.inc2 - T.inc0) / T.inc0 : 0;
-  const nhiNewChg = T.nhi0 > 0 ? (T.nhi2 - T.nhi0) / T.nhi0 : 0;
+  // v6.7: L1 가중평균 (N 기반) — L2 디폴트 · 성과급 "0 기준점" 시각화용
+  const L1avg = useMemo(() => {
+    const t = base.reduce((s, g) => s + g.N, 0);
+    if (t <= 0) return 0.7;
+    return base.reduce((s, g, i) => s + (L1[i] ?? 0.7) * g.N, 0) / t;
+  }, [base, L1]);
 
-  // v6.2 패널 분해: 참여 전 기준(baseN_per_clinic) vs 참여 후(totalN) 효과 분리
-  // baselineIncome: 참여 전 기준 수입 = baseN × ffsPerPerson × M
-  // panelEffect: 패널 크기 변화로 인한 수입 변화 (FFS 유지 가정)
-  // modelEffect: 등록환자에 대한 지불방식 전환 효과 (HCC vs FFS)
-  // netChange = panelEffect + modelEffect = afterIncome - baselineIncome
+  // v6.7: 성과급 메모 — no-downside 비대칭, Track 배수(A=0/B=0.5/C=1.0) 선형 보간 (hccPct/100)
+  const performance = useMemo(() => {
+    const L2eff = L2 ?? L1avg;
+    let perf_raw_total = 0;
+    G.forEach((r, i) => {
+      const diff = Math.max(0, (L1[i] ?? 0.7) - L2eff);
+      perf_raw_total += diff * r.p * r.n_reg;
+    });
+    const perf_total = perf_raw_total * alpha;            // Track C (100%) 시 최대 성과급
+    const perfByTrack = {
+      A: 0,
+      B: perf_total * 0.5,
+      C: perf_total * 1.0,
+    };
+    const trackMul = Math.max(0, Math.min(1, hccPct / 100));   // hccPct 0→A, 50→B, 100→C
+    const perf_blended = perf_total * trackMul;
+    return {
+      L2eff, L1avg,
+      perf_raw_total, perf_total, perfByTrack,
+      trackMul, perf_blended,
+    };
+  }, [G, L1, L2, L1avg, alpha, hccPct]);
+
+  // v6.7: KPI 변화율 (선지급 기준 · 성과급은 별도 카드)
+  const incChg = T.inc0 > 0 ? (T.inc - T.inc0) / T.inc0 : 0;
+  const nhiChg = T.nhi0 > 0 ? (T.nhi - T.nhi0) / T.nhi0 : 0;
+  // 하위 호환 alias (v6.6까지 쓰던 이름 — 추후 제거 가능)
+  const incCurChg = incChg;
+  const incNewChg = incChg;
+  const nhiNewChg = nhiChg;
+
+  // v6.7 패널 분해:
+  //   baselineIncome = baseN × ffsPerPerson × M       (참여 전 전원 FFS)
+  //   panelEffect    = Σ M1 × (N_after − baseN)       (패널 변화 · FFS 유지)
+  //   modelEffect    = Σ n_reg × (ab_reg − M1)        (지불방식 전환 · 선지급)
+  //   성과급(performanceEffect)은 별도 축 — Track 배수 반영, KPI에는 미포함(성과급 카드에서 표시)
   const decomp = useMemo(() => {
     const M = Math.max(1, M_clinics);
     const baseN_total = Math.max(0, baseN_per_clinic) * M;
-    // 이용분포 기반 FFS 1인당 평균 (환자군별 M1 가중평균)
     const ffsPerPerson = base.reduce((s, b, i) => s + b.M1 * ratios[i], 0);
     const baselineIncome = baseN_total * ffsPerPerson;
-    // 환자군별 기준 N (참여 전)
     const baseN_g = base.map((_, i) => baseN_total * ratios[i]);
-    // panelEffect = Σ M1_g × (N_g_after − baseN_g)
     const panelEffect = G.reduce((s, r, i) => s + r.b.M1 * (r.N - baseN_g[i]), 0);
-    // modelEffect = Σ n_reg_g × (ab_reg_new_g − M1_g)
-    const modelEffect = G.reduce((s, r) => s + r.n_reg * (r.ab_reg_new - r.b.M1), 0);
-    const afterIncome = T.inc2;
+    const modelEffect = G.reduce((s, r) => s + r.n_reg * (r.ab_reg - r.b.M1), 0);
+    const afterIncome = T.inc;
     const netChange = afterIncome - baselineIncome;
     return {
       M, baseN_total, ffsPerPerson, baselineIncome,
       panelEffect, modelEffect, netChange, afterIncome,
       netChgPct: baselineIncome > 0 ? netChange / baselineIncome : 0,
     };
-  }, [base, ratios, G, T.inc2, M_clinics, baseN_per_clinic]);
+  }, [base, ratios, G, T.inc, M_clinics, baseN_per_clinic]);
   // Track 변화율 기준 = 순수 FFS (inc0, 사업 미시행·R=0 기준선).
   // Track A에서도 R>0이면 양(+) 변화가 나와야 한다는 노션 Q6 정합.
   const tAchg = T.inc0 > 0 ? (T.tA - T.inc0) / T.inc0 : 0;
@@ -358,7 +402,14 @@ export default function useSimulator() {
   const setFAll = useCallback((values) => dispatch({ type: "SET_F_ALL", values }), []);
   const resetF = useCallback(() => dispatch({ type: "RESET_F" }), []);
   const resetP = useCallback(() => dispatch({ type: "RESET_P" }), []);
-  const resetLC = useCallback(() => dispatch({ type: "RESET_LC" }), []);
+  // v6.7: L1·L2·alpha setters / resetters (LC 제거)
+  const updL1 = useCallback((i, value) => dispatch({ type: "SET_L1_AT", i, value }), []);
+  const setL1All = useCallback((values) => dispatch({ type: "SET_L1_ALL", values }), []);
+  const resetL1 = useCallback(() => dispatch({ type: "RESET_L1" }), []);
+  const setL2 = useCallback((value) => dispatch({ type: "SET_L2", value }), []);
+  const resetL2 = useCallback(() => dispatch({ type: "RESET_L2" }), []);
+  const setAlpha = useCallback((value) => dispatch({ type: "SET_ALPHA", value }), []);
+  const resetAlpha = useCallback(() => dispatch({ type: "RESET_ALPHA" }), []);
   const resetReg = useCallback(() => dispatch({ type: "RESET_REG" }), []);
   const resetPtPct = useCallback(() => dispatch({ type: "RESET_PT_PCT" }), []);
   const resetSsPct = useCallback(() => dispatch({ type: "RESET_SS_PCT" }), []);
@@ -438,6 +489,8 @@ export default function useSimulator() {
         dataLabel: label,
         uploadBanner: { success: true, msg: bannerMsg, details: det },
       });
+      // v6.7: 엑셀 L 값을 L1 seed로도 제안. 사용자가 L1 카드의 "엑셀 L 복사" 버튼으로 명시 반영.
+      // (자동 반영하면 L1 정책값을 덮어쓸 수 있어 UX 위험 — 버튼 경유 유지.)
     } catch (err) {
       set("uploadBanner", { success: false, msg: "파일 읽기 실패: " + err.message, details: null });
     }
@@ -530,14 +583,20 @@ export default function useSimulator() {
 
   return {
     state, set, updP, updBase, updF, setFAll,
-    resetF, resetP, resetLC, resetReg,
+    resetF, resetP, resetReg,
+    // v6.7 L1·L2·α
+    updL1, setL1All, resetL1,
+    setL2, resetL2,
+    setAlpha, resetAlpha,
     resetPtPct, resetSsPct, resetSsCost,
     updRegDist, setRegDistAll, scaleRegDist,
     reset,
     handleMacroSync, handleFile, handleExport, loadPreset, handleCommitBaseline,
     fileRef,
-    G, T, SS, decomp,
+    G, T, SS, decomp, performance,
     ffsPct,
+    incChg, nhiChg,
+    // v6.6 legacy aliases (점진적 제거)
     incCurChg, incNewChg, nhiNewChg,
     tAchg, tBchg, tCchg, tSchg,
     reg, regRatios,
