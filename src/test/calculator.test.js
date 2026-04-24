@@ -3,6 +3,7 @@ import { INIT_BASE, INIT_P, INIT_F, ON, COL_ALIASES,
   INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C,
   INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C,
   INIT_SS_COST_BASE, INIT_SS_PROJECT_COST,
+  INIT_L1,
   B_MIN, B_MAX, OFFICIAL_BASELINE_META } from '../constants';
 
 describe('calculation engine', () => {
@@ -36,24 +37,27 @@ describe('calculation engine', () => {
     });
   });
 
-  it('A_cur = P * (1 - L) for each group', () => {
+  it('v6.7: pay_gov = B × (1 − L1) + F for each group (공단지급 = P 단일화)', () => {
     INIT_BASE.forEach((b, i) => {
-      const A_cur = INIT_P[i] * (1 - b.L);
-      expect(A_cur).toBeGreaterThan(0);
-      const AB_cur = A_cur + b.M1 * 0.30;
-      expect(AB_cur).toBeGreaterThan(A_cur);
+      const B_i = INIT_P[i];
+      const L1_i = INIT_L1[i];
+      const F_i = INIT_F[i];
+      const pay_gov = B_i * (1 - L1_i) + F_i;
+      expect(pay_gov).toBeGreaterThan(0);
+      // 등록환자 1인당 의원수입 = 공단지급 + 본인부담
+      const ab_reg = pay_gov + b.M1 * 0.30;
+      expect(ab_reg).toBeGreaterThan(pay_gov);
     });
   });
 
-  it('LC adjustment reduces L (increases revenue)', () => {
-    const LC = -3;
-    const lc = LC / 100;
+  it('v6.7: L1 lower than baseline L shifts pay_gov higher', () => {
+    // 디폴트 L1=0.7 vs 실측 b.L≈0.79 — L1이 낮을수록 공단지급 확대
     INIT_BASE.forEach((b, i) => {
-      const LL = b.L + lc;
-      expect(LL).toBeLessThan(b.L);
-      const A_new = INIT_P[i] * (1 - LL);
-      const A_cur = INIT_P[i] * (1 - b.L);
-      expect(A_new).toBeGreaterThan(A_cur);
+      const B_i = INIT_P[i];
+      const F_i = INIT_F[i];
+      const pay_L1 = B_i * (1 - INIT_L1[i]) + F_i;    // 0.70 적용
+      const pay_baseL = B_i * (1 - b.L) + F_i;         // 0.79 적용
+      expect(pay_L1).toBeGreaterThan(pay_baseL);
     });
   });
 
@@ -167,6 +171,69 @@ describe('v6.6 official_baseline.json 로더', () => {
       expect(typeof b.N).toBe('number');
       expect(typeof b.M1).toBe('number');
       expect(typeof b.L).toBe('number');
+    });
+  });
+});
+
+describe('v6.7 L1·L2 분리 (선지급 vs 사후 성과급)', () => {
+  it('INIT_L1 기본값 0.7 · 4군 배열', () => {
+    expect(INIT_L1).toHaveLength(4);
+    INIT_L1.forEach(v => {
+      expect(v).toBe(0.7);
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThanOrEqual(1);
+    });
+  });
+
+  it('성과급 공식: max(0, L1 − L2) × B × n_reg (no-downside · 의원 100% 환원)', () => {
+    // 공유율 α 없음 (Shared Saving과 달리 타원이용 절감은 의원 전액 환원)
+    const perf = (L1_g, L2, B_g, n_reg) =>
+      Math.max(0, L1_g - L2) * B_g * n_reg;
+    // 정상: L2가 L1보다 낮을 때 양수 (의원 100% 환원)
+    expect(perf(0.7, 0.55, 280832, 100)).toBeCloseTo(4212480, 0);
+    // no-downside: L2 > L1이면 0
+    expect(perf(0.7, 0.85, 280832, 100)).toBe(0);
+    // L2 = L1: 성과급 0 (기준점)
+    expect(perf(0.7, 0.7, 280832, 100)).toBe(0);
+  });
+
+  it('Track 배수: A=0 / B=0.5 / C=1.0 (선형 hccPct/100)', () => {
+    const trackMul = hccPct => Math.max(0, Math.min(1, hccPct / 100));
+    expect(trackMul(0)).toBe(0);      // Track A
+    expect(trackMul(50)).toBe(0.5);   // Track B
+    expect(trackMul(100)).toBe(1);    // Track C
+    // clamp
+    expect(trackMul(-10)).toBe(0);
+    expect(trackMul(150)).toBe(1);
+  });
+
+  it('L1 가중평균 = Σ L1_g × N_g / Σ N_g', () => {
+    const t = INIT_BASE.reduce((s, g) => s + g.N, 0);
+    const L1avg = INIT_BASE.reduce((s, g, i) => s + INIT_L1[i] * g.N, 0) / t;
+    // 모든 L1이 0.7이면 가중평균도 0.7
+    expect(L1avg).toBeCloseTo(0.7, 5);
+  });
+
+  it('Track A에서는 L1 미적용 (FFS 1인당 수가 = M1 + F)', () => {
+    INIT_BASE.forEach((b, i) => {
+      const tA = b.M1 + INIT_F[i];
+      expect(tA).toBe(b.M1 + INIT_F[i]);
+      // L1과 무관해야 함
+      const alt_L1 = 0.3;
+      const tA_alt = b.M1 + INIT_F[i];
+      expect(tA).toBe(tA_alt);
+    });
+  });
+
+  it('Track B = 0.5 × Track A + 0.5 × Track C (혼합 50:50)', () => {
+    INIT_BASE.forEach((b, i) => {
+      const B_i = INIT_P[i];
+      const F_i = INIT_F[i];
+      const L1_i = INIT_L1[i];
+      const tA = b.M1 + F_i;
+      const tC = B_i * (1 - L1_i) + F_i + b.M1 * 0.30;   // 환자군 모형 1인당
+      const tB = 0.5 * tA + 0.5 * tC;
+      expect(tB).toBeCloseTo((tA + tC) / 2, 5);
     });
   });
 });

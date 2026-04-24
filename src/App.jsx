@@ -30,6 +30,19 @@ const tabStyle = (active) => ({
 
 const ZOOM_LEVELS = [0.9, 1.0, 1.15, 1.3];
 const ZOOM_KEY = "primarySim.zoom";
+const MODE_KEY = "primarySim.mode";
+const VALID_MODES = ["policy", "clinic"];
+
+function readInitialMode() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromURL = params.get("mode");
+    if (fromURL && VALID_MODES.includes(fromURL)) return fromURL;
+  } catch { /* ignore */ }
+  const saved = localStorage.getItem(MODE_KEY);
+  if (saved && VALID_MODES.includes(saved)) return saved;
+  return "clinic"; // v6.8 디폴트: 의원 모드
+}
 
 export default function App() {
   const sim = useSimulator();
@@ -44,11 +57,16 @@ export default function App() {
   const incZoom = () => setZoomIdx(i => Math.min(ZOOM_LEVELS.length - 1, i + 1));
   const decZoom = () => setZoomIdx(i => Math.max(0, i - 1));
 
+  const [mode, setMode] = useState(readInitialMode);
+  useEffect(() => { localStorage.setItem(MODE_KEY, mode); }, [mode]);
+  // v6.8.1: 첫 진입은 useSimulator 초기 state(tab=0, 수가 탭)로. 모드 전환 시 현재 탭 유지.
+
   return (
     <div className="overflow-x-hidden" style={{ fontFamily: "'Pretendard','Noto Sans KR',-apple-system,sans-serif", background: "#f8fafc", minHeight: "100vh", zoom: ZOOM_LEVELS[zoomIdx] }}>
       <style>{sliderCSS}</style>
 
-      <Header zoomIdx={zoomIdx} zoomLevels={ZOOM_LEVELS} onZoomIn={incZoom} onZoomOut={decZoom} />
+      <Header zoomIdx={zoomIdx} zoomLevels={ZOOM_LEVELS} onZoomIn={incZoom} onZoomOut={decZoom}
+        mode={mode} onModeChange={setMode} />
 
       {/* FOLDER TABS */}
       <div className="max-w-4xl mx-auto px-3 sm:px-4 pt-3" style={{ borderBottom: "2px solid #94a3b8" }}>
@@ -68,17 +86,38 @@ export default function App() {
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 space-y-3">
         <DatasetSelector currentLabel={state.dataLabel} onSelect={loadPreset} />
 
+        {/* 모드 안내 배너 (v6.8.1 — 모드별 문구 교체) */}
+        <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
+          style={mode === "policy"
+            ? { background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e3a8a" }
+            : { background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46" }}>
+          {mode === "policy" ? (
+            <>
+              <div className="font-bold mb-1">🏛️ 정책 모드 — 재정 안정과 의료계 수용성이 맞닿는 수가 조합을 탐색하세요.</div>
+              <div className="opacity-90">B·F·L1을 직접 조정하며 공단 지출 변화와 의원당 수입 변화를 동시에 확인할 수 있습니다. 좌측 상단 토글로 의원 모드로 전환할 수 있습니다.</div>
+            </>
+          ) : (
+            <>
+              <div className="font-bold mb-1">🏥 의원 모드 — 우리 의원에 이 제도가 어떻게 작용할지 확인하세요.</div>
+              <div className="opacity-90">현재 표시된 수가는 정부 협상을 통해 확정된 값입니다. Track 선택과 포괄관리 지표(L2) 관리로 수입이 어떻게 변하는지 확인할 수 있습니다.</div>
+            </>
+          )}
+        </div>
+
         {tab === 0 && (
           <TabSimulation
+            mode={mode}
             state={state} set={set}
             updP={sim.updP} updBase={sim.updBase}
             updF={sim.updF} setFAll={sim.setFAll}
-            resetF={sim.resetF} resetP={sim.resetP} resetLC={sim.resetLC} resetReg={sim.resetReg}
+            resetF={sim.resetF} resetP={sim.resetP} resetReg={sim.resetReg}
+            updL1={sim.updL1} setL1All={sim.setL1All} resetL1={sim.resetL1}
+            setL2={sim.setL2} resetL2={sim.resetL2}
             updRegDist={sim.updRegDist} setRegDistAll={sim.setRegDistAll} scaleRegDist={sim.scaleRegDist}
             reset={sim.reset} loadPreset={loadPreset}
-            G={sim.G} T={sim.T} decomp={sim.decomp}
+            G={sim.G} T={sim.T} decomp={sim.decomp} performance={sim.performance}
             reg={sim.reg} regRatios={sim.regRatios}
-            incCurChg={sim.incCurChg} incNewChg={sim.incNewChg} nhiNewChg={sim.nhiNewChg}
+            incChg={sim.incChg} nhiChg={sim.nhiChg}
             fileRef={sim.fileRef} handleFile={sim.handleFile} handleExport={sim.handleExport}
             handleCommitBaseline={sim.handleCommitBaseline}
           />
@@ -87,10 +126,11 @@ export default function App() {
         {tab === 1 && (
           <TabTrack
             state={state} set={set}
-            G={sim.G} T={sim.T} SS={sim.SS}
-            nhiNewChg={sim.nhiNewChg}
+            G={sim.G} T={sim.T} SS={sim.SS} performance={sim.performance}
+            nhiChg={sim.nhiChg}
             tAchg={sim.tAchg} tBchg={sim.tBchg} tCchg={sim.tCchg} tSchg={sim.tSchg}
             resetPtPct={sim.resetPtPct} resetSsPct={sim.resetSsPct}
+            setL2={sim.setL2} resetL2={sim.resetL2}
           />
         )}
 
@@ -106,7 +146,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        일차의료 지불모형 시뮬레이터 v6.6.0 · 일차의료개발센터 · © 2026
+        일차의료 지불체계 시뮬레이터 v6.8.1 · 일차의료개발센터 · © 2026
       </div>
     </div>
   );
