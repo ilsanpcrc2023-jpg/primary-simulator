@@ -1,17 +1,16 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_ALPHA, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
   P: INIT_P,
-  // v6.7: L1·L2 분리. LC(변화율) 제거.
+  // v6.7: L1·L2 분리. LC(변화율) 제거. 공유율 α도 제거 (의원 100% 환원).
   // L1 = 선지급 기준 (환자군별, 0~1). P_g = B(1−L1_g) + F_g.
   // L2 = 실측 타원이용 (단일 스칼라, 0~1). null이면 L1 가중평균 사용 (성과급 0 기준점).
-  // alpha = 공유율 (성과급 = max(0, L1−L2) × B × n_reg × α × TrackMul).
+  // 성과급 = max(0, L1−L2) × B × n_reg × TrackMul (Shared Saving과 달리 공유율 없음).
   L1: [...INIT_L1],
   L2: null,
-  alpha: INIT_ALPHA,
   // 복지부 시범사업안 기본: 100기관 × 의원당 1,000명
   totalN: INIT_TOTAL_N,
   dataLabel: INIT_DATA_LABEL,
@@ -89,10 +88,6 @@ function reducer(state, action) {
       return { ...state, L2: action.value == null ? null : Math.max(0, Math.min(1, action.value)) };
     case "RESET_L2":
       return { ...state, L2: null };
-    case "SET_ALPHA":
-      return { ...state, alpha: Math.max(0, Math.min(1, action.value)) };
-    case "RESET_ALPHA":
-      return { ...state, alpha: INIT_ALPHA };
     case "RESET_REG":
       return {
         ...state,
@@ -198,7 +193,7 @@ export default function useSimulator() {
   const fileRef = useRef(null);
 
   const {
-    base, P, L1, L2, alpha, totalN, hccPct,
+    base, P, L1, L2, totalN, hccPct,
     ssTotalCost, ssAcute, ssEmergency, ssLtc,
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
     ssCostBase, ssProjectCost,
@@ -302,7 +297,8 @@ export default function useSimulator() {
     return base.reduce((s, g, i) => s + (L1[i] ?? 0.7) * g.N, 0) / t;
   }, [base, L1]);
 
-  // v6.7: 성과급 메모 — no-downside 비대칭, Track 배수(A=0/B=0.5/C=1.0) 선형 보간 (hccPct/100)
+  // v6.7: 성과급 메모 — no-downside 비대칭, 의원 100% 환원 (공유율 α 없음, SS와 상이)
+  // Track 배수(A=0/B=0.5/C=1.0) 선형 보간 (hccPct/100)
   const performance = useMemo(() => {
     const L2eff = L2 ?? L1avg;
     let perf_raw_total = 0;
@@ -310,7 +306,7 @@ export default function useSimulator() {
       const diff = Math.max(0, (L1[i] ?? 0.7) - L2eff);
       perf_raw_total += diff * r.p * r.n_reg;
     });
-    const perf_total = perf_raw_total * alpha;            // Track C (100%) 시 최대 성과급
+    const perf_total = perf_raw_total;                    // Track C 최대치 = 전체 절감액 100% 환원
     const perfByTrack = {
       A: 0,
       B: perf_total * 0.5,
@@ -323,7 +319,7 @@ export default function useSimulator() {
       perf_raw_total, perf_total, perfByTrack,
       trackMul, perf_blended,
     };
-  }, [G, L1, L2, L1avg, alpha, hccPct]);
+  }, [G, L1, L2, L1avg, hccPct]);
 
   // v6.7: KPI 변화율 (선지급 기준 · 성과급은 별도 카드)
   const incChg = T.inc0 > 0 ? (T.inc - T.inc0) / T.inc0 : 0;
@@ -402,14 +398,12 @@ export default function useSimulator() {
   const setFAll = useCallback((values) => dispatch({ type: "SET_F_ALL", values }), []);
   const resetF = useCallback(() => dispatch({ type: "RESET_F" }), []);
   const resetP = useCallback(() => dispatch({ type: "RESET_P" }), []);
-  // v6.7: L1·L2·alpha setters / resetters (LC 제거)
+  // v6.7: L1·L2 setters / resetters (LC·α 제거)
   const updL1 = useCallback((i, value) => dispatch({ type: "SET_L1_AT", i, value }), []);
   const setL1All = useCallback((values) => dispatch({ type: "SET_L1_ALL", values }), []);
   const resetL1 = useCallback(() => dispatch({ type: "RESET_L1" }), []);
   const setL2 = useCallback((value) => dispatch({ type: "SET_L2", value }), []);
   const resetL2 = useCallback(() => dispatch({ type: "RESET_L2" }), []);
-  const setAlpha = useCallback((value) => dispatch({ type: "SET_ALPHA", value }), []);
-  const resetAlpha = useCallback(() => dispatch({ type: "RESET_ALPHA" }), []);
   const resetReg = useCallback(() => dispatch({ type: "RESET_REG" }), []);
   const resetPtPct = useCallback(() => dispatch({ type: "RESET_PT_PCT" }), []);
   const resetSsPct = useCallback(() => dispatch({ type: "RESET_SS_PCT" }), []);
@@ -584,10 +578,9 @@ export default function useSimulator() {
   return {
     state, set, updP, updBase, updF, setFAll,
     resetF, resetP, resetReg,
-    // v6.7 L1·L2·α
+    // v6.7 L1·L2 (α 제거)
     updL1, setL1All, resetL1,
     setL2, resetL2,
-    setAlpha, resetAlpha,
     resetPtPct, resetSsPct, resetSsCost,
     updRegDist, setRegDistAll, scaleRegDist,
     reset,

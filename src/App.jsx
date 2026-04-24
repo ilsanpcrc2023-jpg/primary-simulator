@@ -76,7 +76,6 @@ export default function App() {
             resetF={sim.resetF} resetP={sim.resetP} resetReg={sim.resetReg}
             updL1={sim.updL1} setL1All={sim.setL1All} resetL1={sim.resetL1}
             setL2={sim.setL2} resetL2={sim.resetL2}
-            setAlpha={sim.setAlpha} resetAlpha={sim.resetAlpha}
             updRegDist={sim.updRegDist} setRegDistAll={sim.setRegDistAll} scaleRegDist={sim.scaleRegDist}
             reset={sim.reset} loadPreset={loadPreset}
             G={sim.G} T={sim.T} decomp={sim.decomp} performance={sim.performance}
@@ -94,7 +93,6 @@ export default function App() {
             nhiChg={sim.nhiChg}
             tAchg={sim.tAchg} tBchg={sim.tBchg} tCchg={sim.tCchg} tSchg={sim.tSchg}
             resetPtPct={sim.resetPtPct} resetSsPct={sim.resetSsPct}
-            setAlpha={sim.setAlpha} resetAlpha={sim.resetAlpha}
           />
         )}
 

@@ -71,9 +71,9 @@ export const B_MAX = 2_000_000;
 // v6.7: L1 · L2 분리 (선지급 vs 사후 성과급)
 // L1 = 선지급 기준 타원이용비중 (환자군별, 사업 시작 전 과거 평균 기반)
 // L2 = 실측 타원이용비중 (단일 스칼라, 사업 중 관측치 · 성과급 산정 기준)
-// α  = 공유율 (L1 - L2 절감분 중 의원에 환원되는 비율, 편집 가능)
+// 성과급 = max(0, L1 − L2) × B × n_reg × TrackMul
+//   (no-downside · 의원 100% 환원, 공유율 없음 — Shared Saving과는 다른 구조)
 export const INIT_L1 = [0.7, 0.7, 0.7, 0.7];      // 환자군별 디폴트 (데이터 수령 전 placeholder)
-export const INIT_ALPHA = 0.5;                      // 공유율 디폴트 (50% 환원, no-downside)
 
 // v6.6: 업로드 파서는 N·M1·L·HCC·CR 5 필드 인식.
 //   - N/M1/L: 환자군 기초지표 (base)

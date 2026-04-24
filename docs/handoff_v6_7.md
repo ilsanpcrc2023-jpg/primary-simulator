@@ -14,8 +14,8 @@
    - L1 = 선지급 기준 (과거 평균, 환자군별 4개)
    - L2 = 실측 · 사후 성과급 귀속 (단일 스칼라)
 2. **공단지급 단일화**: `P = B(1−L1) + F`, 공단지급 = P (별도 축 없음)
-3. **성과급 공식**: `max(0, L1 − L2) × B × n_reg × α × TrackMul` (no-downside 비대칭)
-4. **α 공유율**: 기본 0.5, 편집 가능 (단일 스칼라, 환자군 무차별)
+3. **성과급 공식**: `max(0, L1 − L2) × B × n_reg × TrackMul` (no-downside 비대칭)
+4. **공유율 없음 (v6.7 최종)**: 타원이용 절감은 공유율 없이 **의원 100% 환원** (Shared Saving은 ssClinicShare로 공유 유지). 초기 설계(α=0.5)는 사용자 후속 결정으로 폐기.
 5. **Track 배수**: A=0 / B=0.5 / C=1.0 (선형 hccPct/100)
 6. **Shared Saving과 귀인 분리**: SS=입원·응급 간접 관리, L2=외래 집중도 직접 행위. 재원 분리, 2년차부터 동일 분기 패키지 지급.
 
@@ -29,7 +29,7 @@
   - `INIT_L1 = [0.7, 0.7, 0.7, 0.7]` — 데이터 수령 전 placeholder
   - `INIT_ALPHA = 0.5` — 50% 환원
 - [src/hooks/useSimulator.js](../src/hooks/useSimulator.js)
-  - `state.L1[4]`, `state.L2` (null=L1 가중평균), `state.alpha` 추가
+  - `state.L1[4]`, `state.L2` (null=L1 가중평균) 추가 · state.alpha 및 INIT_ALPHA는 제거됨
   - `state.LC` 제거
   - 액션: `SET_L1_AT/ALL`, `RESET_L1`, `SET_L2`, `RESET_L2`, `SET_ALPHA`, `RESET_ALPHA`
   - 액션 제거: `RESET_LC`
@@ -39,7 +39,7 @@
 - `G[i]`: `pay_gov = P[i] × (1 − L1[i]) + F_g[i]`, `ab_reg = pay_gov + M1×0.3`, `inc/nhi` 단일화 (cur/new 분기 제거)
 - `T`: `inc`, `nhi`, `tA/tB/tC/tS` (Track per-pt · 선지급만)
 - `L1avg` 메모 (N-가중평균)
-- `performance` 메모 신설 — `L2eff`, `perf_raw_total`, `perf_total`(α 반영), `perfByTrack{A,B,C}`, `perf_blended`(hccPct 선형)
+- `performance` 메모 신설 — `L2eff`, `perf_raw_total`, `perf_total`(= raw_total, 공유율 없음), `perfByTrack{A,B,C}`, `perf_blended`(hccPct 선형)
 - `decomp` — panelEffect + modelEffect (기존 2층 구조 유지, 성과급은 별도 축)
 - Track 수식 갱신:
   - Track A: `M1 + F`
@@ -54,7 +54,7 @@
 3. **L1 카드 (신규)** — 4개 NumBox 입력, "엑셀 L → L1 복사" 버튼, ↩ 초기화
 4. P 카드 ([TCard](../src/components/RegistrationPanel.jsx)) — 헤더 `P = B × (1 − L1) + F`, 4군 카드에 P=공단지급 + L1_g 표시
 5. **L2 슬라이더 박스 (리브랜딩)** — 단일 슬라이더 0~1, 디폴트 = L1 가중평균, "↩ L1 복귀"
-6. **성과급 미리보기 카드 (신규)** — Track A/B/C 병렬 3카드, α 입력, no-downside 안내
+6. **성과급 미리보기 카드 (신규)** — Track A/B/C 병렬 3카드, n_reg 설명 (의원당 환자군별 등록환자수, 의원 100% 환원)
 7. KPI 2카드 (선지급 기준 · 성과급은 하단에 Track C 미리보기 라인)
 8. 환자군 패널
 9. 차트
@@ -65,7 +65,7 @@
 Track 탭:
 - PT 박스 (기존)
 - 참여의원 성과배분 SS 박스 (기존)
-- **성과급 L2 박스 (신규 · cyan)** — α 입력, Track A(0)/B(0.5)/C(1.0) 비례 표시
+- **성과급 L2 박스 (신규 · cyan)** — Track A(0)/B(0.5)/C(1.0) 비례 표시, 공식·n_reg 설명 명시
 - Track 수입 비교 테이블: 성과급 L2 행 추가, "2년차 이후 (Track+SS+L2)" 합계
 
 ### 4. 테스트 ([src/test/calculator.test.js](../src/test/calculator.test.js))
@@ -83,7 +83,7 @@ Track 탭:
 
 ### 5. 문서
 
-- [CLAUDE.md](../CLAUDE.md): 버전 v6.7.0, 용어 테이블(L1/L2/α 추가), 기호 히스토리 v6.7 열, 수식 섹션, 버전 태그 이력
+- [CLAUDE.md](../CLAUDE.md): 버전 v6.7.0, 용어 테이블(L1/L2 추가, α 제거), 기호 히스토리 v6.7 열, 수식 섹션, 버전 태그 이력
 - [docs/handoff_v6_7_design.md](handoff_v6_7_design.md): Phase 0 설계 문서 (본 구현의 청사진)
 - [docs/handoff_v6_7.md](handoff_v6_7.md): 본 인계장
 - [src/App.jsx](../src/App.jsx): 풋터 `v6.6.0 → v6.7.0`
@@ -106,7 +106,7 @@ Track 탭:
 2. **ADMIN_PWD UI** (v6.6 후보 #1 · baseline 등록 버튼 보호)
 3. **L1 엑셀 컬럼 직접 인식** — 현재 "엑셀 L → L1 복사" 버튼 경유. 향후 `L1` 컬럼 자체를 `COL_ALIASES.L1`로 인식하여 자동 반영
 4. **성과급 이력 시뮬** — 다년도 L2 추이에 따른 누적 성과급 차트
-5. **α 환자군별 차등** — 중증군(3·4군) α 상향 정책 시뮬
+5. **Track 배수 편집 가능화** — 현재 하드코딩(0/0.5/1.0)을 편집 가능하게 (예: 중증 가산 시나리오)
 
 ## 정책 노트 (시뮬레이터 밖 · 사용자 협의됨)
 

@@ -29,10 +29,11 @@ P_g = B_g × (1 − L1_g) + F_g       # 환자군별
 
 ### 사후 성과 (L2 귀속)
 ```
-성과급_L2 = Σ_g max(0, L1_g − L2) × B_g × n_reg_g × α × TrackMul
-  α: 공유율, 디폴트 0.5, 편집 가능
+성과급_L2 = Σ_g max(0, L1_g − L2) × B_g × n_reg_g × TrackMul
+  n_reg_g: 의원당 환자군별 등록환자수 (state.regDist)
   TrackMul: Track A=0, B=0.5, C=1.0
   no-downside: L2 > L1 구간은 0 처리
+  공유율 없음 (의원 100% 환원) — Shared Saving과 상이 · 사용자 후속 결정으로 초기 α=0.5 폐기
 ```
 
 ### Shared Saving (분리 유지)
@@ -55,7 +56,7 @@ Track 전환 시 L1 박스·성과급 카드 활성화/비활성화를 UI에서 
 |---|---|---|---|---|
 | L1_g | 선지급 기준 타원이용비중 (환자군별) | 0~1 | `state.L1[4]` | `[0.7, 0.7, 0.7, 0.7]` |
 | L2 | 실측 타원이용비중 (시뮬 단일 슬라이더) | 0~1 | `state.L2` | `L1의 N-가중평균` |
-| α | 공유율 | 0~1 | `state.alpha` | `0.5` |
+| ~~α~~ | ~~공유율~~ | — | — | **제거됨 (v6.7 최종)** |
 
 **제거되는 변수**: `state.LC` (-50~0%p 변화율) → L2 절대값으로 대체.
 
@@ -83,8 +84,8 @@ Track 전환 시 L1 박스·성과급 카드 활성화/비활성화를 UI에서 
      - "L1 대비 개선 시 성과급" 안내
      - ↩ 초기화 (디폴트 복귀)
 6. 성과급 미리보기 카드              [신규]
-     - max(0, L1 − L2) × B × n_reg × α × TrackMul
-     - α 입력(0~1, 기본 0.5), 편집 가능
+     - Σ max(0, L1 − L2) × B × n_reg × TrackMul
+     - n_reg 설명 문구 · 의원 100% 환원 명시 (Shared Saving과 상이)
      - Track 별 지급액 미리보기
 7. KPI 2카드                         [기존 유지 · 문구 소폭 수정]
 ...이하 기존 유지
@@ -112,12 +113,12 @@ Track 전환 시 L1 박스·성과급 카드 활성화/비활성화를 UI에서 
 
 | 파일 | 변경 |
 |---|---|
-| [src/constants.js](../src/constants.js) | `INIT_L1`, `INIT_L2`, `INIT_ALPHA` 추가 |
+| [src/constants.js](../src/constants.js) | `INIT_L1` 추가 (INIT_ALPHA는 사용자 결정으로 제거) |
 | [src/hooks/useSimulator.js](../src/hooks/useSimulator.js) | state 재설계, G/T/decomp 재계산, 성과급 메모 신설, SET/RESET 액션 갱신 |
 | [src/components/TabSimulation.jsx](../src/components/TabSimulation.jsx) | L1 카드 신설, L2 리브랜딩, 성과급 카드 신설 |
 | [src/components/RegistrationPanel.jsx](../src/components/RegistrationPanel.jsx) | PCard 헤더·수식 갱신 |
 | [src/components/TabTrack.jsx](../src/components/TabTrack.jsx) | Track 수입 수식 갱신, 성과급 카드 추가 |
-| [src/test/calculator.test.js](../src/test/calculator.test.js) | L1·L2·α·Track 비례 케이스 |
+| [src/test/calculator.test.js](../src/test/calculator.test.js) | L1·L2·Track 비례 케이스 |
 | [CLAUDE.md](../CLAUDE.md) | 용어 테이블(L→L1/L2), 기호 히스토리, 수식 섹션 |
 | [docs/handoff_v6_7.md](handoff_v6_7.md) | 세션 인계장 (최종) |
 

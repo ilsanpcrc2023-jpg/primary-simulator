@@ -9,9 +9,9 @@ const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 export default memo(function TabTrack({
   state, set, G, T, SS, performance: perfMemo,
   tAchg, tBchg, tCchg,
-  resetPtPct, resetSsPct, setAlpha, resetAlpha,
+  resetPtPct, resetSsPct,
 }) {
-  const { hccPct, M_clinics, pt_base, alpha,
+  const { hccPct, M_clinics, pt_base,
     ptPctA, ptPctB, ptPctC, ssPctA, ssPctB, ssPctC } = state;
   const ffsPct = 100 - hccPct;
   const M = Math.max(1, M_clinics);
@@ -22,8 +22,8 @@ export default memo(function TabTrack({
   const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
   const ssEnabled = (SS?.clinicFromItem ?? 0) > 0;
 
-  // v6.7: L2 성과급 (Track A=0, B=0.5, C=1.0)
-  const perfTotal = perfMemo?.perf_total ?? 0;       // α 반영, Track C 최대치
+  // v6.7: L2 성과급 (Track A=0, B=0.5, C=1.0) — 의원 100% 환원 (공유율 없음)
+  const perfTotal = perfMemo?.perf_total ?? 0;       // Track C 최대치 = 전체 절감액
   const perfPerClinicFull = perfTotal / M;
   const perfEnabled = perfTotal > 0;
 
@@ -177,21 +177,10 @@ export default memo(function TabTrack({
       </div>
     </div>
 
-    {/* ④ 성과급 L2 (v6.7 신규) — 2년차부터, 외래 집중도 성과 */}
+    {/* ④ 성과급 L2 (v6.7 신규) — 2년차부터, 외래 집중도 성과, 의원 100% 환원 */}
     <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)", borderColor: perfEnabled ? "#06b6d4" : "#d1d5db", opacity: perfEnabled ? 1 : 0.7 }}>
-      <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
+      <div className="mb-2">
         <h3 className="font-bold text-base text-cyan-800">성과급 L2 (타원이용 절감) <span className="text-xs font-normal text-cyan-700">· 2년차부터 매년</span></h3>
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-cyan-700 font-semibold">공유율 α</span>
-          <NumBox
-            value={parseFloat((alpha * 100).toFixed(0))}
-            onChange={v => setAlpha(v / 100)}
-            color="#0891b2" suffix="%" />
-          <button onClick={resetAlpha}
-            className="text-xs text-cyan-700 hover:text-red-600 border border-cyan-200 hover:border-red-300 rounded px-2 py-1 bg-white/70">
-            ↩
-          </button>
-        </div>
       </div>
 
       {!perfEnabled && (
@@ -201,8 +190,11 @@ export default memo(function TabTrack({
       )}
 
       <div className="text-xs text-cyan-700/80 mb-2 leading-relaxed">
-        <div>공식: Σ <code className="text-cyan-900 bg-cyan-100 px-1 rounded">max(0, L1 − L2) × B × n_reg × α</code> × Track 배수</div>
-        <div className="mt-0.5">
+        <div>공식: Σ <code className="text-cyan-900 bg-cyan-100 px-1 rounded">max(0, L1 − L2) × B × n_reg</code> × Track 배수</div>
+        <div className="text-[10px] text-cyan-600/70 mt-0.5">
+          n_reg = 의원당 환자군별 등록환자수 · 절감액은 의원 100% 환원 (Shared Saving과 달리 공유율 없음)
+        </div>
+        <div className="mt-1">
           L2 현재 <b className="text-cyan-900">{((perfMemo?.L2eff ?? 0) * 100).toFixed(1)}%</b>
           <span className="text-cyan-600/60"> · L1 가중평균 {((perfMemo?.L1avg ?? 0) * 100).toFixed(1)}%</span>
           <span className="text-cyan-500/70"> · 전체 최대(Track C) = <b>{fAuto(perfTotal)}</b></span>

@@ -11,14 +11,14 @@ const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabSimulation({
   state, set, updP, updBase, updF, setFAll, resetF, resetP, resetReg,
-  updL1, setL1All, resetL1, setL2, resetL2, setAlpha, resetAlpha,
+  updL1, setL1All, resetL1, setL2, resetL2,
   updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset,
   G, T, decomp, performance: perfMemo,
   incChg, nhiChg,
   fileRef, handleFile, handleExport, handleCommitBaseline,
   reg, regRatios,
 }) {
-  const { base, P, L1, L2, alpha, showDetail, uploadBanner, F_g, M_clinics } = state;
+  const { base, P, L1, L2, showDetail, uploadBanner, F_g, M_clinics } = state;
   const M = Math.max(1, M_clinics);
   const [showFormula, setShowFormula] = useState(false);
 
@@ -149,22 +149,17 @@ export default memo(function TabSimulation({
       </div>
     </div>
 
-    {/* ⑥ 성과급 미리보기 (신규 · L2 기반) */}
+    {/* ⑥ 성과급 미리보기 (신규 · L2 기반, 의원 100% 환원) */}
     <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
-      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+      <div className="mb-2">
         <h2 className="font-bold text-base" style={{ color: "#b45309" }}>
-          6. 성과급 미리보기 (max(0, L1 − L2) × B × n_reg × α)
+          6. 성과급 미리보기
         </h2>
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-semibold text-amber-700">공유율 α</span>
-          <NumBox
-            value={parseFloat((alpha * 100).toFixed(0))}
-            onChange={v => setAlpha(v / 100)}
-            color="#d97706" suffix="%" />
-          <button onClick={resetAlpha}
-            className="text-xs text-amber-700 hover:text-red-600 border border-amber-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
-            ↩
-          </button>
+        <div className="mt-1 text-xs text-amber-800 font-mono bg-white/60 rounded px-2 py-1">
+          Σ max(0, L1 − L2) × B × n_reg × TrackMul
+        </div>
+        <div className="mt-1 text-[10px] text-amber-700/70 leading-relaxed">
+          n_reg = 의원당 환자군별 등록환자수 · 절감분은 공유율 없이 의원 100% 환원 (Shared Saving과 상이)
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2">
@@ -340,10 +335,10 @@ export default memo(function TabSimulation({
             <div><b className="text-indigo-700">공단지급 = P</b>  (단일화)</div>
             <div><b className="text-indigo-700">본인부담 = M1 × 30%</b>  (고정)</div>
             <div className="pt-1 mt-1 border-t border-gray-300">
-              <b className="text-amber-700">성과급_L2 = Σ max(0, L1_g − L2) × B_g × n_reg_g × α × TrackMul</b>
+              <b className="text-amber-700">성과급_L2 = Σ max(0, L1_g − L2) × B_g × n_reg_g × TrackMul</b>
             </div>
-            <div className="text-gray-500">α = 공유율 (기본 0.5) · TrackMul: A=0 / B=0.5 / C=1.0</div>
-            <div className="text-gray-500">no-downside: L2 &gt; L1이면 성과급 0 (환수 없음)</div>
+            <div className="text-gray-500">n_reg_g = 의원당 환자군별 등록환자수 · TrackMul: A=0 / B=0.5 / C=1.0</div>
+            <div className="text-gray-500">no-downside: L2 &gt; L1이면 성과급 0 (환수 없음) · 의원 100% 환원 (공유율 없음)</div>
           </div>
         </div>
       )}

@@ -3,7 +3,7 @@ import { INIT_BASE, INIT_P, INIT_F, ON, COL_ALIASES,
   INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C,
   INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C,
   INIT_SS_COST_BASE, INIT_SS_PROJECT_COST,
-  INIT_L1, INIT_ALPHA,
+  INIT_L1,
   B_MIN, B_MAX, OFFICIAL_BASELINE_META } from '../constants';
 
 describe('calculation engine', () => {
@@ -185,19 +185,16 @@ describe('v6.7 L1·L2 분리 (선지급 vs 사후 성과급)', () => {
     });
   });
 
-  it('INIT_ALPHA 공유율 기본 0.5 (no-downside · 50% 환원)', () => {
-    expect(INIT_ALPHA).toBe(0.5);
-  });
-
-  it('성과급 공식: max(0, L1 − L2) × B × n_reg × α (no-downside)', () => {
-    const perf = (L1_g, L2, B_g, n_reg, alpha) =>
-      Math.max(0, L1_g - L2) * B_g * n_reg * alpha;
-    // 정상: L2가 L1보다 낮을 때 양수
-    expect(perf(0.7, 0.55, 280832, 100, 0.5)).toBeCloseTo(2106240, 0);
+  it('성과급 공식: max(0, L1 − L2) × B × n_reg (no-downside · 의원 100% 환원)', () => {
+    // 공유율 α 없음 (Shared Saving과 달리 타원이용 절감은 의원 전액 환원)
+    const perf = (L1_g, L2, B_g, n_reg) =>
+      Math.max(0, L1_g - L2) * B_g * n_reg;
+    // 정상: L2가 L1보다 낮을 때 양수 (의원 100% 환원)
+    expect(perf(0.7, 0.55, 280832, 100)).toBeCloseTo(4212480, 0);
     // no-downside: L2 > L1이면 0
-    expect(perf(0.7, 0.85, 280832, 100, 0.5)).toBe(0);
+    expect(perf(0.7, 0.85, 280832, 100)).toBe(0);
     // L2 = L1: 성과급 0 (기준점)
-    expect(perf(0.7, 0.7, 280832, 100, 0.5)).toBe(0);
+    expect(perf(0.7, 0.7, 280832, 100)).toBe(0);
   });
 
   it('Track 배수: A=0 / B=0.5 / C=1.0 (선형 hccPct/100)', () => {
