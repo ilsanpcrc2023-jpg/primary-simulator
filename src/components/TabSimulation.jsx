@@ -116,38 +116,46 @@ export default memo(function TabSimulation({
     {/* ④ 일차의료수가 (P = B(1−L1) + F) */}
     <TCard state={state} G={G} />
 
-    {/* ⑤ 실측 타원이용비중 L2 (P 박스 아래 · 성과급 트리거) */}
-    <div className="rounded-xl border-2 shadow-sm px-4 py-3" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
-      <div className="flex items-center mb-2 gap-3 flex-wrap">
-        <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>5. 실측 타원이용비중 (L2)</h2>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-xs text-purple-600 font-semibold">기준 L1</span>
-          <span className="text-sm font-bold text-purple-700/70">{(perfMemo.L1avg * 100).toFixed(1)}%</span>
-          <span className="text-purple-400">→</span>
-          <span className="text-xs text-purple-600 font-semibold">L2</span>
-          <span className="text-lg font-extrabold text-purple-900">{(L2_display * 100).toFixed(1)}%</span>
-          <NumBox
-            value={parseFloat((L2_display * 100).toFixed(1))}
-            onChange={v => setL2(v / 100)}
-            color="#7c3aed" suffix="%" />
+    {/* ⑤ 타원이용비중 (L2) 변화율 — 0%p=L1, 음수=개선 → 성과급 */}
+    {(() => {
+      const L1avg = perfMemo.L1avg;
+      const L2delta = Math.max(-50, Math.min(0, (L2_display - L1avg) * 100));
+      const sliderBg = `linear-gradient(to right, #7c3aed ${((L2delta + 50) / 50) * 100}%, #e5e7eb 0%)`;
+      const setL2FromDelta = (dPct) => {
+        const d = Math.max(-50, Math.min(0, dPct));
+        setL2(Math.max(0, Math.min(1, L1avg + d / 100)));
+      };
+      return (
+        <div className="rounded-xl border-2 shadow-sm px-4 py-3" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
+          <div className="flex items-center mb-2 gap-3 flex-wrap">
+            <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>5. 타원이용비중 (L2) 변화율</h2>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xs text-purple-600 font-semibold">전</span>
+              <span className="text-sm font-bold text-purple-700/70">{(L1avg * 100).toFixed(1)}%</span>
+              <span className="text-purple-400">→</span>
+              <span className="text-xs text-purple-600 font-semibold">후</span>
+              <span className="text-lg font-extrabold text-purple-900">{(L2_display * 100).toFixed(1)}%</span>
+              <NumBox value={parseFloat(L2delta.toFixed(1))} onChange={setL2FromDelta} color="#7c3aed" suffix="%p" />
+            </div>
+            <button onClick={resetL2}
+              className="ml-auto text-xs text-purple-700 hover:text-red-600 border border-purple-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
+              ↩ 초기화
+            </button>
+          </div>
+          <input type="range" min={-50} max={0} step={0.5} value={L2delta}
+            onChange={e => setL2FromDelta(parseFloat(e.target.value))}
+            aria-label="타원이용비중 L2 변화율 슬라이더"
+            className="w-full big-thumb"
+            style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: sliderBg }} />
+          <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
+            <span>-50%p</span><span>-40%p</span><span>-30%p</span><span>-20%p</span><span>-10%p</span><span>0%p</span>
+          </div>
+          <div className="mt-1.5 text-[10px] text-purple-700/70 leading-relaxed">
+            ※ 0%p = L1 수준(성과급 0 기준점) · 음수로 갈수록 L2 절감 → 성과급 발생 (no-downside).
+          </div>
         </div>
-        <button onClick={resetL2}
-          className="ml-auto text-xs text-purple-700 hover:text-red-600 border border-purple-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
-          ↩ L1 복귀
-        </button>
-      </div>
-      <input type="range" min={0} max={1} step={0.005} value={L2_display}
-        onChange={e => setL2(parseFloat(e.target.value))}
-        aria-label="실측 타원이용비중 L2 슬라이더"
-        className="w-full big-thumb"
-        style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${L2_display * 100}%, #e5e7eb 0%)` }} />
-      <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
-        <span>0%</span><span>20%</span><span>40%</span><span>60%</span><span>80%</span><span>100%</span>
-      </div>
-      <div className="mt-1.5 text-[10px] text-purple-700/70 leading-relaxed">
-        ※ L2가 L1보다 낮을수록 성과급 발생 (no-downside: L2 &gt; L1이면 성과급 0).
-      </div>
-    </div>
+      );
+    })()}
 
     {/* ⑥ KPI 2카드 — L2 연동, Track 비교는 Track 탭에서 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
