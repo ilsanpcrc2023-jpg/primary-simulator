@@ -30,6 +30,19 @@ const tabStyle = (active) => ({
 
 const ZOOM_LEVELS = [0.9, 1.0, 1.15, 1.3];
 const ZOOM_KEY = "primarySim.zoom";
+const MODE_KEY = "primarySim.mode";
+const VALID_MODES = ["policy", "clinic"];
+
+function readInitialMode() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromURL = params.get("mode");
+    if (fromURL && VALID_MODES.includes(fromURL)) return fromURL;
+  } catch { /* ignore */ }
+  const saved = localStorage.getItem(MODE_KEY);
+  if (saved && VALID_MODES.includes(saved)) return saved;
+  return "clinic"; // v6.8 디폴트: 의원 모드
+}
 
 export default function App() {
   const sim = useSimulator();
@@ -44,11 +57,21 @@ export default function App() {
   const incZoom = () => setZoomIdx(i => Math.min(ZOOM_LEVELS.length - 1, i + 1));
   const decZoom = () => setZoomIdx(i => Math.max(0, i - 1));
 
+  const [mode, setMode] = useState(readInitialMode);
+  useEffect(() => { localStorage.setItem(MODE_KEY, mode); }, [mode]);
+  useEffect(() => {
+    // 모드 전환 시 해당 모드의 기본 진입 탭으로 이동
+    // 정책 모드 → 수가(0), 의원 모드 → Track(1)
+    set("tab", mode === "policy" ? 0 : 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
   return (
     <div className="overflow-x-hidden" style={{ fontFamily: "'Pretendard','Noto Sans KR',-apple-system,sans-serif", background: "#f8fafc", minHeight: "100vh", zoom: ZOOM_LEVELS[zoomIdx] }}>
       <style>{sliderCSS}</style>
 
-      <Header zoomIdx={zoomIdx} zoomLevels={ZOOM_LEVELS} onZoomIn={incZoom} onZoomOut={decZoom} />
+      <Header zoomIdx={zoomIdx} zoomLevels={ZOOM_LEVELS} onZoomIn={incZoom} onZoomOut={decZoom}
+        mode={mode} onModeChange={setMode} />
 
       {/* FOLDER TABS */}
       <div className="max-w-4xl mx-auto px-3 sm:px-4 pt-3" style={{ borderBottom: "2px solid #94a3b8" }}>
@@ -68,8 +91,24 @@ export default function App() {
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 space-y-3">
         <DatasetSelector currentLabel={state.dataLabel} onSelect={loadPreset} />
 
+        {/* 모드 안내 배너 */}
+        <div className="rounded-lg px-3 py-2 text-[11px] sm:text-xs leading-relaxed flex items-start gap-2"
+          style={mode === "policy"
+            ? { background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e40af" }
+            : { background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534" }}>
+          <span className="font-semibold shrink-0">
+            {mode === "policy" ? "🏛️ 정책 입안자 모드" : "🩺 의원 운영자 모드"}
+          </span>
+          <span className="opacity-85">
+            {mode === "policy"
+              ? "재정 안정과 의료계 수용성이 맞닿는 수가(B·F·L1) 조합을 탐색하세요. 우측 상단 토글로 의원 모드로 전환할 수 있습니다."
+              : "Track 선택과 타원이용(L2) 관리가 의원 수입에 미치는 영향을 확인하세요. B·F·L1은 정책으로 고정된 값이며 수가 탭 상단에서 접힘 상태로 제공됩니다."}
+          </span>
+        </div>
+
         {tab === 0 && (
           <TabSimulation
+            mode={mode}
             state={state} set={set}
             updP={sim.updP} updBase={sim.updBase}
             updF={sim.updF} setFAll={sim.setFAll}
@@ -109,7 +148,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        일차의료 지불모형 시뮬레이터 v6.7.4 · 일차의료개발센터 · © 2026
+        일차의료 지불체계 시뮬레이터 v6.8.0 · 일차의료개발센터 · © 2026
       </div>
     </div>
   );

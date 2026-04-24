@@ -10,6 +10,7 @@ import { f, fE, pct, diffAuto, fMan, diffMan } from "../utils";
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabSimulation({
+  mode = "policy",
   state, set, updP, updBase, updF, setFAll, resetF, resetP, resetReg,
   updL1, setL1All, resetL1, setL2, resetL2,
   updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset,
@@ -21,6 +22,7 @@ export default memo(function TabSimulation({
   const { base, P, L1, L2, showDetail, uploadBanner, F_g, M_clinics } = state;
   const M = Math.max(1, M_clinics);
   const [showFormula, setShowFormula] = useState(false);
+  const [policyExpanded, setPolicyExpanded] = useState(mode === "policy");
 
   // L2 기본값 · 표시값 (null이면 L1 가중평균)
   const L2_display = L2 ?? perfMemo.L1avg;
@@ -33,7 +35,7 @@ export default memo(function TabSimulation({
   const perClinicPerf = decomp.performanceEffect / M;   // L2 성과급 (현재 선택 Track 반영)
   const perClinicNet = decomp.netChange / M;
 
-  return (<>
+  const policyVariables = (<>
     {/* ①+② B와 F 통합 박스 */}
     <div className={card + " p-4 space-y-4"}>
       {/* ① 환자군 기본수가 B */}
@@ -112,6 +114,34 @@ export default memo(function TabSimulation({
         ※ L1은 선지급 계산용(과거 평균). 데이터 수령 전 placeholder 0.70. &quot;엑셀 L → L1 복사&quot; 버튼으로 업로드 값 반영.
       </div>
     </div>
+  </>);
+
+  return (<>
+    {/* 정책 고정값 (B · F · L1) — 의원 모드에서는 접힘 래퍼로, 정책 모드에서는 그대로 펼침 */}
+    {mode === "clinic" ? (
+      <div className={card + " overflow-hidden"}>
+        <button onClick={() => setPolicyExpanded(v => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
+          <span className="flex items-center gap-2 flex-wrap">
+            <span className="text-gray-400 text-xs">{policyExpanded ? "▲" : "▼"}</span>
+            <span>🏛️ 정책 고정값 (B · F · L1)</span>
+            <span className="text-[11px] font-normal text-gray-500">
+              B 평균 {f(Math.round(P.reduce((a, v) => a + v, 0) / P.length))}원 · F 평균 {f(Math.round(F_g.reduce((a, v) => a + v, 0) / F_g.length))}원 · L1 평균 {(perfMemo.L1avg * 100).toFixed(1)}%
+            </span>
+          </span>
+          <span className="text-[11px] font-normal text-gray-400">{policyExpanded ? "접기" : "펼쳐서 확인"}</span>
+        </button>
+        {policyExpanded && (
+          <div className="border-t border-gray-100 p-3 space-y-3 bg-gray-50/50">
+            <div className="rounded-lg px-3 py-2 text-[11px] leading-relaxed"
+              style={{ background: "#fef3c7", border: "1px solid #fcd34d", color: "#78350f" }}>
+              ※ 이 값들은 <b>정책 입안자가 설정</b>하는 지불체계 고정값입니다. 의원 모드에서는 참고용으로 제공되며, 조정은 상단 토글에서 정책 모드로 전환하세요.
+            </div>
+            {policyVariables}
+          </div>
+        )}
+      </div>
+    ) : policyVariables}
 
     {/* ④ 일차의료수가 (P = B(1−L1) + F) */}
     <TCard state={state} G={G} />
