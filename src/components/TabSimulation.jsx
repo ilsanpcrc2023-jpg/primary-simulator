@@ -25,13 +25,13 @@ export default memo(function TabSimulation({
   // L2 기본값 · 표시값 (null이면 L1 가중평균)
   const L2_display = L2 ?? perfMemo.L1avg;
 
-  // 의원당 수입 절대값 (선지급 기준)
+  // 의원당 수입 절대값 (L2 반응 · 성과급 포함)
   const perClinicBaseline = decomp.baselineIncome / M;
   const perClinicAfter = decomp.afterIncome / M;
   const perClinicPanel = decomp.panelEffect / M;
   const perClinicModel = decomp.modelEffect / M;
+  const perClinicPerf = decomp.performanceEffect / M;   // L2 성과급 (현재 선택 Track 반영)
   const perClinicNet = decomp.netChange / M;
-  const perClinicPerfC = perfMemo.perfByTrack.C / M;   // Track C 기준 성과급 미리보기
 
   return (<>
     {/* ①+② B와 F 통합 박스 */}
@@ -149,56 +149,12 @@ export default memo(function TabSimulation({
       </div>
     </div>
 
-    {/* ⑥ 성과급 미리보기 (신규 · L2 기반, 의원 100% 환원) */}
-    <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
-      <div className="mb-2">
-        <h2 className="font-bold text-base" style={{ color: "#b45309" }}>
-          6. 성과급 미리보기
-        </h2>
-        <div className="mt-1 text-xs text-amber-800 font-mono bg-white/60 rounded px-2 py-1">
-          Σ max(0, L1 − L2) × B × n_reg × TrackMul
-        </div>
-        <div className="mt-1 text-[10px] text-amber-700/70 leading-relaxed">
-          n_reg = 의원당 환자군별 등록환자수 · 절감분은 공유율 없이 의원 100% 환원 (Shared Saving과 상이)
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { k: "A", label: "Track A (FFS)", mul: 0, color: "#6b7280", bg: "bg-gray-50" },
-          { k: "B", label: "Track B (혼합)", mul: 0.5, color: "#3b82f6", bg: "bg-blue-50" },
-          { k: "C", label: "Track C (모형)", mul: 1.0, color: "#16a34a", bg: "bg-green-50" },
-        ].map(t => {
-          const amt = perfMemo.perfByTrack[t.k];
-          return (
-            <div key={t.k} className={`rounded-lg px-2 py-2 border ${t.bg}`} style={{ borderColor: t.color + "40" }}>
-              <div className="text-[11px] font-bold text-center" style={{ color: t.color }}>{t.label}</div>
-              <div className="text-[9px] text-center text-gray-500">Track 배수 ×{t.mul.toFixed(1)}</div>
-              <div className="mt-1 text-center">
-                <div className="text-xs text-gray-600">의원당/년</div>
-                <div className="text-base font-extrabold tabular-nums" style={{ color: t.color }}>
-                  {fMan(amt / M)}
-                </div>
-              </div>
-              <div className="text-[10px] text-center text-gray-500 mt-0.5">
-                전체 {fE(amt)}억
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {perfMemo.perfByTrack.C <= 0 && (
-        <div className="mt-2 text-[10px] text-amber-700/80 leading-relaxed">
-          ※ 현재 L2({(L2_display * 100).toFixed(1)}%) ≥ L1 가중평균({(perfMemo.L1avg * 100).toFixed(1)}%) — 성과급 0원 상태. L2 슬라이더를 낮추면 성과급 발생.
-        </div>
-      )}
-    </div>
-
-    {/* ⑦ KPI 2카드 */}
+    {/* ⑥ KPI 2카드 — L2 연동, Track 비교는 Track 탭에서 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
         <div className="flex items-baseline justify-between mb-2">
-          <h3 className="font-bold text-base text-green-800">의원 수입 변화 (선지급)</h3>
-          <span className="text-xs font-semibold text-green-600">L1 가중 {(perfMemo.L1avg * 100).toFixed(1)}%</span>
+          <h3 className="font-bold text-base text-green-800">의원 수입 변화</h3>
+          <span className="text-xs font-semibold text-green-600">L1 {(perfMemo.L1avg * 100).toFixed(1)}% · L2 {(L2_display * 100).toFixed(1)}%</span>
         </div>
 
         <div className="flex items-baseline justify-between mb-1">
@@ -224,9 +180,18 @@ export default memo(function TabSimulation({
           </div>
         </div>
 
+        <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
+          <div className="flex items-baseline justify-between">
+            <span className="text-xs text-amber-700 font-semibold">③ 성과급 효과 (L2 기반)</span>
+            <span className="text-sm font-bold" style={{ color: decomp.performanceEffect > 0 ? "#16a34a" : "#6b7280" }}>
+              {diffMan(perClinicPerf)}/의원
+            </span>
+          </div>
+        </div>
+
         <div className="mt-2 pt-2 border-t border-green-200/70">
           <div className="flex items-baseline justify-between mb-0.5">
-            <span className="text-xs text-green-700 font-semibold">순 변화 (① + ②)</span>
+            <span className="text-xs text-green-700 font-semibold">순 변화 (① + ② + ③)</span>
             <span className="text-xs font-bold" style={{ color: decomp.netChgPct >= 0 ? "#16a34a" : "#dc2626" }}>
               {pct(decomp.netChgPct)}
             </span>
@@ -250,10 +215,6 @@ export default memo(function TabSimulation({
             <span className="text-xs text-green-700 font-semibold">참여 후 의원당 수입</span>
             <span className="text-lg font-extrabold text-green-900">{fMan(perClinicAfter)}/년</span>
           </div>
-          <div className="flex items-baseline justify-between mt-0.5">
-            <span className="text-[10px] text-amber-700">+ 성과급 (Track C)</span>
-            <span className="text-xs font-bold text-amber-700">{fMan(perClinicPerfC)}/년</span>
-          </div>
         </div>
       </div>
 
@@ -262,12 +223,13 @@ export default memo(function TabSimulation({
           <h3 className="font-bold text-base text-blue-800">공단 의원급 외래 지출 변화</h3>
         </div>
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-3xl sm:text-4xl font-extrabold text-blue-700 leading-tight">{diffAuto(T.nhi0, T.nhi)}</span>
+          <span className="text-3xl sm:text-4xl font-extrabold text-blue-700 leading-tight">{diffAuto(T.nhi0, T.nhi + perfMemo.perf_blended)}</span>
           <span className="text-base sm:text-lg font-bold text-blue-700/80 leading-tight">{pct(nhiChg, 2)}</span>
         </div>
-        <div className="text-sm sm:text-base text-blue-700/70 font-semibold mt-1">{fE(T.nhi0)}억 → <b className="text-blue-800">{fE(T.nhi)}억</b></div>
-        <div className="mt-2 pt-2 border-t border-blue-200/70 text-xs text-blue-700/70">
-          ※ 성과급 {fE(perfMemo.perfByTrack.C)}억 (Track C 기준)은 별도 사후 정산 재원
+        <div className="text-sm sm:text-base text-blue-700/70 font-semibold mt-1">{fE(T.nhi0)}억 → <b className="text-blue-800">{fE(T.nhi + perfMemo.perf_blended)}억</b></div>
+        <div className="mt-2 pt-2 border-t border-blue-200/70 text-xs text-blue-700/70 leading-relaxed">
+          <div>· 등록환자 공단지급 + L2 기반 타원 외래비 반영</div>
+          <div>· 성과급 {fE(perfMemo.perf_blended)}억 (현재 Track 반영) 포함</div>
         </div>
       </div>
     </div>
@@ -316,7 +278,7 @@ export default memo(function TabSimulation({
       { t: "국민 (환자)", c: "#059669", bg: "#ecfdf5", bd: "#a7f3d0",
         txt: "주치의 환자관리\n본인부담 현행 유지\n불필요한 병원 이용 감소" },
       { t: "의원 (의사)", c: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
-        txt: `환자군 기반 적절 보상\n의원당 선지급 ${diffMan(perClinicNet)}\n+ 성과급 최대 ${fMan(perClinicPerfC)}` },
+        txt: `환자군 기반 적절 보상\n의원당 ${diffMan(perClinicNet)}\n성과급 ${fMan(perClinicPerf)}/년` },
       { t: "공단 (정부)", c: "#dc2626", bg: "#fef2f2", bd: "#fecaca",
         txt: `지출 ${pct(nhiChg, 2)}\n예측 가능성 향상\n*Saving 효과 별도` },
     ]} />

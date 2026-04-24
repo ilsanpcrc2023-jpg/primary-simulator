@@ -226,10 +226,20 @@ export default function useSimulator() {
     return { M, n_total_per_clinic, n_reg_pc, n_reg_requested, n_reg_total, n_unreg_total, regRate };
   }, [M_clinics, totalN, regDist]);
 
+  // v6.7: L1 가중평균 (N 기반) — L2 디폴트 · 성과급 "0 기준점" 시각화용.
+  // G보다 먼저 계산해서 L2eff를 G 안에서 사용 (등록환자 타원 외래비 L2 반영).
+  const L1avg = useMemo(() => {
+    const t = base.reduce((s, g) => s + g.N, 0);
+    if (t <= 0) return 0.7;
+    return base.reduce((s, g, i) => s + (L1[i] ?? 0.7) * g.N, 0) / t;
+  }, [base, L1]);
+  const L2eff = L2 ?? L1avg;
+
   // v6.7: L1 환자군별 배열에서 P_g 산출. LC(변화율) 제거.
   // 의원 선지급 = P_g = B(1−L1_g) + F_g, 공단지급 = P_g (단일화).
-  // L2는 여기서 쓰이지 않음 (성과급 메모에서만 사용).
+  // 공단 외래 지출은 등록환자 타원비를 L2 기반으로 반영 (L2 슬라이더 연동).
   const G = useMemo(() => {
+    const safeL2 = Math.max(0, Math.min(0.999, L2eff));
     return base.map((b, i) => {
       const N = Math.round(totalN * ratios[i]);
       const p = P[i];                                    // B value (state.P = B 기호 유지)
@@ -238,27 +248,25 @@ export default function useSimulator() {
       const pay_gov = p * (1 - L1_g) + F_i;              // 공단지급 = P_g
       const ab_reg = pay_gov + b.M1 * 0.30;              // 등록환자 1인당 의원수입
 
-      // 공단 KPI용 외래비 상수 (base.L 기반 · 실측 타원 구조는 base.L 유지)
-      const C1 = b.M1 / (1 - b.L);
-      const D1 = C1 - b.M1;
+      // 외래비 상수
+      const C1 = b.M1 / (1 - b.L);                       // 기존 L 기반 총 외래비 (비등록·baseline)
+      const D1_base = C1 - b.M1;                         // 비등록환자 타원 외래비 (기존 L)
+      const D1_L2 = b.M1 * safeL2 / (1 - safeL2);        // 등록환자 타원 외래비 (L2 반영 · L2 슬라이더 연동)
 
       // 등록/비등록 (등록 ⊆ 이용 clamp)
       const n_reg_g_raw = reg.n_reg_total * regRatios[i];
       const n_reg_g = Math.min(n_reg_g_raw, N);
       const n_unreg_g = Math.max(0, N - n_reg_g);
 
-      // 의원 수입 (선지급만 · 성과급은 별도 축)
+      // 의원 수입 (선지급만 · 성과급은 T 레벨에서 합산)
       const inc0 = b.M1 * N;                              // baseline: 전원 FFS
       const inc = ab_reg * n_reg_g + b.M1 * n_unreg_g;    // 참여 후 선지급 수입
 
-      // 공단 의원급 외래 지출
-      const nhi0 = C1 * N;
-      const nhi = (ab_reg + D1) * n_reg_g + C1 * n_unreg_g;
+      // 공단 의원급 외래 지출 — 등록환자는 L2 기반 타원비, 비등록은 기존 L 유지
+      const nhi0 = C1 * N;                                // baseline
+      const nhi = (ab_reg + D1_L2) * n_reg_g + C1 * n_unreg_g;
 
       // Track (1인당 등록환자 실지불액 · 선지급만, 성과급은 T 레벨)
-      //   A: FFS + F             (L1 미적용)
-      //   B: 0.5 FFS + 0.5 C     (혼합 50:50)
-      //   C: 환자군 모형 (B(1−L1) + F + 본인부담)
       const tA = b.M1 + F_i;
       const tC = ab_reg;
       const tB = 0.5 * tA + 0.5 * tC;
@@ -274,7 +282,7 @@ export default function useSimulator() {
         tA, tB, tC, tS,
       };
     });
-  }, [base, P, L1, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g]);
+  }, [base, P, L1, L2eff, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g]);
 
   const T = useMemo(() => {
     const s = { inc0: 0, inc: 0, nhi0: 0, nhi: 0, tA: 0, tB: 0, tC: 0, tS: 0 };
@@ -290,17 +298,9 @@ export default function useSimulator() {
     return s;
   }, [G]);
 
-  // v6.7: L1 가중평균 (N 기반) — L2 디폴트 · 성과급 "0 기준점" 시각화용
-  const L1avg = useMemo(() => {
-    const t = base.reduce((s, g) => s + g.N, 0);
-    if (t <= 0) return 0.7;
-    return base.reduce((s, g, i) => s + (L1[i] ?? 0.7) * g.N, 0) / t;
-  }, [base, L1]);
-
   // v6.7: 성과급 메모 — no-downside 비대칭, 의원 100% 환원 (공유율 α 없음, SS와 상이)
   // Track 배수(A=0/B=0.5/C=1.0) 선형 보간 (hccPct/100)
   const performance = useMemo(() => {
-    const L2eff = L2 ?? L1avg;
     let perf_raw_total = 0;
     G.forEach((r, i) => {
       const diff = Math.max(0, (L1[i] ?? 0.7) - L2eff);
@@ -319,21 +319,26 @@ export default function useSimulator() {
       perf_raw_total, perf_total, perfByTrack,
       trackMul, perf_blended,
     };
-  }, [G, L1, L2, L1avg, hccPct]);
+  }, [G, L1, L2eff, L1avg, hccPct]);
 
-  // v6.7: KPI 변화율 (선지급 기준 · 성과급은 별도 카드)
-  const incChg = T.inc0 > 0 ? (T.inc - T.inc0) / T.inc0 : 0;
-  const nhiChg = T.nhi0 > 0 ? (T.nhi - T.nhi0) / T.nhi0 : 0;
+  // v6.7: KPI 변화율 — L2 연동
+  //   의원 수입  = 선지급 inc + 성과급 perf_blended
+  //   공단 지출 = L2 반영 nhi + 성과급 지급 perf_blended
+  const incTotal = T.inc + performance.perf_blended;
+  const nhiTotal = T.nhi + performance.perf_blended;
+  const incChg = T.inc0 > 0 ? (incTotal - T.inc0) / T.inc0 : 0;
+  const nhiChg = T.nhi0 > 0 ? (nhiTotal - T.nhi0) / T.nhi0 : 0;
   // 하위 호환 alias (v6.6까지 쓰던 이름 — 추후 제거 가능)
   const incCurChg = incChg;
   const incNewChg = incChg;
   const nhiNewChg = nhiChg;
 
-  // v6.7 패널 분해:
+  // v6.7 패널 분해 (L2 반응):
   //   baselineIncome = baseN × ffsPerPerson × M       (참여 전 전원 FFS)
   //   panelEffect    = Σ M1 × (N_after − baseN)       (패널 변화 · FFS 유지)
   //   modelEffect    = Σ n_reg × (ab_reg − M1)        (지불방식 전환 · 선지급)
-  //   성과급(performanceEffect)은 별도 축 — Track 배수 반영, KPI에는 미포함(성과급 카드에서 표시)
+  //   performanceEffect = perf_blended                 (L2 성과급 · Track 배수 반영)
+  //   afterIncome = 선지급 + 성과급 (의원 수입 KPI)
   const decomp = useMemo(() => {
     const M = Math.max(1, M_clinics);
     const baseN_total = Math.max(0, baseN_per_clinic) * M;
@@ -342,14 +347,16 @@ export default function useSimulator() {
     const baseN_g = base.map((_, i) => baseN_total * ratios[i]);
     const panelEffect = G.reduce((s, r, i) => s + r.b.M1 * (r.N - baseN_g[i]), 0);
     const modelEffect = G.reduce((s, r) => s + r.n_reg * (r.ab_reg - r.b.M1), 0);
-    const afterIncome = T.inc;
+    const performanceEffect = performance.perf_blended;
+    const afterIncome = T.inc + performanceEffect;
     const netChange = afterIncome - baselineIncome;
     return {
       M, baseN_total, ffsPerPerson, baselineIncome,
-      panelEffect, modelEffect, netChange, afterIncome,
+      panelEffect, modelEffect, performanceEffect,
+      netChange, afterIncome, incPre: T.inc,
       netChgPct: baselineIncome > 0 ? netChange / baselineIncome : 0,
     };
-  }, [base, ratios, G, T.inc, M_clinics, baseN_per_clinic]);
+  }, [base, ratios, G, T.inc, performance.perf_blended, M_clinics, baseN_per_clinic]);
   // Track 변화율 기준 = 순수 FFS (inc0, 사업 미시행·R=0 기준선).
   // Track A에서도 R>0이면 양(+) 변화가 나와야 한다는 노션 Q6 정합.
   const tAchg = T.inc0 > 0 ? (T.tA - T.inc0) / T.inc0 : 0;
