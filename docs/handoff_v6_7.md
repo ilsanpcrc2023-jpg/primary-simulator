@@ -1,112 +1,189 @@
-# v6.7.0 인계장 — L1·L2 분리 (선지급 vs 사후 성과급)
+# v6.7.x 인계장 — L1·L2 분리 + α 제거 + 윈윈 구조 + L2 변화율 UI
 
-**날짜**: 2026-04-24
-**브랜치**: `feature/v6.7-l1-l2-split` → (머지 대기 · 사용자 명시 지시 시 `--no-ff` 머지 + `v6.7.0` 태그)
-**상태**: 코드·문서·테스트·빌드·dev 서버 UI 검증 완료
+**기간**: 2026-04-24 ~ 2026-04-25
+**브랜치**: `feature/v6.7-l1-l2-split` (6 커밋 누적 · main 머지 대기)
+**상태**: 모든 코드·문서·테스트·빌드·UI 검증 완료 · 사용자 명시 지시 시 main 머지
 
 ---
 
-## 이번 세션 요지
+## 설계 합의의 진화 (2일 세션 요약)
 
-사용자(센터장)와의 설계 합의:
+### Day 1 (2026-04-24) — v6.7.0 초기 구현
 
-1. **타원이용비중(L)을 두 층으로 분리**:
-   - L1 = 선지급 기준 (과거 평균, 환자군별 4개)
-   - L2 = 실측 · 사후 성과급 귀속 (단일 스칼라)
-2. **공단지급 단일화**: `P = B(1−L1) + F`, 공단지급 = P (별도 축 없음)
-3. **성과급 공식**: `max(0, L1 − L2) × B × n_reg × TrackMul` (no-downside 비대칭)
-4. **공유율 없음 (v6.7 최종)**: 타원이용 절감은 공유율 없이 **의원 100% 환원** (Shared Saving은 ssClinicShare로 공유 유지). 초기 설계(α=0.5)는 사용자 후속 결정으로 폐기.
-5. **Track 배수**: A=0 / B=0.5 / C=1.0 (선형 hccPct/100)
-6. **Shared Saving과 귀인 분리**: SS=입원·응급 간접 관리, L2=외래 집중도 직접 행위. 재원 분리, 2년차부터 동일 분기 패키지 지급.
+정책 설계 합의:
+1. **L1/L2 분리**: 선지급 기준(L1, 환자군별) + 실측 성과급(L2, 스칼라)
+2. **공단지급 = P (단일화)**: `P = B(1−L1) + F`
+3. **no-downside 비대칭**: L2 > L1이어도 환수 없음
+4. **Track 배수**: A=0 / B=0.5 / C=1.0
+5. **α 공유율 (초기)**: 기본 0.5, 편집 가능
 
-이 합의대로 v6.7.0 구현.
+### Day 1 후반 — v6.7.1 (α 제거)
 
-## 구현 내용
+사용자 후속 결정: **"타원이용 절감은 Shared Saving과 달리 공유율 없이 의원 100% 환원"**
+- Shared Saving의 ssClinicShare는 유지 (입원·응급 절감 공단·의원 공유)
+- L2 성과급은 의원 전액 환원 (정책 인센티브 단순화)
+- `INIT_ALPHA`, `state.alpha`, α 입력 UI 전부 제거
 
-### 1. 상수·상태 (v6.7 신규)
+### Day 2 (2026-04-25) — v6.7.2 윈윈 구조 명확화
 
-- [src/constants.js](../src/constants.js)
-  - `INIT_L1 = [0.7, 0.7, 0.7, 0.7]` — 데이터 수령 전 placeholder
-  - `INIT_ALPHA = 0.5` — 50% 환원
-- [src/hooks/useSimulator.js](../src/hooks/useSimulator.js)
-  - `state.L1[4]`, `state.L2` (null=L1 가중평균) 추가 · state.alpha 및 INIT_ALPHA는 제거됨
-  - `state.LC` 제거
-  - 액션: `SET_L1_AT/ALL`, `RESET_L1`, `SET_L2`, `RESET_L2`, `SET_ALPHA`, `RESET_ALPHA`
-  - 액션 제거: `RESET_LC`
+사용자 피드백:
+1. 수가 시뮬레이션 탭에서 Track A/B/C 구분 제거 — win-win 서사 단일화
+2. L2 슬라이더 조정이 KPI에 반응 안 함 — 연동 필요
+3. 중복 수식 표시 제거
 
-### 2. 계산 엔진 재작성
+구현:
+- 성과급 미리보기 카드 삭제 (Track 탭으로 이관)
+- 의원 수입 KPI에 `③ 성과급 효과 (L2 기반)` 라인 추가
+- 엔진: G에 L2 기반 D1 반영 (등록환자 타원 외래비), T.nhi에 perf_blended 합산
+- decomp.afterIncome = T.inc + perf_blended
+- 결과: 의원 수입↑ & 공단 지출↓ 동시 가시화
 
-- `G[i]`: `pay_gov = P[i] × (1 − L1[i]) + F_g[i]`, `ab_reg = pay_gov + M1×0.3`, `inc/nhi` 단일화 (cur/new 분기 제거)
-- `T`: `inc`, `nhi`, `tA/tB/tC/tS` (Track per-pt · 선지급만)
-- `L1avg` 메모 (N-가중평균)
-- `performance` 메모 신설 — `L2eff`, `perf_raw_total`, `perf_total`(= raw_total, 공유율 없음), `perfByTrack{A,B,C}`, `perf_blended`(hccPct 선형)
-- `decomp` — panelEffect + modelEffect (기존 2층 구조 유지, 성과급은 별도 축)
-- Track 수식 갱신:
-  - Track A: `M1 + F`
-  - Track B: `0.5 × tA + 0.5 × tC`
-  - Track C: `ab_reg = B(1−L1) + F + M1×0.3`
+### Day 2 중반 — v6.7.3 Track 탭 재배치
 
-### 3. UI 재배치 ([src/components/TabSimulation.jsx](../src/components/TabSimulation.jsx))
+사용자 지시:
+- 성과급 L2 박스를 SS 위로 이동
+- 성과급 L2 박스 위에 L2 슬라이더 재신설 (수가 탭과 state 공유)
 
-수가 시뮬레이션 탭 순서:
-1. B (환자군 기본수가)
-2. F (일차의료 기능보정)
-3. **L1 카드 (신규)** — 4개 NumBox 입력, "엑셀 L → L1 복사" 버튼, ↩ 초기화
-4. P 카드 ([TCard](../src/components/RegistrationPanel.jsx)) — 헤더 `P = B × (1 − L1) + F`, 4군 카드에 P=공단지급 + L1_g 표시
-5. **L2 슬라이더 박스 (리브랜딩)** — 단일 슬라이더 0~1, 디폴트 = L1 가중평균, "↩ L1 복귀"
-6. **성과급 미리보기 카드 (신규)** — Track A/B/C 병렬 3카드, n_reg 설명 (의원당 환자군별 등록환자수, 의원 100% 환원)
-7. KPI 2카드 (선지급 기준 · 성과급은 하단에 Track C 미리보기 라인)
-8. 환자군 패널
-9. 차트
-10. Win-Win-Win
-11. 수가 산출 구조 아코디언 (v6.7 신규식)
-12. 데이터 관리 — 상세 편집 테이블에 L1 컬럼 추가
+### Day 2 후반 — v6.7.4 L2 변화율 UI 복원
 
-Track 탭:
-- PT 박스 (기존)
-- 참여의원 성과배분 SS 박스 (기존)
-- **성과급 L2 박스 (신규 · cyan)** — Track A(0)/B(0.5)/C(1.0) 비례 표시, 공식·n_reg 설명 명시
-- Track 수입 비교 테이블: 성과급 L2 행 추가, "2년차 이후 (Track+SS+L2)" 합계
+사용자 지시: **"이전 L 슬라이더처럼 변화율 0%p에서 감소하는 식으로 표기"**
+- L2 슬라이더를 구 LC 변화율 UX (-50%p~0%p) 스타일로 개수
+- 헤더 포맷: `타원이용비중 (L2) 변화율 · 전 XX.X% → 후 XX.X% · Δ%p`
+- 내부 `state.L2`는 절대값 유지 (엔진 로직 무변경) · UI만 변화율 표기
+- TabSimulation·TabTrack 양쪽 동일 패턴
 
-### 4. 테스트 ([src/test/calculator.test.js](../src/test/calculator.test.js))
+---
 
-- v6.7 신규 스위트 (7건 추가):
-  - `INIT_L1` 기본값·길이·범위
-  - `INIT_ALPHA = 0.5`
-  - 성과급 공식 + no-downside (L2 ≥ L1)
-  - Track 배수 선형성
-  - L1 가중평균
-  - Track A L1 무관성
-  - Track B 혼합 수식
-- v6.6 기존 테스트 수정: `A_cur` 테스트 → v6.7 `pay_gov` 테스트, `LC adjustment` → L1 효과 검증
-- **37건 전체 통과**
+## 최종 수식 (v6.7.4)
 
-### 5. 문서
+### 선지급 (수가 본체)
+```
+P_g = B_g × (1 − L1_g) + F_g       # 환자군별
+공단지급 = P                        # 단일화 (별도 축 없음)
+본인부담 = M1_g × 0.30             # 불변
+```
 
-- [CLAUDE.md](../CLAUDE.md): 버전 v6.7.0, 용어 테이블(L1/L2 추가, α 제거), 기호 히스토리 v6.7 열, 수식 섹션, 버전 태그 이력
-- [docs/handoff_v6_7_design.md](handoff_v6_7_design.md): Phase 0 설계 문서 (본 구현의 청사진)
-- [docs/handoff_v6_7.md](handoff_v6_7.md): 본 인계장
-- [src/App.jsx](../src/App.jsx): 풋터 `v6.6.0 → v6.7.0`
+### 사후 성과급 (L2 귀속 · 2년차부터 매년)
+```
+성과급_L2 = Σ_g max(0, L1_g − L2) × B_g × n_reg_g × TrackMul
+  n_reg_g: 의원당 환자군별 등록환자수
+  TrackMul: Track A=0, B=0.5, C=1.0 (선형 보간 hccPct/100)
+  no-downside: L2 > L1 구간은 0 처리
+  공유율 없음 (의원 100% 환원) — Shared Saving과 상이
+```
 
-## 검증 결과
+### KPI 연동 (v6.7.2+)
+```
+의원 수입 KPI = 선지급(T.inc) + 성과급(perf_blended)
+공단 지출 KPI = L2 반영 nhi(T.nhi) + 성과급 지출(perf_blended)
+  · G.nhi = (ab_reg + D1_L2) × n_reg + C1 × n_unreg
+  · D1_L2 = M1 × L2/(1−L2)   (등록환자 타원 외래비, L2 반응)
+  · D1_base = M1 × b.L/(1−b.L)  (비등록환자, 기존 L 유지)
+```
 
-- `npm test` → 37/37 통과
-- `npm run build` → 성공 (기존 recharts 500kB 경고 무관)
-- dev 서버 UI 확인:
-  - L1 카드 4개 NumBox, L1 가중평균 70.0% 표시, 엑셀 L → L1 복사·초기화 버튼
-  - P 카드: `P = B × (1 − L1) + F`, 4군에 P(공단지급)=94,250/110,060/187,074/263,595원 + L1_g 70.0%
-  - L2 슬라이더 0.55로 내리면 성과급 카드에 Track A=0 / B=1,446만원 / C=2,892만원 나타남
-  - KPI: "+ 성과급 (Track C) 2,892만원/년" 표시
-  - Track 탭: 성과급 L2 cyan 박스, Track별 수입 비교 테이블에 성과급 L2 행 (0/1446/2892만원), 2년차 합계 (Track A=47,604 / B=52,531 / C=57,821만원)
-  - 콘솔 에러 0건
+### Shared Saving (분리 유지)
+기존 `SS.clinicFromItem` 로직 그대로. L2 성과급과 재원·귀인 완전 분리.
 
-## 다음 작업 후보
+### Track 수입 (1인당 등록환자)
+```
+Track A (FFS): P_A_g = M1_g + F_g                   (L1 미적용)
+Track B (혼합): P_B_g = 0.5 × P_A_g + 0.5 × P_C_g
+Track C (환자군): P_C_g = B(1−L1_g) + F_g + M1×0.3
+```
 
-1. **v6.6 이월 — Vercel GITHUB_PAT 환경변수 e2e 검증** (아직 미검증)
-2. **ADMIN_PWD UI** (v6.6 후보 #1 · baseline 등록 버튼 보호)
-3. **L1 엑셀 컬럼 직접 인식** — 현재 "엑셀 L → L1 복사" 버튼 경유. 향후 `L1` 컬럼 자체를 `COL_ALIASES.L1`로 인식하여 자동 반영
-4. **성과급 이력 시뮬** — 다년도 L2 추이에 따른 누적 성과급 차트
-5. **Track 배수 편집 가능화** — 현재 하드코딩(0/0.5/1.0)을 편집 가능하게 (예: 중증 가산 시나리오)
+---
+
+## 상태·변수 최종
+
+| 기호 | 의미 | state 변수 | 디폴트 |
+|---|---|---|---|
+| L1_g | 선지급 기준 (환자군별) | `state.L1[4]` | `[0.7, 0.7, 0.7, 0.7]` |
+| L2 | 실측 타원이용 (단일 스칼라) | `state.L2` | `null` (=L1 가중평균) |
+
+**제거**: `state.LC`, `state.alpha`, `INIT_ALPHA`
+
+**유지**: `state.P` (B 값, 기호 히스토리), `state.F_g`, 나머지 v6.6 state 전부
+
+---
+
+## UI 최종 구조
+
+### 수가 시뮬레이션 탭
+
+```
+1. 환자군 기본수가 (B)        4 슬라이더
+2. 일차의료 기능보정 (F)      4 슬라이더 + 균등/차등/끝자리 보정
+3. 선지급 기준 타원이용비중 (L1)    4 NumBox (v6.7 신규, teal)
+4. 일차의료수가 (P = B(1−L1)+F)    indigo 박스, L1_g 병기
+5. 타원이용비중 (L2) 변화율        -50~0%p 슬라이더 (v6.7.4 변화율 UI)
+6. KPI 2카드  (L2 연동)
+   - 의원 수입 변화: ① 패널 + ② 지불방식 + ③ 성과급(L2)
+   - 공단 외래 지출 변화: L2 반영 + 성과급 지출 포함
+7. 환자군 패널
+8. 차트 / Win-Win-Win
+9. 📐 수가 산출 구조 (아코디언 · v6.7 공식)
+10. ⚙️ 데이터 관리
+```
+
+### Track 탭
+
+```
+1. Track 선택 (A/B/C 버튼)
+2. PT 박스 (1년차 1회)
+3. 타원이용비중 (L2) 변화율 (v6.7.3 신설, 수가 탭과 state 공유)
+4. 성과급 L2 박스 (v6.7.3 SS 위로 이동, cyan)
+5. 참여의원 성과배분 (SS) 박스 (2년차 매년, 녹색)
+6. Track별 수입 비교 테이블 (v6.7.2 성과급 L2 행 추가, 2년차 합계 = Track + SS + L2)
+7. Track 차트
+```
+
+---
+
+## 커밋 이력 (브랜치)
+
+| Commit | 요약 |
+|---|---|
+| `e3602a7` | docs Phase 0: L1·L2 분리 설계 문서 |
+| `53ab39c` | feat v6.7.0: 초기 구현 (α 포함) |
+| `b5d1b1a` | refactor v6.7.1: α 공유율 제거 (100% 환원) |
+| `ca95e74` | refactor v6.7.2: 수가 시뮬레이션 탭 윈윈 구조 + L2 KPI 연동 |
+| `6619141` | refactor v6.7.3: Track 탭 L2 슬라이더 + 성과급 L2 SS 위로 이동 |
+| `617aca9` | refactor v6.7.4: L2 슬라이더 변화율 UI 복원 |
+
+추가 세션 정리 커밋 (본 인계장 커밋 포함) 예정.
+
+---
+
+## 검증 체크리스트
+
+- [x] `npm test` 36/36 통과
+- [x] `npm run build` 성공 (recharts 500kB 경고는 v6.5 이전부터, 무관)
+- [x] dev 서버 UI 렌더·인터랙션 정상
+  - L1 4개 입력 / `엑셀 L → L1 복사` 버튼 / ↩ 초기화
+  - L2 변화율 슬라이더 -50~0%p · 0%p = L1 기준점
+  - 디폴트 상태 (L2=L1): 의원 +6,352만원/의원, 공단 -88.7억원(-4.30%)
+  - L2=55% 상태: 의원 +12,136만원/의원, 공단 -150.0억원(-7.26%)
+  - Track 탭 L2 슬라이더 ↔ 수가 탭 L2 state 동기화 확인
+- [x] 콘솔 에러 0건 (HMR 잔존 로그는 무시 가능)
+
+---
+
+## 파급 파일 요약
+
+| 파일 | 변경 |
+|---|---|
+| [src/constants.js](../src/constants.js) | `INIT_L1` 추가 (`INIT_ALPHA` 제거) |
+| [src/hooks/useSimulator.js](../src/hooks/useSimulator.js) | state·reducer·G·T·decomp·performance 재작성 |
+| [src/components/TabSimulation.jsx](../src/components/TabSimulation.jsx) | L1 카드·P 수식·L2 변화율 슬라이더·③ 성과급 라인 KPI |
+| [src/components/TabTrack.jsx](../src/components/TabTrack.jsx) | L2 슬라이더·성과급 L2 박스 SS 위 재배치·Track 비교 테이블 L2 행 |
+| [src/components/RegistrationPanel.jsx](../src/components/RegistrationPanel.jsx) | TCard `P = B(1−L1)+F`, L1_g 병기 |
+| [src/App.jsx](../src/App.jsx) | 프롭 전달 갱신, 풋터 v6.7.4 |
+| [src/test/calculator.test.js](../src/test/calculator.test.js) | L1·L2·Track 배수 테스트 7건 추가 |
+| [CLAUDE.md](../CLAUDE.md) | 용어 테이블·수식·UI 순서·버전 이력 반영 |
+| [docs/handoff_v6_7_design.md](handoff_v6_7_design.md) | Phase 0 설계 (α 제거 이후 갱신) |
+| [docs/handoff_v6_7.md](handoff_v6_7.md) | 본 인계장 |
+
+---
 
 ## 정책 노트 (시뮬레이터 밖 · 사용자 협의됨)
 
@@ -117,36 +194,53 @@ Track 탭:
 - 재조정 시 절감액의 일정 비율(예: 50%)만 기준 반영
 - "L을 낮출수록 다음 해 L1도 따라 내려가 성과급 영구 소멸" 구조 회피
 
-정책 문서·의료계 질의 대응용으로 보존. 시뮬레이터에는 미반영(단일 해 기준).
+정책 문서·의료계 질의 대응용. 시뮬레이터에는 미반영 (단일 해 기준).
 
-## 롤백 경로
+### 공유율 α 제거의 의미
 
-문제 발생 시:
+v6.7.0 초기 설계에서는 shared-saving 관행에 따라 α=0.5를 두었으나, 사용자 정책 판단으로 **L2 성과급은 의원 전액 환원**으로 전환:
+- 명분: 타원이용 억제는 의원 행위 직접 결과 → 전액 인센티브가 정합적
+- Shared Saving (입원·응급 간접 성과)은 ssClinicShare 유지 (공단·의원 공유 적절)
+- 시범사업 참여 유인 최대화 효과
+
+---
+
+## 다음 작업 후보
+
+### 이월 (v6.6부터 미결)
+- **Vercel `GITHUB_PAT` 환경변수 e2e 검증** — v6.6 공식 baseline 등록 버튼 실동작 확인
+
+### v6.7 파생 후보
+- **ADMIN_PWD UI**: baseline 등록 버튼 비밀번호 보호
+- **L1 엑셀 컬럼 직접 인식**: 현재는 "엑셀 L → L1 복사" 버튼 경유 · `COL_ALIASES.L1` 추가
+- **Track 배수 편집 가능화**: 현재 하드코딩(0/0.5/1.0)
+- **성과급 이력 시뮬**: 다년도 L2 추이 → 누적 성과급 차트
+
+---
+
+## 머지·롤백 경로
+
+### main 머지 (사용자 명시 지시 시만)
 ```bash
 git checkout main
+git merge --no-ff feature/v6.7-l1-l2-split -m "Merge 'feature/v6.7-l1-l2-split' — v6.7.x L1·L2 분리 누적"
+git tag v6.7.4
+git push origin main --tags
+```
+
+### 롤백
+```bash
+# 전체 v6.7 폐기
+git checkout main
+git branch -D feature/v6.7-l1-l2-split
+
+# 머지 후 문제 시 v6.6으로 복귀
 git reset --hard v6.6.0    # 사용자 명시 승인 필요
 ```
 
-또는 feature 브랜치 폐기:
-```bash
-git checkout main
-git branch -D feature/v6.7-l1-l2-split
-```
+---
 
-## 현재 파일 상태 체크리스트
+## 메모리 갱신 권고
 
-- [x] `src/constants.js` — INIT_L1, INIT_ALPHA export
-- [x] `src/hooks/useSimulator.js` — state·reducer·G·T·decomp·performance 메모 재작성, LC 제거
-- [x] `src/components/TabSimulation.jsx` — L1 카드·L2 슬라이더·성과급 카드 신설, 레이아웃 재배치
-- [x] `src/components/TabTrack.jsx` — 성과급 L2 박스 추가, 비교 테이블에 L2 행
-- [x] `src/components/RegistrationPanel.jsx` — TCard `P = B(1−L1)+F`, 4군 카드에 L1_g 표시
-- [x] `src/App.jsx` — 프롭 전달 갱신, 풋터 v6.7.0
-- [x] `src/test/calculator.test.js` — v6.7 7건 추가, 기존 수정, 37/37 통과
-- [x] `CLAUDE.md` — v6.7 용어·수식·기호 히스토리 반영
-- [x] `docs/handoff_v6_7_design.md` — Phase 0 설계 문서
-- [x] `docs/handoff_v6_7.md` — 본 인계장
-- [x] `npm test` 통과 (37/37)
-- [x] `npm run build` 통과
-- [x] dev 서버 UI 렌더·인터랙션·콘솔 에러 0 확인
-- [ ] `feature/v6.7-l1-l2-split` 브랜치 커밋·푸시 (본 작업 마지막 단계)
-- [ ] main 머지 — **사용자 명시 지시 시에만**
+- `project_v6_state.md` — v6.7.4 main 머지 후 상태로 업데이트 (현재는 v6.6.0)
+- `reference_key_docs.md` — 본 문서(`docs/handoff_v6_7.md`) 및 설계 문서 추가
