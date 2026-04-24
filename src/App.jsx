@@ -93,6 +93,7 @@ export default function App() {
             nhiChg={sim.nhiChg}
             tAchg={sim.tAchg} tBchg={sim.tBchg} tCchg={sim.tCchg} tSchg={sim.tSchg}
             resetPtPct={sim.resetPtPct} resetSsPct={sim.resetSsPct}
+            setL2={sim.setL2} resetL2={sim.resetL2}
           />
         )}
 

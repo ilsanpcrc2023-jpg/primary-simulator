@@ -10,9 +10,11 @@ export default memo(function TabTrack({
   state, set, G, T, SS, performance: perfMemo,
   tAchg, tBchg, tCchg,
   resetPtPct, resetSsPct,
+  setL2, resetL2,
 }) {
-  const { hccPct, M_clinics, pt_base,
+  const { hccPct, L2, M_clinics, pt_base,
     ptPctA, ptPctB, ptPctC, ssPctA, ssPctB, ssPctC } = state;
+  const L2_display = L2 ?? (perfMemo?.L1avg ?? 0.7);
   const ffsPct = 100 - hccPct;
   const M = Math.max(1, M_clinics);
 
@@ -123,7 +125,85 @@ export default memo(function TabTrack({
       </div>
     </div>
 
-    {/* ③ 참여의원 성과배분 (Shared Saving) — 2년차부터 매년 */}
+    {/* ③ L2 슬라이더 — 성과급 L2 발동 · 수가 탭과 동일 값 공유 */}
+    <div className="rounded-xl border-2 shadow-sm px-4 py-3" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
+      <div className="flex items-center mb-2 gap-3 flex-wrap">
+        <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>실측 타원이용비중 (L2)</h2>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-xs text-purple-600 font-semibold">기준 L1</span>
+          <span className="text-sm font-bold text-purple-700/70">{((perfMemo?.L1avg ?? 0.7) * 100).toFixed(1)}%</span>
+          <span className="text-purple-400">→</span>
+          <span className="text-xs text-purple-600 font-semibold">L2</span>
+          <span className="text-lg font-extrabold text-purple-900">{(L2_display * 100).toFixed(1)}%</span>
+          <NumBox
+            value={parseFloat((L2_display * 100).toFixed(1))}
+            onChange={v => setL2?.(v / 100)}
+            color="#7c3aed" suffix="%" />
+        </div>
+        <button onClick={resetL2}
+          className="ml-auto text-xs text-purple-700 hover:text-red-600 border border-purple-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
+          ↩ L1 복귀
+        </button>
+      </div>
+      <input type="range" min={0} max={1} step={0.005} value={L2_display}
+        onChange={e => setL2?.(parseFloat(e.target.value))}
+        aria-label="Track 탭 실측 타원이용비중 L2 슬라이더"
+        className="w-full big-thumb"
+        style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #7c3aed ${L2_display * 100}%, #e5e7eb 0%)` }} />
+      <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
+        <span>0%</span><span>20%</span><span>40%</span><span>60%</span><span>80%</span><span>100%</span>
+      </div>
+      <div className="mt-1 text-[10px] text-purple-700/70 leading-relaxed">
+        ※ L2 &lt; L1이면 성과급 발생 (no-downside). 수가 시뮬레이션 탭과 값 공유.
+      </div>
+    </div>
+
+    {/* ④ 성과급 L2 (v6.7) — 의원 100% 환원 · 2년차부터 · SS 위로 재배치 */}
+    <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)", borderColor: perfEnabled ? "#06b6d4" : "#d1d5db", opacity: perfEnabled ? 1 : 0.7 }}>
+      <div className="mb-2">
+        <h3 className="font-bold text-base text-cyan-800">성과급 L2 (타원이용 절감) <span className="text-xs font-normal text-cyan-700">· 2년차부터 매년</span></h3>
+      </div>
+
+      {!perfEnabled && (
+        <div className="rounded-lg bg-white/70 border border-gray-300 px-3 py-2 text-xs text-gray-600 mb-2">
+          💡 위 <b>L2 슬라이더</b>를 L1보다 낮게 설정해야 성과급 발생 (no-downside).
+        </div>
+      )}
+
+      <div className="text-xs text-cyan-700/80 mb-2 leading-relaxed">
+        <div>공식: Σ <code className="text-cyan-900 bg-cyan-100 px-1 rounded">max(0, L1 − L2) × B × n_reg</code> × Track 배수</div>
+        <div className="text-[10px] text-cyan-600/70 mt-0.5">
+          n_reg = 의원당 환자군별 등록환자수 · 절감액은 의원 100% 환원 (Shared Saving과 달리 공유율 없음)
+        </div>
+        <div className="mt-1">
+          L2 현재 <b className="text-cyan-900">{((perfMemo?.L2eff ?? 0) * 100).toFixed(1)}%</b>
+          <span className="text-cyan-600/60"> · L1 가중평균 {((perfMemo?.L1avg ?? 0) * 100).toFixed(1)}%</span>
+          <span className="text-cyan-500/70"> · 전체 최대(Track C) = <b>{fAuto(perfTotal)}</b></span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {tracks.map(t => {
+          const active = hccPct === t.hc;
+          return (
+            <div key={t.n}
+              className="rounded-lg p-2 text-center transition"
+              style={{ background: active ? "#cffafe" : "#ecfeff", border: `2px solid ${active ? "#06b6d4" : "#a5f3fc"}` }}>
+              <button onClick={() => set("hccPct", t.hc)}
+                aria-selected={active}
+                className="block w-full text-xs font-bold cursor-pointer"
+                style={{ color: t.c }}>{t.n}</button>
+              <div className="text-[9px] text-gray-500 mt-0.5">배수 ×{t.perfMul.toFixed(1)}</div>
+              <div className="text-base font-extrabold text-cyan-900 mt-0.5">
+                {fMan(t.perfAmt)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+
+    {/* ⑤ 참여의원 성과배분 (Shared Saving) — 2년차부터 매년 · 성과급 L2 아래로 이동 */}
     <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: ssEnabled ? "#86efac" : "#d1d5db", opacity: ssEnabled ? 1 : 0.7 }}>
       <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
         <h3 className="font-bold text-base text-green-800">참여의원 성과배분 (SS) <span className="text-xs font-normal text-green-700">· 2년차부터 매년</span></h3>
@@ -177,52 +257,7 @@ export default memo(function TabTrack({
       </div>
     </div>
 
-    {/* ④ 성과급 L2 (v6.7 신규) — 2년차부터, 외래 집중도 성과, 의원 100% 환원 */}
-    <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)", borderColor: perfEnabled ? "#06b6d4" : "#d1d5db", opacity: perfEnabled ? 1 : 0.7 }}>
-      <div className="mb-2">
-        <h3 className="font-bold text-base text-cyan-800">성과급 L2 (타원이용 절감) <span className="text-xs font-normal text-cyan-700">· 2년차부터 매년</span></h3>
-      </div>
-
-      {!perfEnabled && (
-        <div className="rounded-lg bg-white/70 border border-gray-300 px-3 py-2 text-xs text-gray-600 mb-2">
-          💡 수가 시뮬레이션 탭에서 <b>L2 슬라이더</b>를 L1보다 낮게 설정해야 성과급 발생 (no-downside).
-        </div>
-      )}
-
-      <div className="text-xs text-cyan-700/80 mb-2 leading-relaxed">
-        <div>공식: Σ <code className="text-cyan-900 bg-cyan-100 px-1 rounded">max(0, L1 − L2) × B × n_reg</code> × Track 배수</div>
-        <div className="text-[10px] text-cyan-600/70 mt-0.5">
-          n_reg = 의원당 환자군별 등록환자수 · 절감액은 의원 100% 환원 (Shared Saving과 달리 공유율 없음)
-        </div>
-        <div className="mt-1">
-          L2 현재 <b className="text-cyan-900">{((perfMemo?.L2eff ?? 0) * 100).toFixed(1)}%</b>
-          <span className="text-cyan-600/60"> · L1 가중평균 {((perfMemo?.L1avg ?? 0) * 100).toFixed(1)}%</span>
-          <span className="text-cyan-500/70"> · 전체 최대(Track C) = <b>{fAuto(perfTotal)}</b></span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        {tracks.map(t => {
-          const active = hccPct === t.hc;
-          return (
-            <div key={t.n}
-              className="rounded-lg p-2 text-center transition"
-              style={{ background: active ? "#cffafe" : "#ecfeff", border: `2px solid ${active ? "#06b6d4" : "#a5f3fc"}` }}>
-              <button onClick={() => set("hccPct", t.hc)}
-                aria-selected={active}
-                className="block w-full text-xs font-bold cursor-pointer"
-                style={{ color: t.c }}>{t.n}</button>
-              <div className="text-[9px] text-gray-500 mt-0.5">배수 ×{t.perfMul.toFixed(1)}</div>
-              <div className="text-base font-extrabold text-cyan-900 mt-0.5">
-                {fMan(t.perfAmt)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-
-    {/* ⑤ Track별 수입 비교 */}
+    {/* ⑥ Track별 수입 비교 */}
     <div className={card + " p-4"}>
       <h3 className="font-bold text-base text-gray-900 mb-3">Track별 수입 비교 <span className="text-xs font-normal text-gray-500">(의원당/년)</span></h3>
 
