@@ -68,6 +68,15 @@ export const NATIONAL_POP = 51_411_696;
 export const B_MIN = 50_000;
 export const B_MAX = 2_000_000;
 
+// v6.8.2: 의원 모드용 환자군 구성 프리셋 (RegScaleCard 상단 노출).
+//   - regDist 합 1,000명 기준. 총량 스케일은 RegScaleCard "등록 환자" NumBox에서 조정.
+//   - "사용자 지정"은 어떤 프리셋과도 일치하지 않을 때 자동 활성 (regDist=null).
+export const CLINIC_PRESETS = [
+  { key: "general", label: "일반 의원",  regDist: [100, 600, 200, 100] },
+  { key: "elderly", label: "노인 집중",  regDist: [30, 200, 400, 370] },
+  { key: "custom",  label: "사용자 지정", regDist: null },
+];
+
 // v6.7: L1 · L2 분리 (선지급 vs 사후 성과급)
 // L1 = 선지급 기준 타원이용비중 (환자군별, 사업 시작 전 과거 평균 기반)
 // L2 = 실측 타원이용비중 (단일 스칼라, 사업 중 관측치 · 성과급 산정 기준)

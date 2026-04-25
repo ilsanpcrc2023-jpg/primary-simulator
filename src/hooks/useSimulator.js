@@ -398,6 +398,36 @@ export default function useSimulator() {
     };
   }, [ssTotalCost, ssProjectCost, ssCostBase, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare]);
 
+  // v6.8.2: Track 비교 메모 — TabTrack의 tracks 계산을 훅으로 끌어올려 단일 소스 오브 트루스로 통합.
+  // TabSimulation(의원 모드)의 Track 비교 3카드와 TabTrack의 비교 테이블이 동일한 숫자를 보장.
+  // 각 항목: income(선지급) · ptAmt(1년차 PT) · ssAmt(매년 성과배분) · perfAmt(매년 포괄관리 성과가산) · firstYear · ongoing
+  const tracks = useMemo(() => {
+    const M = Math.max(1, M_clinics);
+    const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
+    const perfPerClinicFull = (performance?.perf_total ?? 0) / M;
+    const list = [
+      { n: "Track A", d: "FFS 100%",   hc: 0,   c: "#22c55e", bg: "#f0fdf4", bd: "#86efac",
+        income: T.tA / M, chg: tAchg, ptPct: state.ptPctA, ssPct: state.ssPctA, perfMul: 0 },
+      { n: "Track B", d: "혼합 50:50",  hc: 50,  c: "#3b82f6", bg: "#eff6ff", bd: "#93c5fd",
+        income: T.tB / M, chg: tBchg, ptPct: state.ptPctB, ssPct: state.ssPctB, perfMul: 0.5 },
+      { n: "Track C", d: "환자군 100%", hc: 100, c: "#f97316", bg: "#fff7ed", bd: "#fdba74",
+        income: T.tC / M, chg: tCchg, ptPct: state.ptPctC, ssPct: state.ssPctC, perfMul: 1.0 },
+    ];
+    return list.map(t => {
+      const ptAmt = state.pt_base * t.ptPct / 100;
+      const ssAmt = ssPerClinicFull * t.ssPct / 100;
+      const perfAmt = perfPerClinicFull * t.perfMul;
+      return {
+        ...t, ptAmt, ssAmt, perfAmt,
+        firstYear: t.income + ptAmt,
+        ongoing:   t.income + ssAmt + perfAmt,
+      };
+    });
+  }, [M_clinics, T.tA, T.tB, T.tC, tAchg, tBchg, tCchg,
+      state.ptPctA, state.ptPctB, state.ptPctC,
+      state.ssPctA, state.ssPctB, state.ssPctC,
+      state.pt_base, SS.clinicFromItem, performance.perf_total]);
+
   const set = useCallback((key, value) => dispatch({ type: "SET", key, value }), []);
   const updP = useCallback((i, value) => dispatch({ type: "SET_P", i, value }), []);
   const updBase = useCallback((i, key, value) => dispatch({ type: "SET_BASE", i, key, value }), []);
@@ -593,7 +623,7 @@ export default function useSimulator() {
     reset,
     handleMacroSync, handleFile, handleExport, loadPreset, handleCommitBaseline,
     fileRef,
-    G, T, SS, decomp, performance,
+    G, T, SS, decomp, performance, tracks,
     ffsPct,
     incChg, nhiChg,
     // v6.6 legacy aliases (점진적 제거)

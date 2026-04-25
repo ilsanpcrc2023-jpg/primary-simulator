@@ -115,7 +115,7 @@ export default function App() {
             setL2={sim.setL2} resetL2={sim.resetL2}
             updRegDist={sim.updRegDist} setRegDistAll={sim.setRegDistAll} scaleRegDist={sim.scaleRegDist}
             reset={sim.reset} loadPreset={loadPreset}
-            G={sim.G} T={sim.T} decomp={sim.decomp} performance={sim.performance}
+            G={sim.G} T={sim.T} decomp={sim.decomp} performance={sim.performance} tracks={sim.tracks}
             reg={sim.reg} regRatios={sim.regRatios}
             incChg={sim.incChg} nhiChg={sim.nhiChg}
             fileRef={sim.fileRef} handleFile={sim.handleFile} handleExport={sim.handleExport}
@@ -126,7 +126,7 @@ export default function App() {
         {tab === 1 && (
           <TabTrack
             state={state} set={set}
-            G={sim.G} T={sim.T} SS={sim.SS} performance={sim.performance}
+            G={sim.G} T={sim.T} SS={sim.SS} performance={sim.performance} tracks={sim.tracks}
             nhiChg={sim.nhiChg}
             tAchg={sim.tAchg} tBchg={sim.tBchg} tCchg={sim.tCchg} tSchg={sim.tSchg}
             resetPtPct={sim.resetPtPct} resetSsPct={sim.resetSsPct}
