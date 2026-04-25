@@ -94,7 +94,7 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
     <div className="rounded-xl border-2 shadow-md overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#4f46e5" }}>
       <div className="px-4 pt-3 pb-1 flex items-baseline gap-2 flex-wrap">
         <h2 className="font-extrabold text-lg tracking-tight" style={{ color: "#3730a3" }}>
-          {simple ? "환자군별 공단지급 수가" : "일차의료수가 (P = B × (1 − L1) + F)"}
+          {simple ? "일차의료수가" : "일차의료수가 (P = B × (1 − L1) + F)"}
         </h2>
         {!simple && (
           <span className="text-sm font-bold text-indigo-700">
@@ -127,6 +127,12 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
             );
           })}
         </div>
+        {/* v6.8.3: 의원 모드 — 일차의료수가만으로는 의원 수입이 아님을 명시 */}
+        {simple && (
+          <div className="mt-2 text-[11px] sm:text-xs font-semibold text-indigo-800/80 leading-relaxed">
+            💡 의원 수입 = <span className="text-indigo-900 font-bold">일차의료수가</span>(공단지급) + <span className="text-indigo-900 font-bold">환자 본인부담</span>(현행 외래비의 30%)
+          </div>
+        )}
       </div>
     </div>
   );
