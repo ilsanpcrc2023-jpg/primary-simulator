@@ -7,8 +7,7 @@ import { f, pct, fMan, fAuto } from "../utils";
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabTrack({
-  state, set, G, T, SS, performance: perfMemo,
-  tAchg, tBchg, tCchg,
+  state, set, G, T, SS, performance: perfMemo, tracks,
   resetPtPct, resetSsPct,
   setL2, resetL2,
 }) {
@@ -20,31 +19,13 @@ export default memo(function TabTrack({
 
   const perClinicBase = T.inc0 / M;
 
-  // 성과배분 재원 (N분의 1)
+  // v6.8.2: tracks 계산은 useSimulator로 이전 (단일 소스 오브 트루스).
+  // 성과배분 재원 / 성과가산 활성화 여부는 표시용으로만 여기서 보조 산출.
   const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
   const ssEnabled = (SS?.clinicFromItem ?? 0) > 0;
-
-  // v6.7: L2 성과급 (Track A=0, B=0.5, C=1.0) — 의원 100% 환원 (공유율 없음)
-  const perfTotal = perfMemo?.perf_total ?? 0;       // Track C 최대치 = 전체 절감액
+  const perfTotal = perfMemo?.perf_total ?? 0;
   const perfPerClinicFull = perfTotal / M;
   const perfEnabled = perfTotal > 0;
-
-  // Track별 의원당 수입 · 변화량 · PT · SS · 성과급(L2)
-  const tracks = [
-    { n: "Track A", d: "FFS 100%",    hc: 0,   c: "#22c55e", bg: "#f0fdf4", bd: "#86efac",
-      income: T.tA / M, chg: tAchg, ptPct: ptPctA, ssPct: ssPctA, perfMul: 0 },
-    { n: "Track B", d: "혼합 50:50",   hc: 50,  c: "#3b82f6", bg: "#eff6ff", bd: "#93c5fd",
-      income: T.tB / M, chg: tBchg, ptPct: ptPctB, ssPct: ssPctB, perfMul: 0.5 },
-    { n: "Track C", d: "환자군 100%",  hc: 100, c: "#f97316", bg: "#fff7ed", bd: "#fdba74",
-      income: T.tC / M, chg: tCchg, ptPct: ptPctC, ssPct: ssPctC, perfMul: 1.0 },
-  ].map(t => {
-    const ptAmt = pt_base * t.ptPct / 100;
-    const ssAmt = ssPerClinicFull * t.ssPct / 100;
-    const perfAmt = perfPerClinicFull * t.perfMul;   // v6.7 성과급 (L2 귀속)
-    return { ...t, ptAmt, ssAmt, perfAmt,
-      firstYear: t.income + ptAmt,
-      ongoing:   t.income + ssAmt + perfAmt };
-  });
 
   return (<>
     {/* ① Track 선택 */}

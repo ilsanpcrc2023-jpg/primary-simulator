@@ -7,6 +7,8 @@ import { SH, CL, INIT_REG_DIST, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fMan, diffMan } from "../utils";
 
+const TRACK_LABELS = { 0: "Track A 유지", 50: "Track B 혼합", 100: "Track C 환자군" };
+
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabSimulation({
@@ -14,7 +16,7 @@ export default memo(function TabSimulation({
   state, set, updP, updBase, updF, setFAll, resetF, resetP, resetReg,
   updL1, setL1All, resetL1, setL2, resetL2,
   updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset,
-  G, T, decomp, performance: perfMemo,
+  G, T, decomp, performance: perfMemo, tracks,
   incChg, nhiChg,
   fileRef, handleFile, handleExport, handleCommitBaseline,
   reg, regRatios,
@@ -250,9 +252,10 @@ export default memo(function TabSimulation({
       </div>
     </div>
 
-    {/* ⑧ 의원당 환자 규모 */}
+    {/* ⑧ 의원당 환자 규모 — 의원 모드에서는 상단에 환자군 구성 프리셋(일반/노인 집중/사용자 지정) 노출 */}
     <RegScaleCard state={state} set={set} reg={reg}
-      scaleRegDist={scaleRegDist} resetReg={resetReg} />
+      scaleRegDist={scaleRegDist} setRegDistAll={setRegDistAll}
+      resetReg={resetReg} mode={mode} />
 
     {/* ⑨ 차트 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -288,6 +291,50 @@ export default memo(function TabSimulation({
         </ResponsiveContainer>
       </div>
     </div>
+
+    {/* ⑨-b Track 비교 요약 3카드 — 의원 모드 전용 (v6.8.2)
+         계산 소스: useSimulator의 tracks 메모 → Track 탭 비교 테이블과 숫자 일치 보장 */}
+    {mode === "clinic" && tracks && (
+      <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)", borderColor: "#c7d2fe" }}>
+        <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
+          <h3 className="font-bold text-base text-indigo-900">📊 Track별 2년차 이후 연간 수입 <span className="text-xs font-normal text-indigo-700">(의원당 · 단일 선택 시나리오)</span></h3>
+          <span className="text-[11px] text-indigo-600/80">→ Track을 변경하려면 Track 탭에서 선택</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {tracks.map(t => {
+            const active = state.hccPct === t.hc;
+            const baseInc = T.inc0 / Math.max(1, M);
+            const chgPct = baseInc > 0 ? ((t.ongoing - baseInc) / baseInc) * 100 : 0;
+            return (
+              <div key={t.n}
+                className="rounded-lg p-3 text-center transition relative"
+                style={{
+                  background: active ? "#ffffff" : t.bg,
+                  border: active ? `2px solid ${t.c}` : `2px solid ${t.bd}`,
+                  boxShadow: active ? "0 2px 8px rgba(79, 70, 229, 0.15)" : "none",
+                }}>
+                {active && (
+                  <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold text-white" style={{ background: t.c }}>
+                    ✓ 현재 선택
+                  </div>
+                )}
+                <div className="text-xs font-extrabold" style={{ color: t.c }}>{TRACK_LABELS[t.hc] ?? t.n}</div>
+                <div className="mt-1.5 text-lg sm:text-xl font-extrabold tabular-nums" style={{ color: active ? "#312e81" : "#374151" }}>
+                  {fMan(t.ongoing)}
+                </div>
+                <div className="text-[10px] text-gray-500">/년</div>
+                <div className="mt-1 text-xs font-bold" style={{ color: chgPct >= 0 ? "#16a34a" : "#dc2626" }}>
+                  ({chgPct >= 0 ? "+" : ""}{chgPct.toFixed(1)}%)
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-2 text-[10px] text-indigo-700/70 leading-relaxed">
+          ※ 표시 금액 = Track 선지급 + 성과배분(SS) + 포괄관리 성과가산(L2). 1년차 PT 제외 · 변화율은 참여 전 FFS 대비.
+        </div>
+      </div>
+    )}
 
     {/* ⑩ Win-Win-Win */}
     <WinWinWin items={[

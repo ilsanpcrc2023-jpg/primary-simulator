@@ -1,6 +1,6 @@
 import { memo } from "react";
 import NumBox from "./shared/NumBox";
-import { SH, CL, ON, INIT_F } from "../constants";
+import { SH, CL, ON, INIT_F, CLINIC_PRESETS } from "../constants";
 import { f } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
@@ -132,9 +132,14 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
   );
 });
 
-/* RegScaleCard — 항상 펼침, 박스 처리 */
-export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, scaleRegDist, resetReg }) {
+/* RegScaleCard — 항상 펼침, 박스 처리.
+   v6.8.2: 의원 모드(mode="clinic")일 때 상단에 환자군 구성 프리셋 3버튼 노출 (CLINIC_PRESETS). */
+export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, scaleRegDist, setRegDistAll, resetReg, mode = "policy" }) {
   const { totalN, M_clinics, regDist, baseN_per_clinic } = state;
+  const activePresetKey = (() => {
+    const match = CLINIC_PRESETS.find(p => p.regDist && regDist.every((v, i) => v === p.regDist[i]));
+    return match ? match.key : "custom";
+  })();
   const perClinic = Math.max(1, Math.round(totalN / Math.max(1, M_clinics)));
   const n_reg_sum = regDist.reduce((s, v) => s + v, 0);
   const n_unreg_per_clinic = Math.max(0, perClinic - Math.min(n_reg_sum, perClinic));
@@ -167,6 +172,31 @@ export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, scaleR
         )}
       </div>
       <div className="px-4 pb-3 pt-2 border-t border-gray-100 space-y-2">
+          {/* v6.8.2: 의원 모드 전용 환자군 구성 프리셋 (일반/노인 집중/사용자 지정) */}
+          {mode === "clinic" && setRegDistAll && (
+            <div className="flex items-center gap-2 flex-wrap pb-2 border-b border-dashed border-gray-200">
+              <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">의원 유형</span>
+              <div className="flex flex-wrap gap-1">
+                {CLINIC_PRESETS.map(p => {
+                  const active = activePresetKey === p.key;
+                  const isCustom = p.key === "custom";
+                  return (
+                    <button key={p.key}
+                      onClick={() => { if (p.regDist) setRegDistAll(p.regDist); }}
+                      disabled={isCustom}
+                      title={p.regDist ? `1군:2군:3군:4군 = ${p.regDist.join(":")}` : "현재 분포 (어떤 프리셋과도 불일치 시 자동 활성)"}
+                      className="text-xs px-2 py-0.5 rounded border font-medium transition"
+                      style={active
+                        ? { background: "#ecfdf5", borderColor: "#34d399", color: "#047857" }
+                        : { background: "#fff", borderColor: "#e5e7eb", color: isCustom ? "#9ca3af" : "#374151", cursor: isCustom ? "default" : "pointer" }}>
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* 참여 전 환자수 (기준) */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-gray-700 shrink-0 w-28">참여 전 환자수 (기준)</span>
