@@ -167,74 +167,132 @@ export default memo(function TabSimulation({
       );
     })()}
 
-    {/* ⑥ KPI 2카드 — L2 연동, Track 비교는 Track 탭에서 */}
+    {/* ⑥ KPI 2카드 — L2 연동
+         · 의원 모드: Hero Before/After (단일 비교, 결론 우선)
+         · 정책 모드: ①②③ 세부 분해 (정책 협의용 진단)
+         공단 박스(우측)는 양쪽 모드 공통 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
-        <div className="flex items-baseline justify-between mb-2">
-          <h3 className="font-bold text-base text-green-800">의원 수입 변화</h3>
-          <span className="text-xs font-semibold text-green-600">L1 {(perfMemo.L1avg * 100).toFixed(1)}% · L2 {(L2_display * 100).toFixed(1)}%</span>
-        </div>
-
-        <div className="flex items-baseline justify-between mb-1">
-          <span className="text-xs text-green-700/80 font-semibold">기준 수입 (참여 전, 전원 FFS)</span>
-          <span className="text-sm font-bold text-green-800/80">{fMan(perClinicBaseline)}/의원·년</span>
-        </div>
-
-        <div className="mt-2 bg-white/60 rounded px-2 py-1.5">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs text-slate-600">① 환자군 패널 변화 효과</span>
-            <span className="text-sm font-bold" style={{ color: decomp.panelEffect >= 0 ? "#16a34a" : "#dc2626" }}>
-              {diffMan(perClinicPanel)}/의원
+      {mode === "clinic" ? (
+        /* Hero Before/After — 의원 모드 전용 */
+        <div className="rounded-2xl border-2 shadow-md p-5" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", borderColor: "#86efac" }}>
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider">우리 의원 연간 수입 변화</span>
+            <span className="text-[10px] text-emerald-700/70 font-semibold">
+              현재 Track: <b className="text-emerald-800">{state.hccPct === 0 ? "A (FFS)" : state.hccPct === 100 ? "C (환자군)" : `B (혼합 ${state.hccPct}%)`}</b>
+              <span className="mx-1 text-emerald-400">·</span>
+              L2 {(L2_display * 100).toFixed(1)}%
             </span>
           </div>
-        </div>
 
-        <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs text-indigo-700 font-semibold">② 지불방식 전환 효과 (선지급)</span>
-            <span className="text-sm font-bold" style={{ color: decomp.modelEffect >= 0 ? "#16a34a" : "#dc2626" }}>
-              {diffMan(perClinicModel)}/의원
-            </span>
+          <div className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr auto 1fr" }}>
+            <div className="text-center">
+              <div className="text-[11px] text-gray-500 font-semibold mb-1">현재 (FFS)</div>
+              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums text-gray-700 leading-tight">
+                {fMan(perClinicBaseline)}
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl text-emerald-600 font-bold">→</div>
+            <div className="text-center">
+              <div className="text-[11px] text-emerald-700 font-semibold mb-1">참여 후</div>
+              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums leading-tight"
+                style={{ color: decomp.netChange >= 0 ? "#047857" : "#dc2626" }}>
+                {fMan(perClinicAfter)}
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs text-amber-700 font-semibold">③ 포괄관리 성과가산 (L2 기반)</span>
-            <span className="text-sm font-bold" style={{ color: decomp.performanceEffect > 0 ? "#16a34a" : "#6b7280" }}>
-              {diffMan(perClinicPerf)}/의원
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-2 pt-2 border-t border-green-200/70">
-          <div className="flex items-baseline justify-between mb-0.5">
-            <span className="text-xs text-green-700 font-semibold">순 변화 (① + ② + ③)</span>
-            <span className="text-xs font-bold" style={{ color: decomp.netChgPct >= 0 ? "#16a34a" : "#dc2626" }}>
+          <div className="mt-4 bg-white rounded-xl px-3 py-2.5 text-center shadow-sm border border-emerald-100">
+            <div className="text-2xl sm:text-3xl font-extrabold tabular-nums leading-tight"
+              style={{ color: decomp.netChange >= 0 ? "#059669" : "#dc2626" }}>
+              {diffMan(perClinicNet)}<span className="text-base text-gray-500 font-bold"> / 년</span>
+            </div>
+            <div className="text-sm font-bold mt-0.5"
+              style={{ color: decomp.netChgPct >= 0 ? "#059669" : "#dc2626" }}>
               {pct(decomp.netChgPct)}
-            </span>
+              <span className="text-[11px] text-gray-500 font-normal ml-1">vs 현재 FFS</span>
+            </div>
           </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs text-green-700/70">의원당</span>
-            <span className="text-2xl font-extrabold leading-tight" style={{ color: decomp.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
-              {diffMan(perClinicNet)}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs text-green-700/70">전체</span>
-            <span className="text-base font-bold" style={{ color: decomp.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
-              {diffAuto(0, decomp.netChange)}
-            </span>
-          </div>
-        </div>
 
-        <div className="mt-2 pt-2 border-t border-green-200/70">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs text-green-700 font-semibold">참여 후 의원당 수입</span>
-            <span className="text-lg font-extrabold text-green-900">{fMan(perClinicAfter)}/년</span>
+          <div className="mt-3 text-[11px] text-emerald-700/80 text-center leading-relaxed">
+            {perClinicPerf >= 5000 ? (
+              <>※ 위 금액에 <b className="text-emerald-800">포괄관리 성과가산 {fMan(perClinicPerf)}/년</b>이 이미 포함되어 있습니다 (L2 슬라이더로 조정).</>
+            ) : (
+              <>※ <b className="text-emerald-800">L2 슬라이더</b>를 L1보다 낮추면 포괄관리 성과가산이 추가되어 금액이 더 커집니다.</>
+            )}
+          </div>
+          <div className="mt-1.5 text-[10px] text-gray-500 text-center">
+            전체 사업 합계: <b>{diffAuto(0, decomp.netChange)}</b> ({M.toLocaleString()}개 의원)
           </div>
         </div>
-      </div>
+      ) : (
+        /* ①②③ 세부 분해 — 정책 모드 전용 */
+        <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
+          <div className="flex items-baseline justify-between mb-2">
+            <h3 className="font-bold text-base text-green-800">의원 수입 변화 <span className="text-[11px] font-normal text-green-700/70">(세부 분해)</span></h3>
+            <span className="text-xs font-semibold text-green-600">L1 {(perfMemo.L1avg * 100).toFixed(1)}% · L2 {(L2_display * 100).toFixed(1)}%</span>
+          </div>
+
+          <div className="flex items-baseline justify-between mb-1">
+            <span className="text-xs text-green-700/80 font-semibold">기준 수입 (참여 전, 전원 FFS)</span>
+            <span className="text-sm font-bold text-green-800/80">{fMan(perClinicBaseline)}/의원·년</span>
+          </div>
+
+          <div className="mt-2 bg-white/60 rounded px-2 py-1.5">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-slate-600">① 환자군 패널 변화 효과</span>
+              <span className="text-sm font-bold" style={{ color: decomp.panelEffect >= 0 ? "#16a34a" : "#dc2626" }}>
+                {diffMan(perClinicPanel)}/의원
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-indigo-700 font-semibold">② 지불방식 전환 효과 (선지급)</span>
+              <span className="text-sm font-bold" style={{ color: decomp.modelEffect >= 0 ? "#16a34a" : "#dc2626" }}>
+                {diffMan(perClinicModel)}/의원
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-amber-700 font-semibold">③ 포괄관리 성과가산 (L2 기반)</span>
+              <span className="text-sm font-bold" style={{ color: decomp.performanceEffect > 0 ? "#16a34a" : "#6b7280" }}>
+                {diffMan(perClinicPerf)}/의원
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-2 pt-2 border-t border-green-200/70">
+            <div className="flex items-baseline justify-between mb-0.5">
+              <span className="text-xs text-green-700 font-semibold">순 변화 (① + ② + ③)</span>
+              <span className="text-xs font-bold" style={{ color: decomp.netChgPct >= 0 ? "#16a34a" : "#dc2626" }}>
+                {pct(decomp.netChgPct)}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-green-700/70">의원당</span>
+              <span className="text-2xl font-extrabold leading-tight" style={{ color: decomp.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
+                {diffMan(perClinicNet)}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-green-700/70">전체</span>
+              <span className="text-base font-bold" style={{ color: decomp.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
+                {diffAuto(0, decomp.netChange)}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-2 pt-2 border-t border-green-200/70">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-green-700 font-semibold">참여 후 의원당 수입</span>
+              <span className="text-lg font-extrabold text-green-900">{fMan(perClinicAfter)}/년</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
         <div className="flex items-baseline justify-between mb-2">
