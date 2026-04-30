@@ -9,8 +9,8 @@ import { sliderCSS } from "./constants";
 
 const TABS = [
   { full: "📋 수가 시뮬레이션", short: "📋 수가" },
-  { full: "📊 Track", short: "📊 Track" },
-  { full: "💰 Shared Saving", short: "💰 Saving" },
+  { full: "📊 Track 선택", short: "📊 Track" },
+  { full: "💰 절감 성과 배분", short: "💰 배분" },
 ];
 
 const tabStyle = (active) => ({

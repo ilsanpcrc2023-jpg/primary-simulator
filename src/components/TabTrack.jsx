@@ -206,7 +206,7 @@ export default memo(function TabTrack({
       {!showInputs && (
         <div className="px-4 pb-3 pt-1 border-t border-gray-100 text-[11px] text-gray-600 leading-relaxed space-y-0.5">
           <div>· <b className="text-amber-700">PT</b>: 1년차 1회 · A {fMan(tracks[0].ptAmt)} / B {fMan(tracks[1].ptAmt)} / C {fMan(tracks[2].ptAmt)}</div>
-          <div>· <b className="text-green-700">SS</b>: 매년 · A {fMan(tracks[0].ssAmt)} / B {fMan(tracks[1].ssAmt)} / C {fMan(tracks[2].ssAmt)} <span className="text-gray-400">(Shared Saving 탭에서 조정)</span></div>
+          <div>· <b className="text-green-700">SS</b>: 매년 · A {fMan(tracks[0].ssAmt)} / B {fMan(tracks[1].ssAmt)} / C {fMan(tracks[2].ssAmt)} <span className="text-gray-400">(절감 성과 배분 탭에서 조정)</span></div>
           <div>· <b className="text-cyan-700">포괄관리 성과가산</b>: 매년 · L2={(L2_display * 100).toFixed(1)}% → A {fMan(tracks[0].perfAmt)} / B {fMan(tracks[1].perfAmt)} / C {fMan(tracks[2].perfAmt)}</div>
         </div>
       )}
@@ -303,11 +303,11 @@ export default memo(function TabTrack({
             </div>
             {!ssEnabled && (
               <div className="rounded-lg bg-white/70 border border-gray-300 px-3 py-2 text-xs text-gray-600 mb-2">
-                💡 Shared Saving 탭에서 <b>참여의원 성과배분 비율</b>을 0% 초과로 설정해야 활성화됩니다.
+                💡 절감 성과 배분 탭에서 <b>참여의원 성과배분 비율</b>을 0% 초과로 설정해야 활성화됩니다.
               </div>
             )}
             <div className="text-xs text-green-700/80 mb-2 leading-relaxed">
-              <div>재원: Shared Saving 탭에서 산정된 <b className="text-green-800">사업대상 환자 의료비 절감배분액</b></div>
+              <div>재원: 절감 성과 배분 탭에서 산정된 <b className="text-green-800">사업대상 환자 의료비 절감배분액</b></div>
               <div className="mt-0.5">
                 = <b>{fAuto(SS?.clinicFromItem ?? 0)}</b>
                 <span className="text-green-600/60"> (성과배분 {Math.round((SS?.clinicPct ?? 0) * 100)}%)</span>
