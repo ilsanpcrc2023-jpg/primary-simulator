@@ -137,9 +137,10 @@ export default function App() {
 
         {tab === 2 && (
           <TabSharedSaving
+            mode={mode}
             state={state} set={set}
             handleMacroSync={sim.handleMacroSync}
-            SS={sim.SS}
+            SS={sim.SS} tracks={sim.tracks}
             resetSsCost={sim.resetSsCost}
           />
         )}
@@ -147,7 +148,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        일차의료 지불체계 시뮬레이터 v6.8.3 · 일차의료개발센터 · © 2026
+        일차의료 지불체계 시뮬레이터 v6.9.0 · 일차의료개발센터 · © 2026
       </div>
     </div>
   );
