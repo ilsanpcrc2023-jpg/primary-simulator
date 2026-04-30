@@ -125,6 +125,7 @@ export default function App() {
 
         {tab === 1 && (
           <TabTrack
+            mode={mode}
             state={state} set={set}
             G={sim.G} T={sim.T} SS={sim.SS} performance={sim.performance} tracks={sim.tracks}
             nhiChg={sim.nhiChg}
