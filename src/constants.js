@@ -20,6 +20,8 @@ const validBase = Array.isArray(officialBaseline?.base)
 const validP = Array.isArray(officialBaseline?.P)
   && officialBaseline.P.length === 4
   && officialBaseline.P.every(v => typeof v === "number");
+const validMClinics = typeof officialBaseline?.M_clinics === "number" && officialBaseline.M_clinics > 0;
+const validDataLabel = typeof officialBaseline?.dataLabel === "string" && officialBaseline.dataLabel.trim().length > 0;
 
 export const INIT_BASE = validBase ? officialBaseline.base : FALLBACK_BASE;
 export const INIT_B = validP ? officialBaseline.P : FALLBACK_B;
@@ -37,12 +39,23 @@ export const OFFICIAL_BASELINE_META = {
 // P = B + F (일차의료수가, 명목 청구수가)
 export const INIT_R = [10000, 20000, 30000, 40000];   // 차등 디폴트 (환자군별 1·2·3·4만원, F 값)
 export const INIT_REG_DIST = [100, 600, 200, 100];
-// 100기관 · 참여 전·후 3,000명 (동일 · 패널 유지 가정) · 등록 1,000명
-export const INIT_M_CLINICS = 100;
-export const INIT_PER_CLINIC = 3000;
-export const INIT_BASE_PER_CLINIC = 3000;
-export const INIT_TOTAL_N = INIT_M_CLINICS * INIT_PER_CLINIC;
-export const INIT_DATA_LABEL = "복지부 시범사업안 (100기관 · 등록 1,000명)";
+
+// v6.9.4: 데이터 기반 디폴트로 전환.
+//   INIT_TOTAL_N = sum(INIT_BASE.N) — 파일럿(2023)이면 69,604명
+//   INIT_M_CLINICS = official_baseline.json의 M_clinics (없으면 10 = 파일럿 기관 수)
+//   INIT_PER_CLINIC = INIT_TOTAL_N / INIT_M_CLINICS (= 6,960명/의원, 파일럿 기준)
+//   분석 중인 만성질환관리시범사업 데이터(약 3,000개 의원)가 들어오면, 관리자가
+//   "공식 baseline 등록" 버튼으로 base + M_clinics + dataLabel을 함께 갱신 → 새 디폴트.
+//   세션 중에는 state.datasetM/datasetTotalN/datasetLabel(useSimulator)이 anchor 역할,
+//   환자군 패널 "↩ 초기화"는 그 anchor로 복귀 (예: 3,000개 의원 데이터 로드 후엔 그 값으로 초기화).
+const _initTotalN = INIT_BASE.reduce((s, g) => s + (g?.N || 0), 0);
+export const INIT_TOTAL_N = _initTotalN > 0 ? _initTotalN : 69604;
+export const INIT_M_CLINICS = validMClinics ? officialBaseline.M_clinics : 10;
+export const INIT_PER_CLINIC = Math.max(1, Math.round(INIT_TOTAL_N / INIT_M_CLINICS));
+export const INIT_BASE_PER_CLINIC = INIT_PER_CLINIC;
+export const INIT_DATA_LABEL = validDataLabel
+  ? officialBaseline.dataLabel
+  : `데이터 baseline (${INIT_M_CLINICS}기관 · ${INIT_TOTAL_N.toLocaleString("ko-KR")}명)`;
 export const INIT_PT_BASE = 10_000_000;   // 일차의료 전환지원금 기준 금액 (의원당 · 1회)
 // PT · 성과배분 Track 지급률 (A/B/C, %) — 편집 가능, 초기화 시 복귀
 export const INIT_PT_PCT_A = 10;
@@ -82,7 +95,14 @@ export const CLINIC_PRESETS = [
 // L2 = 실측 타원이용비중 (단일 스칼라, 사업 중 관측치 · 성과급 산정 기준)
 // 성과급 = max(0, L1 − L2) × B × n_reg × TrackMul
 //   (no-downside · 의원 100% 환원, 공유율 없음 — Shared Saving과는 다른 구조)
-export const INIT_L1 = [0.7, 0.7, 0.7, 0.7];      // 환자군별 디폴트 (데이터 수령 전 placeholder)
+//
+// v6.9.5: L1 = base.L 자동 산출 (사용자 결정).
+//   L1은 협상 변수가 아니라 데이터 실측 = 과거 평균 타원이용비중 그 자체.
+//   official_baseline.json·엑셀 업로드의 L 값이 곧 L1 디폴트가 됨.
+//   파일럿(2023): [0.7975, 0.7934, 0.7943, 0.7722]
+//   3,000개 의원 데이터 업로드 시 그 실측 L이 자동으로 L1 디폴트가 됨.
+//   향후 사용자가 슬라이더로 임의 조정 가능하지만, 새 데이터 LOAD_DATA 시 다시 base.L로 동기화.
+export const INIT_L1 = INIT_BASE.map(b => (typeof b?.L === "number" ? b.L : 0.7));
 
 // v6.6: 업로드 파서는 N·M1·L·HCC·CR 5 필드 인식.
 //   - N/M1/L: 환자군 기초지표 (base)

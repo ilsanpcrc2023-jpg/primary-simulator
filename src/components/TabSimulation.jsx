@@ -203,7 +203,7 @@ export default memo(function TabSimulation({
             </div>
           </div>
 
-          {/* L1 환자군별 차등 */}
+          {/* L1 환자군별 차등 — v6.9.5: 디폴트 = base.L 실측, LOAD_DATA 시 자동 동기화 */}
           <div className="rounded-lg border-2 px-3 py-2.5"
             style={{ background: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)", borderColor: "#5eead4" }}>
             <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
@@ -211,14 +211,14 @@ export default memo(function TabSimulation({
                 <h3 className="text-sm font-bold" style={{ color: "#0f766e" }}>
                   선지급 기준 타원이용비중 (L1)
                 </h3>
-                <span className="text-[11px] text-teal-700/80">가중평균 {(perfMemo.L1avg * 100).toFixed(1)}% · 디폴트 0.70</span>
+                <span className="text-[11px] text-teal-700/80">가중평균 {(perfMemo.L1avg * 100).toFixed(1)}% · 디폴트 = 데이터 실측 L</span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
                 <button
                   onClick={() => setL1All(base.map(b => b.L))}
-                  title="엑셀에서 로딩된 실측 L 값을 L1 초기값으로 복사"
+                  title="L1을 현재 데이터의 실측 L 값으로 다시 동기화 (사용자가 슬라이더로 임의 조정한 후 되돌리는 용도)"
                   className="text-xs px-2 py-0.5 rounded border border-teal-300 bg-white text-teal-700 hover:bg-teal-50 font-medium">
-                  엑셀 L → L1 복사
+                  ↩ 실측 L로 동기화
                 </button>
                 <button onClick={resetL1}
                   className="text-xs text-teal-700 hover:text-red-600 border border-teal-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
@@ -637,7 +637,9 @@ export default memo(function TabSimulation({
                 const fmt = v => Math.round(v).toLocaleString("ko-KR");
                 const preview = state.base.map((b, i) =>
                   `${SHL[i]}: N=${fmt(b.N)}, M1=${fmt(b.M1)}, L=${b.L.toFixed(4)}, B=${fmt(state.P[i])}`).join("\n");
-                const msg = `⚠️ 현재 값을 모든 사용자의 공식 baseline으로 등록합니다.\n\n${preview}\n\nVercel 재배포 후 (약 1~2분) 모든 사용자의 디폴트가 갱신됩니다.\n진행하시겠습니까?`;
+                const sumN = state.base.reduce((s, b) => s + b.N, 0);
+                const meta = `의원 수: ${fmt(state.M_clinics)}기관 · 합계 N: ${fmt(sumN)}명 · 라벨: "${state.dataLabel}"`;
+                const msg = `⚠️ 현재 값을 모든 사용자의 공식 baseline으로 등록합니다.\n\n${meta}\n\n${preview}\n\nVercel 재배포 후 (약 1~2분) 모든 사용자의 디폴트가 갱신됩니다.\n환자군 패널 "초기화" 버튼이 위 의원 수·N으로 복귀합니다.\n진행하시겠습니까?`;
                 if (confirm(msg)) handleCommitBaseline();
               }}
               className="w-full border-2 border-dashed border-rose-300 rounded-lg py-2.5 text-center hover:border-rose-500 hover:bg-rose-50 transition cursor-pointer bg-rose-50/30">

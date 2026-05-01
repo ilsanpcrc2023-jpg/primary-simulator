@@ -11,7 +11,13 @@ const initialState = {
   // 성과급 = max(0, L1−L2) × B × n_reg × TrackMul (Shared Saving과 달리 공유율 없음).
   L1: [...INIT_L1],
   L2: null,
-  // 복지부 시범사업안 기본: 100기관 × 의원당 1,000명
+  // v6.9.4: 데이터 anchor — 환자군 패널 "↩ 초기화"가 복귀할 기준값.
+  //   초기엔 official_baseline.json (파일럿: 10기관 / 69,604명).
+  //   엑셀 업로드·프리셋 로드 시 그 데이터의 M_clinics·sum(N)·라벨로 갱신됨.
+  //   이후 사용자가 의원 수·환자수를 수동 변경해도, 초기화 버튼은 가장 최근 로딩한 데이터로 복귀.
+  datasetM: INIT_M_CLINICS,
+  datasetTotalN: INIT_TOTAL_N,
+  datasetLabel: INIT_DATA_LABEL,
   totalN: INIT_TOTAL_N,
   dataLabel: INIT_DATA_LABEL,
   tab: 0,
@@ -77,15 +83,16 @@ function reducer(state, action) {
       return { ...state, base };
     }
     case "SET_F_AT": {
-      // v6.9.2-bidir: F 음수 허용 (음수 = 환자군 기본수가에서 차감, 정책 협상 하한선 탐색용).
-      // 음수 하한 가드는 슬라이더 단(min = -B/2)에서 처리. reducer는 정수 라운딩만.
+      // v6.9.6: PF 음수 금지 (사용자 결정). 0 floor.
+      //   v6.9.2-bidir에서 도입한 음수 PF 시나리오는 폐기.
+      //   균형추 calcPF_fromBalance가 음수 절대값을 반환해도 reducer 단에서 0으로 잘림.
       const F_g = [...state.F_g];
-      F_g[action.i] = Math.round(action.value);
+      F_g[action.i] = Math.max(0, Math.round(action.value));
       return { ...state, F_g };
     }
     case "SET_F_ALL":
-      // v6.9.2-bidir: F 음수 허용. 균형추 calcF_fromBalance가 음수 절대값을 반환할 수 있음.
-      return { ...state, F_g: action.values.map(v => Math.round(v)) };
+      // v6.9.6: PF 음수 금지. 균형추 산출 결과 음수도 0으로 floor.
+      return { ...state, F_g: action.values.map(v => Math.max(0, Math.round(v))) };
     case "RESET_F":
       return { ...state, F_g: [...INIT_F] };
     case "RESET_P":
@@ -98,21 +105,38 @@ function reducer(state, action) {
     }
     case "SET_L1_ALL":
       return { ...state, L1: action.values.map(v => Math.max(0, Math.min(1, v))) };
-    case "RESET_L1":
-      return { ...state, L1: [...INIT_L1] };
+    case "RESET_L1": {
+      // v6.9.5: 현재 데이터의 실측 base.L로 복귀 (data anchor 패턴 일관성).
+      //   파일럿 로드 후 = 파일럿 실측 [0.7975, 0.7934, 0.7943, 0.7722]
+      //   엑셀 업로드 후 = 그 데이터의 실측 L
+      //   사용자가 N/M1/L을 인라인 편집한 경우엔 편집된 base.L 반영.
+      const fromBase = state.base.map(b => (typeof b?.L === "number" ? b.L : 0.7));
+      return { ...state, L1: fromBase };
+    }
     case "SET_L2":
       return { ...state, L2: action.value == null ? null : Math.max(0, Math.min(1, action.value)) };
     case "RESET_L2":
       return { ...state, L2: null };
-    case "RESET_REG":
+    case "RESET_REG": {
+      // v6.9.4: 초기화는 "현재 데이터 anchor"로 복귀 (INIT_* 고정값이 아님).
+      //   anchor는 가장 최근 로딩한 데이터의 M_clinics·sum(base.N)·dataLabel.
+      //   파일럿 로딩 후 = 10기관 / 69,604명 / "10개 의원 파일럿 (2023, 69,604명)"
+      //   3,000개 의원 데이터 로딩 후 = 3,000기관 / sum(N) / 그 라벨
+      //   현재 base.N 합과 anchor의 totalN이 다르면 base.N 합을 우선 (사용자 인라인 편집 반영).
+      const baseSum = state.base.reduce((s, g) => s + (g?.N || 0), 0);
+      const anchorTotalN = state.datasetTotalN > 0 ? state.datasetTotalN : INIT_TOTAL_N;
+      const newTotalN = baseSum > 0 ? baseSum : anchorTotalN;
+      const newM = Math.max(1, state.datasetM || INIT_M_CLINICS);
+      const newPerClinic = Math.max(1, Math.round(newTotalN / newM));
       return {
         ...state,
-        baseN_per_clinic: INIT_BASE_PER_CLINIC,
-        M_clinics: INIT_M_CLINICS,
-        totalN: INIT_TOTAL_N,
+        baseN_per_clinic: newPerClinic,
+        M_clinics: newM,
+        totalN: newTotalN,
         regDist: [...INIT_REG_DIST],
-        dataLabel: INIT_DATA_LABEL,
+        dataLabel: state.datasetLabel || INIT_DATA_LABEL,
       };
+    }
     case "RESET_PT_PCT":
       return { ...state, ptPctA: INIT_PT_PCT_A, ptPctB: INIT_PT_PCT_B, ptPctC: INIT_PT_PCT_C };
     case "RESET_SS_PCT":
@@ -141,17 +165,30 @@ function reducer(state, action) {
       const newTotalN = action.base.reduce((s, g) => s + g.N, 0);
       const newM = action.M_clinics ?? state.M_clinics;
       const perClinic = Math.max(1, Math.round(newTotalN / Math.max(1, newM)));
+      // v6.9.4: 데이터 anchor 갱신.
+      //   action.M_clinics가 있으면 (프리셋 로드 / 공식 baseline) → datasetM 함께 갱신.
+      //   없으면 (엑셀 업로드 등) → datasetM은 그대로, datasetTotalN/datasetLabel만 갱신.
+      const newDatasetM = action.M_clinics ?? state.datasetM ?? INIT_M_CLINICS;
+      // v6.9.5: L1을 새 데이터의 실측 L로 자동 동기화 (옵션 A · 사용자 결정).
+      //   L1은 협상 변수가 아니라 "과거 평균 타원이용비중" 데이터 실측 그 자체.
+      //   사용자가 임의 조정한 L1은 새 데이터 LOAD 시 덮어써짐.
+      const newL1 = action.base.map(b => (typeof b?.L === "number" ? b.L : 0.7));
       return {
         ...state,
         base: action.base,
         P: action.P,
         F_g: action.F_g ?? state.F_g,
+        L1: newL1,
         totalN: newTotalN,
         dataLabel: action.dataLabel,
         uploadBanner: action.uploadBanner,
         M_clinics: newM,
         // 프리셋 로드 시 참여 전 기준 실인원을 해당 프리셋 의원당 실인원으로 자동 설정
         baseN_per_clinic: perClinic,
+        // v6.9.4: 초기화 버튼이 복귀할 anchor 갱신
+        datasetM: newDatasetM,
+        datasetTotalN: newTotalN,
+        datasetLabel: action.dataLabel ?? state.datasetLabel ?? INIT_DATA_LABEL,
       };
     }
     case "MACRO_SYNC": {
@@ -589,10 +626,17 @@ export default function useSimulator() {
   const handleCommitBaseline = useCallback(async () => {
     try {
       set("uploadBanner", { success: true, msg: "공식 baseline 등록 요청 중...", details: "GitHub API 호출 중 (수 초)" });
+      // v6.9.4: M_clinics·dataLabel도 함께 전송 → 모든 사용자의 anchor가 새 데이터로 갱신됨.
+      //   예: 3,000개 의원 데이터 등록 시, 신규 사용자의 환자군 패널 초기화 버튼이 그 값으로 복귀.
       const res = await fetch("/api/commit-baseline", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base: state.base, P: state.P }),
+        body: JSON.stringify({
+          base: state.base,
+          P: state.P,
+          M_clinics: state.M_clinics,
+          dataLabel: state.dataLabel,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

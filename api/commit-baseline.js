@@ -51,20 +51,28 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "관리자 비밀번호가 일치하지 않습니다." });
   }
 
-  const { base, P } = body;
+  const { base, P, M_clinics, dataLabel } = body;
   const baseErr = validateBase(base);
   if (baseErr) return res.status(400).json({ error: baseErr });
   const pErr = validateP(P);
   if (pErr) return res.status(400).json({ error: pErr });
+  // v6.9.4: M_clinics·dataLabel은 선택 입력. 들어오면 검증 후 저장, 누락이면 기본값 사용.
+  const safeMClinics = (typeof M_clinics === "number" && M_clinics > 0) ? Math.round(M_clinics) : 10;
+  const sumN = base.reduce((s, b) => s + b.N, 0);
+  const safeLabel = (typeof dataLabel === "string" && dataLabel.trim().length > 0)
+    ? dataLabel.trim().slice(0, 200)
+    : `데이터 baseline (${safeMClinics}기관 · ${sumN.toLocaleString("en-US")}명)`;
 
   const repo = process.env.GITHUB_REPO || DEFAULT_REPO;
   const branch = process.env.GITHUB_BRANCH || DEFAULT_BRANCH;
 
   const payload = {
-    version: "6.6.0",
+    version: "6.9.4",
     updated_at: new Date().toISOString().slice(0, 10),
     updated_by: "admin (simulator UI button)",
     note: "시뮬레이터 '공식 baseline으로 등록' 버튼을 통해 갱신된 파일. 편집 시 주의 — 시뮬레이터가 앱 시작 시 이 파일을 읽어 모든 사용자의 디폴트를 결정합니다.",
+    M_clinics: safeMClinics,
+    dataLabel: safeLabel,
     base,
     P,
   };
