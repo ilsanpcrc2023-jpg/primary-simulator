@@ -25,3 +25,15 @@ export const diffMan = (delta) => (delta >= 0 ? "+" : "") + fMan(delta);
 // 양수 절감액 → "−XXX억원" prefix 부착, 0이면 부호 없이.
 // "이용 감소 가정" 박스에서 양수 입력을 음(−) 변화로 표기할 때 사용.
 export const fChangeAuto = (v) => v > 0 ? `−${fAuto(v)}` : fAuto(v);
+
+// v6.9.3: PB·PF 명칭 체계 — P = PB + PF 단순합 회복 (L1 곱셈 단계 추상화).
+// PB = B × (1 − L1) — "일차의료 기본수가" (환자군 위험도 반영, 데이터 기반)
+// PF = F           — "일차의료 기능보정" (정책 협상)
+// 내부 변수는 B(=state.P) / F(=state.F_g) 그대로 유지, UI 라벨/표시값만 PB·PF.
+export const calcPB = (B_g, L1_g) =>
+  B_g.map((b, i) => Math.round(b * (1 - (L1_g?.[i] ?? 0.7))));
+
+// PB 슬라이더 입력값을 B로 역산 (L1 고정).
+// 사용자가 1번 카드 PB 슬라이더 조작 → 내부 state.P (B)에 반영.
+export const PBtoB = (PB_input, L1) =>
+  Math.round(PB_input / Math.max(0.001, 1 - L1));

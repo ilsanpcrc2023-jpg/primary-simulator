@@ -3,14 +3,15 @@ import { f, fAuto, fMan, diffAuto, fChangeAuto } from "../utils";
 import { SH, CL } from "../constants";
 import NumBox from "./shared/NumBox";
 
-// v6.9.2-bidir: F 균형추 보정 모듈 (정책 모드 전용 · 양방향 + 절대 재정중립)
+// v6.9.2-bidir: F(=PF) 균형추 보정 모듈 (정책 모드 전용 · 양방향 + 절대 재정중립)
+// v6.9.3: 명칭 체계 — UI는 "PF" 라벨 사용. 내부 state.F_g 변수명은 유지.
 // - 추 위치(−5%~+10%) = baseline(T.nhi0) 대비 공단 외래 지출 목표 변화율
 // - 0% = baseline 대비 공단 외래 지출 변화 0원 (절대 재정중립)
-// - F 4군 절대값을 자동 산출 (ΔF 누적이 아님)
+// - PF 4군 절대값을 자동 산출 (ΔPF 누적이 아님)
 //   targetNHI = T.nhi0 × (1 + pct/100)
-//   NHI_withoutF = T.nhi − Σ F_g[i] × n_reg_g[i]   (현 NHI에서 F 기여분만 제거)
-//   F_total_target = targetNHI − NHI_withoutF      (음수 가능)
-// - F 음수: 환자군 기본수가에서 차감되는 시나리오 (재정 보수·협상 하한선 탐색)
+//   NHI_withoutPF = T.nhi − Σ PF[i] × n_reg_g[i]   (현 NHI에서 PF 기여분만 제거)
+//   PF_total_target = targetNHI − NHI_withoutPF    (음수 가능)
+// - PF 음수: 환자군 기준의료비에서 차감되는 시나리오 (재정 보수·협상 하한선 탐색)
 // - Shared Saving은 이 모듈에 포함하지 않음 (별도 풀, 일차의료수가 아님)
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -39,25 +40,28 @@ export function distribute(totalTarget, rule, B, n_g) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// F 절대값 자동 산출 (v6.9.2-bidir 신규 핵심 함수)
+// PF 절대값 자동 산출 (v6.9.2-bidir 신규 · v6.9.3 함수명 PF 체계로 전환)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // @param targetPct  — 균형추 위치 (−5 ~ +10), %
 // @param rule       — "hcc" | "equal" | "inverse"
 // @param T_nhi0     — baseline 공단 외래 지출 (참여 전 전원 FFS)
-// @param T_nhi      — 현재 시뮬 공단 외래 지출 (사업 후·L2 반영, F 포함)
-// @param F_current  — 환자군별 현재 F 값 (4-array, F 기여분 제거용)
+// @param T_nhi      — 현재 시뮬 공단 외래 지출 (사업 후·L2 반영, PF 포함)
+// @param PF_current — 환자군별 현재 PF 값 (4-array, PF 기여분 제거용)
 // @param B_g        — 환자군별 B (분배 가중)
 // @param n_reg_g    — 환자군별 등록환자 합계 (전체 사업 단위, 4-array)
-// @returns          — F_g_new[4] (1인당 F 절대값, 음수 가능)
-export function calcF_fromBalance(targetPct, rule, T_nhi0, T_nhi, F_current, B_g, n_reg_g) {
+// @returns          — PF_new[4] (1인당 PF 절대값, 음수 가능)
+export function calcPF_fromBalance(targetPct, rule, T_nhi0, T_nhi, PF_current, B_g, n_reg_g) {
   const targetNHI = T_nhi0 * (1 + targetPct / 100);
-  const F_contribution = F_current.reduce(
-    (acc, Fv, i) => acc + (Fv || 0) * (n_reg_g[i] || 0), 0
+  const PF_contribution = PF_current.reduce(
+    (acc, v, i) => acc + (v || 0) * (n_reg_g[i] || 0), 0
   );
-  const NHI_withoutF = T_nhi - F_contribution;
-  const F_total_target = targetNHI - NHI_withoutF;
-  return distribute(F_total_target, rule, B_g, n_reg_g);
+  const NHI_withoutPF = T_nhi - PF_contribution;
+  const PF_total_target = targetNHI - NHI_withoutPF;
+  return distribute(PF_total_target, rule, B_g, n_reg_g);
 }
+
+// 하위 호환 alias (테스트·외부 import용)
+export const calcF_fromBalance = calcPF_fromBalance;
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 신호등 임계값 — 시각적 가이드 (정책 근거 없음, v6.9.2-bidir 7단계)
@@ -113,31 +117,31 @@ export default memo(function FBalanceCorrection({
   const N_reg_total = n_reg_g.reduce((s, n) => s + n, 0);
   const M = Math.max(1, state.M_clinics);
 
-  // ── F 절대값 자동 산출 ───────────────────────────────────────
-  const F_new_raw = useMemo(
-    () => calcF_fromBalance(pct, rule, T_nhi0, T_nhi, state.F_g, B, n_reg_g),
+  // ── PF 절대값 자동 산출 (v6.9.3: F→PF UI, 내부 state.F_g 유지) ─
+  const PF_new_raw = useMemo(
+    () => calcPF_fromBalance(pct, rule, T_nhi0, T_nhi, state.F_g, B, n_reg_g),
     [pct, rule, T_nhi0, T_nhi, state.F_g, B, n_reg_g]
   );
-  const F_new = F_new_raw.map(v => Math.round(v));    // 1원 단위, 음수 보존
-  const dF_array = F_new.map((v, i) => v - (state.F_g[i] || 0));
+  const PF_new = PF_new_raw.map(v => Math.round(v));    // 1원 단위, 음수 보존
+  const dPF_array = PF_new.map((v, i) => v - (state.F_g[i] || 0));
 
   // ── 산출 검증 메모 ───────────────────────────────────────────
-  // F_total_target = Σ F_new × n_reg_g (분배 합산 보존 → targetNHI − NHI_withoutF)
-  const F_total_target = F_new.reduce((s, v, i) => s + v * (n_reg_g[i] || 0), 0);
+  // PF_total_target = Σ PF_new × n_reg_g (분배 합산 보존 → targetNHI − NHI_withoutPF)
+  const PF_total_target = PF_new.reduce((s, v, i) => s + v * (n_reg_g[i] || 0), 0);
   const targetNHI = T_nhi0 * (1 + pct / 100);
   const nhiAfterApply = targetNHI;                    // 적용 후 NHI = baseline + pct
   const changeAfterApply = nhiAfterApply - T_nhi0;    // = T_nhi0 × pct/100
 
   // ── 의원당 효과 (참고 표시) ─────────────────────────────────
-  // F 가산분 의원당 = Σ ΔF[i] × regDist[i] (의원당 등록환자에 분배)
+  // PF 가산분 의원당 = Σ ΔPF[i] × regDist[i] (의원당 등록환자에 분배)
   const extraPerClinic = state.regDist.reduce(
-    (s, n_pc, i) => s + (dF_array[i] || 0) * n_pc, 0
+    (s, n_pc, i) => s + (dPF_array[i] || 0) * n_pc, 0
   );
 
   // ── 신호등 + 추 위치 ─────────────────────────────────────────
   const sig = signalLevel(pct);
   const trackPos = pctToLeft(pct);                    // 0~100% (좌→우)
-  const hasNegative = F_new.some(v => v < 0);
+  const hasNegative = PF_new.some(v => v < 0);
   const isExactZero = Math.abs(pct) < 0.05;
   const isNegative = pct < -0.05;
 
@@ -155,7 +159,7 @@ export default memo(function FBalanceCorrection({
   // 적용/되돌리기
   const handleApply = () => {
     setAppliedSnapshot([...state.F_g]);
-    setFAll(F_new);
+    setFAll(PF_new);
   };
   const handleRevert = () => {
     if (appliedSnapshot) {
@@ -179,7 +183,7 @@ export default memo(function FBalanceCorrection({
           <h2 className="font-bold text-base text-violet-900 flex items-center gap-2">
             <span className="inline-grid place-items-center w-7 h-7 rounded-lg text-white text-sm"
               style={{ background: "linear-gradient(135deg, #7c3aed, #5b21b6)" }}>⚖️</span>
-            <span>F 균형추 보정 <span className="text-[11px] font-medium text-violet-700/80">· 정책 모드 전용 · 양방향</span></span>
+            <span>PF 자동 산출 도구 <span className="text-[11px] font-medium text-violet-700/80">· 정책 모드 전용 · 양방향</span></span>
           </h2>
           <div className="text-[11px] text-slate-600 mt-1 leading-relaxed">
             추 위치 = <b className="text-violet-700">baseline 대비 공단 외래 지출 목표 변화율</b>. <b>0% = 절대 재정중립</b> (baseline 대비 변화 0원). 좌측은 절감, 우측은 투자. <b>Shared Saving은 별도 풀</b>로 본 모듈과 무관.
@@ -191,7 +195,7 @@ export default memo(function FBalanceCorrection({
         </button>
       </div>
 
-      {/* 등록환자 규모 NumBox */}
+      {/* 등록환자 규모 (정책 의사결정 1차 anchor) */}
       {(() => {
         const nRegPerClinic = Math.max(1, state.regDist.reduce((s, n) => s + n, 0));
         const totalRegistered = state.M_clinics * nRegPerClinic;
@@ -199,13 +203,33 @@ export default memo(function FBalanceCorrection({
           const newM = Math.max(1, Math.round(v / nRegPerClinic));
           set("M_clinics", newM);
         };
+        // 등록환자 규모 프리셋 (10만 / 100만 / 1,000만 / 3,000만 명)
+        const SCALE_PRESETS = [
+          { v: 100_000,    label: "10만" },
+          { v: 1_000_000,  label: "100만" },
+          { v: 10_000_000, label: "1,000만" },
+          { v: 30_000_000, label: "3,000만" },
+        ];
         return (
           <div className="flex items-center gap-3 flex-wrap bg-violet-50/70 border border-violet-200 rounded-lg px-3 py-2">
             <span className="text-[11px] font-bold text-violet-800 shrink-0">🏢 등록환자 규모</span>
             <NumBox value={totalRegistered} onChange={onScaleChange} color="#7c3aed" suffix="명" />
+            <div className="flex flex-wrap gap-1">
+              {SCALE_PRESETS.map(p => {
+                const active = totalRegistered === p.v;
+                return (
+                  <button key={p.v} onClick={() => onScaleChange(p.v)}
+                    className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                    style={active
+                      ? { background: "#ede9fe", borderColor: "#a78bfa", color: "#6d28d9" }
+                      : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                    {p.label}명
+                  </button>
+                );
+              })}
+            </div>
             <span className="text-[10px] text-violet-700/70 leading-relaxed">
-              = 의원당 <b className="font-semibold">{nRegPerClinic.toLocaleString()}명</b> × 의원 <b className="font-semibold tabular-nums">{state.M_clinics.toLocaleString()}개</b>
-              <span className="text-violet-400 mx-1">·</span>의원당 등록환자는 환자군 패널에서 조정
+              의원당 <b className="font-semibold">{nRegPerClinic.toLocaleString()}명</b> × 의원 <b className="font-semibold tabular-nums">{state.M_clinics.toLocaleString()}개</b>
             </span>
           </div>
         );
@@ -227,11 +251,11 @@ export default memo(function FBalanceCorrection({
         </div>
 
         {/* 슬라이더 본체 — 6단계 그라디언트 + 0% 중심선 + 양방향 thumb */}
-        <div className="relative pt-2 pb-7">
+        <div className="relative pt-9 pb-7">
           {/* 0% 중심선 (33.33%) — 절대 재정중립 시각적 강조 */}
           <div className="absolute pointer-events-none"
             style={{
-              left: `${pctToLeft(0)}%`, top: 8, bottom: 28, width: 2,
+              left: `${pctToLeft(0)}%`, top: 36, bottom: 28, width: 2,
               background: "rgba(16,185,129,0.65)",
               transform: "translateX(-50%)",
               zIndex: 1,
@@ -240,6 +264,29 @@ export default memo(function FBalanceCorrection({
               style={{ textShadow: "0 0 4px rgba(255,255,255,0.9)" }}>
               재정중립
             </div>
+          </div>
+
+          {/* 추 위 floating % bubble — 추 위치를 따라 이동, sig 색상 매칭 */}
+          <div className="absolute pointer-events-none transition-all"
+            style={{
+              left: `${pctToLeft(pct)}%`,
+              top: 0,
+              transform: "translateX(-50%)",
+              zIndex: 3,
+            }}>
+            <div className="px-2 py-0.5 rounded-md text-xs font-extrabold tabular-nums whitespace-nowrap shadow-md border-2"
+              style={{ background: "white", color: sig.color, borderColor: sig.color }}>
+              {pct >= 0 ? "+" : ""}{pct.toFixed(1)}%
+            </div>
+            {/* 말풍선 꼬리 — 추 위쪽 가운데로 향하는 화살표 */}
+            <div className="absolute left-1/2 -translate-x-1/2"
+              style={{
+                top: "100%",
+                width: 0, height: 0,
+                borderLeft: "5px solid transparent",
+                borderRight: "5px solid transparent",
+                borderTop: `5px solid ${sig.color}`,
+              }} />
           </div>
 
           {/* 슬라이더 — pct ∈ [-5, +10] → value ∈ [-50, +100], step=1 (0.1% 정밀도) */}
@@ -294,30 +341,22 @@ export default memo(function FBalanceCorrection({
           <div className="text-center text-red-700"      style={{ width: "13.33%" }}>협상한계</div>
         </div>
 
-        {/* 프리셋 6개 + 추 표시 */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex gap-1 flex-wrap flex-1">
-            {PRESETS.map(p => {
-              const active = Math.abs(p.v - pct) < 0.05;
-              return (
-                <button key={p.v} onClick={() => setPct(p.v)}
-                  className={`flex-1 min-w-[52px] px-1.5 py-1.5 rounded-lg border font-semibold text-xs transition ${
-                    active
-                      ? "bg-violet-600 text-white border-violet-600 shadow"
-                      : "bg-white text-slate-700 border-slate-200 hover:border-violet-400 hover:text-violet-700"
-                  }`}>
-                  <div>{p.label}</div>
-                  <div className={`text-[10px] font-medium ${active ? "text-violet-100" : "text-slate-400"}`}>{p.sub}</div>
-                </button>
-              );
-            })}
-          </div>
-          <div className="bg-violet-50 border border-violet-200 rounded-lg px-3 py-1.5 text-center min-w-[88px]">
-            <div className="text-[10px] text-violet-600 font-semibold">현재 추 위치</div>
-            <div className="text-base font-extrabold text-violet-700 tabular-nums">
-              {pct >= 0 ? "+" : ""}{pct.toFixed(1)}%
-            </div>
-          </div>
+        {/* 프리셋 6개 — 현재 % 는 추 위 floating bubble로 통합 표기 */}
+        <div className="flex items-center gap-1 flex-wrap">
+          {PRESETS.map(p => {
+            const active = Math.abs(p.v - pct) < 0.05;
+            return (
+              <button key={p.v} onClick={() => setPct(p.v)}
+                className={`flex-1 min-w-[52px] px-1.5 py-1.5 rounded-lg border font-semibold text-xs transition ${
+                  active
+                    ? "bg-violet-600 text-white border-violet-600 shadow"
+                    : "bg-white text-slate-700 border-slate-200 hover:border-violet-400 hover:text-violet-700"
+                }`}>
+                <div>{p.label}</div>
+                <div className={`text-[10px] font-medium ${active ? "text-violet-100" : "text-slate-400"}`}>{p.sub}</div>
+              </button>
+            );
+          })}
         </div>
 
         {/* 직접입력 */}
@@ -355,7 +394,7 @@ export default memo(function FBalanceCorrection({
       <div className="bg-white/70 rounded-xl border border-violet-100 p-3 sm:p-4">
         <div className="text-sm font-semibold text-slate-800 flex items-center gap-1.5 mb-2">
           <span className="inline-grid place-items-center w-5 h-5 rounded-full bg-violet-100 text-violet-700 text-[11px] font-bold">2</span>
-          F 분배 규칙
+          PF 분배 규칙
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {RULE_OPTS.map(r => {
@@ -375,11 +414,11 @@ export default memo(function FBalanceCorrection({
         </div>
       </div>
 
-      {/* ━━━━━━━━ 음수 F 시나리오 안내 (음수 영역 진입 시) ━━━━━━━━ */}
+      {/* ━━━━━━━━ 음수 PF 시나리오 안내 (음수 영역 진입 시) ━━━━━━━━ */}
       {isNegative && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-[11px] text-amber-900 leading-relaxed">
-          <span className="font-bold">⚠️ 음수 F 시나리오</span> — 환자군 기본수가에서 일부를 차감하는 시나리오입니다.
-          정책 협상 하한선 탐색 또는 재정 보수적 시나리오에 사용하며, 실제 시범사업 적용 시 음수 F는 권장되지 않습니다.
+          <span className="font-bold">⚠️ 음수 PF 시나리오</span> — 환자군 기준의료비에서 일부를 차감하는 시나리오입니다.
+          정책 협상 하한선 탐색 또는 재정 보수적 시나리오에 사용하며, 실제 시범사업 적용 시 음수 PF는 권장되지 않습니다.
         </div>
       )}
 
@@ -393,19 +432,19 @@ export default memo(function FBalanceCorrection({
           {hasNegative && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
               style={{ background: "rgba(239,68,68,0.25)", color: "#fecaca", border: "1px solid rgba(252,165,165,0.5)" }}>
-              ⚠️ 음수 F 포함
+              ⚠️ 음수 PF 포함
             </span>
           )}
         </div>
         <div className="text-sm font-bold mb-3">
-          제안 F (환자군별 절대값 · {pct >= 0 ? "+" : ""}{pct.toFixed(1)}% 시나리오)
+          제안 PF (환자군별 절대값 · {pct >= 0 ? "+" : ""}{pct.toFixed(1)}% 시나리오)
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {SH.map((g, i) => {
-            const F_val = F_new[i] || 0;
-            const dF = dF_array[i] || 0;
-            const isNeg = F_val < 0;
+            const PF_val = PF_new[i] || 0;
+            const dPF = dPF_array[i] || 0;
+            const isNeg = PF_val < 0;
             return (
               <div key={i} className="rounded-lg p-2.5 text-center border"
                 style={{
@@ -417,11 +456,11 @@ export default memo(function FBalanceCorrection({
                 <div className="text-base font-extrabold tabular-nums"
                   style={{ color: isNeg ? "#fecaca" : "white" }}>
                   {isNeg && <span className="mr-0.5">⚠</span>}
-                  {f(F_val)}<span className="text-[10px] opacity-60 ml-0.5">원</span>
+                  {f(PF_val)}<span className="text-[10px] opacity-60 ml-0.5">원</span>
                 </div>
                 <div className="text-[11px] font-semibold tabular-nums mt-0.5"
                   style={{ color: isNeg ? "#fca5a5" : "#c4b5fd" }}>
-                  {dF >= 0 ? "+" : ""}{f(Math.round(dF))}원
+                  {dPF >= 0 ? "+" : ""}{f(Math.round(dPF))}원
                 </div>
               </div>
             );
@@ -431,7 +470,7 @@ export default memo(function FBalanceCorrection({
         {hasNegative && (
           <div className="mt-3 px-3 py-2 rounded-lg text-[11px] leading-relaxed"
             style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(252,165,165,0.4)", color: "#fee2e2" }}>
-            ⚠️ 일부 환자군의 F가 음수입니다. 환자군 기본수가에서 차감되는 시나리오로,
+            ⚠️ 일부 환자군의 PF가 음수입니다. 환자군 기준의료비에서 차감되는 시나리오로,
             실제 시범사업 적용 시 권장되지 않습니다. 정책 협상 하한선 탐색용으로만 활용하세요.
           </div>
         )}
@@ -440,24 +479,24 @@ export default memo(function FBalanceCorrection({
           <button onClick={handleApply}
             className="sm:col-span-2 px-3 py-2.5 rounded-lg font-bold text-sm transition shadow"
             style={{ background: "linear-gradient(135deg, #a855f7, #6366f1)", color: "white" }}>
-            ✓ 위 F 값을 슬라이더에 적용
+            ✓ 위 PF 값을 슬라이더에 적용
           </button>
           {appliedSnapshot ? (
             <button onClick={handleRevert}
               className="px-3 py-2.5 rounded-lg font-semibold text-sm border transition"
               style={{ background: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.25)", color: "white" }}>
-              ↩ 직전 F로 되돌리기
+              ↩ 직전 PF로 되돌리기
             </button>
           ) : (
             <div className="px-3 py-2.5 rounded-lg text-xs text-violet-200 leading-snug border opacity-70"
               style={{ background: "rgba(255,255,255,0.05)", borderColor: "rgba(255,255,255,0.15)" }}>
-              ※ 적용 후 직전 F 백업 활성화
+              ※ 적용 후 직전 PF 백업 활성화
             </div>
           )}
         </div>
 
         <div className="text-[10px] text-violet-200/80 mt-2.5 leading-relaxed">
-          ※ 적용 시 위쪽 F 슬라이더 4개가 즉시 갱신됩니다. 적용 후 균형추를 다시 움직여도 F는 자동 갱신되지 않으며, 다시 적용 버튼을 눌러야 반영됩니다.
+          ※ 적용 시 위쪽 PF 슬라이더 4개가 즉시 갱신됩니다. 적용 후 균형추를 다시 움직여도 PF는 자동 갱신되지 않으며, 다시 적용 버튼을 눌러야 반영됩니다.
         </div>
       </div>
 
@@ -470,7 +509,7 @@ export default memo(function FBalanceCorrection({
           <b className="text-slate-700">기준 (분모)</b>: <b>baseline T<sub>nhi0</sub></b> = <b className="font-mono">{fAuto(T_nhi0)}</b> (참여 전 전원 FFS) — 추 위치 ×%만큼 변화시키는 것이 목표.
         </div>
         <div className="mt-1">
-          <b className="text-slate-700">F 절대값 산출</b>: F<sub>total</sub> = baseline×(1+pct/100) − (현 NHI − 현 F 기여분) → 분배 규칙으로 4군 1인당 F 산출 (음수 가능).
+          <b className="text-slate-700">PF 절대값 산출</b>: PF<sub>total</sub> = baseline×(1+pct/100) − (현 NHI − 현 PF 기여분) → 분배 규칙으로 4군 1인당 PF 산출 (음수 가능).
         </div>
         <div className="mt-1">
           <b className="text-slate-700">분자</b>: 사업 참여 등록환자 = <b className="font-mono">{N_reg_total.toLocaleString()}명</b> · 의원당 평균 <b className="font-mono">{(N_reg_total / M).toLocaleString()}명</b>.
@@ -485,7 +524,7 @@ export default memo(function FBalanceCorrection({
 // 윈윈 카드 — 3-mode 분기 (양수 / 음수 / 0%)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function WinWinGrid({ pct, isExactZero, isNegative, changeAfterApply, T_nhi0, extraPerClinic, regDistTotal, M }) {
-  // 공통: 우측은 "F 가산 효과" (적용 시 의원당 F 가산분 변화 = ΔF × regDist)
+  // 공통: 우측은 "PF 가산 효과" (적용 시 의원당 PF 가산분 변화 = ΔPF × regDist)
   const isExtraPositive = extraPerClinic > 0;
   const isExtraNegative = extraPerClinic < 0;
 
@@ -522,41 +561,44 @@ function WinWinGrid({ pct, isExactZero, isNegative, changeAfterApply, T_nhi0, ex
           {isExactZero
             ? "✓ 공단 외래 지출이 baseline과 정확히 일치. 건정심 협상 시 가장 친화적 영역 (재정중립)."
             : isNegative
-            ? <>F를 음수로 설정하여 baseline 대비 <b className="text-blue-700">{fChangeAuto(Math.abs(changeAfterApply))}</b> 절감 — 재정 보수 시나리오. 단, 일차의료 지원 재원 축소 영향 검토 필요.</>
-            : <>F 추가 투입으로 baseline 대비 <b className="text-rose-700">+{fAuto(changeAfterApply)}</b> 증가.</>
+            ? <>PF를 음수로 설정하여 baseline 대비 <b className="text-blue-700">{fChangeAuto(Math.abs(changeAfterApply))}</b> 절감 — 재정 보수 시나리오. 단, 일차의료 지원 재원 축소 영향 검토 필요.</>
+            : <>PF 추가 투입으로 baseline 대비 <b className="text-rose-700">+{fAuto(changeAfterApply)}</b> 증가.</>
           }
         </div>
       </div>
 
-      {/* 우: 의원 수입 영향 (F 가산 효과 — 양수/음수 색상 분기) */}
+      {/* 우: 일차의료 지원 변동 (PF 가산 효과 — 양수/음수 색상 분기, 0%는 ±0원 우선 표기) */}
       <div className="rounded-xl p-3 border"
         style={{
-          background: isExtraNegative
+          background: isExactZero
+            ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)"
+            : isExtraNegative
             ? "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)"
-            : isExactZero
-            ? "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)"
             : "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
-          borderColor: isExtraNegative ? "#fbbf24" : isExactZero ? "#cbd5e1" : "#93c5fd",
+          borderColor: isExactZero ? "#34d399" : isExtraNegative ? "#fbbf24" : "#93c5fd",
         }}>
         <div className="text-[10px] font-bold uppercase tracking-wider mb-1"
-          style={{ color: isExtraNegative ? "#b45309" : isExactZero ? "#475569" : "#1d4ed8" }}>
-          {/* 일차의료 지원 프레임 — F는 의사 개인 수입 증가가 아니라 코디네이터 간호사·영양사
-              등 일차의료 기능 강화 인력 채용·운영 재원으로 활용되는 지원금 성격을 명시. */}
-          {isExtraNegative ? "🟡 일차의료 지원 영향 (F 차감)" : isExactZero ? "🔵 일차의료 지원 영향" : "🔵 일차의료 지원 강화 (F 가산)"}
+          style={{ color: isExactZero ? "#047857" : isExtraNegative ? "#b45309" : "#1d4ed8" }}>
+          {/* 일차의료 지원 프레임 — PF는 의사 개인 수입 증가가 아니라 코디네이터 간호사·영양사
+              등 일차의료 기능 강화 인력 채용·운영 재원으로 활용되는 지원금 성격을 명시.
+              v6.9.3 A2: 0%(재정중립)에서는 항상 "±0원"으로 표기 (정책 의도 = 의원 지원 변동 없음). */}
+          {isExactZero ? "🟢 일차의료 지원 변동" : isExtraNegative ? "🟡 일차의료 지원 영향 (PF 차감)" : "🔵 일차의료 지원 강화 (PF 가산)"}
         </div>
         <div className="text-xl font-extrabold tabular-nums"
-          style={{ color: isExtraNegative ? "#b45309" : isExactZero ? "#475569" : "#1d4ed8" }}>
-          {isExtraNegative ? fMan(extraPerClinic) : `+${fMan(Math.abs(extraPerClinic))}`}
+          style={{ color: isExactZero ? "#059669" : isExtraNegative ? "#b45309" : "#1d4ed8" }}>
+          {isExactZero ? "±0원" : isExtraNegative ? fMan(extraPerClinic) : `+${fMan(Math.abs(extraPerClinic))}`}
         </div>
         <div className="text-[10px] text-slate-500 font-mono">
-          /의원·년 · 사업 전체 {extraPerClinic >= 0 ? "+" : ""}{fAuto(extraPerClinic * M)}
+          {isExactZero
+            ? "/의원·년 · 사업 전체 ±0원"
+            : <>/의원·년 · 사업 전체 {extraPerClinic >= 0 ? "+" : ""}{fAuto(extraPerClinic * M)}</>}
         </div>
         <div className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
-          {isExtraNegative
-            ? "⚠ F 차감 시나리오 — 일차의료 지원 재원 축소. 코디네이터·영양사 등 인력 운영 위축 가능. 의료계 수용성 검토 필요."
-            : isExactZero && Math.abs(extraPerClinic) < 1e3
-            ? <>현재 F와 동일 — 지원 변화 없음. 적용 후 슬라이더 4개 값 유지 (의원당 등록환자 {regDistTotal.toLocaleString()}명).</>
-            : <>F 가산분이 의원당 등록환자({regDistTotal.toLocaleString()}명)에 직접 적용 — 코디네이터 간호사·영양사 등 일차의료 기능 강화 인력 채용·운영 재원으로 활용 가능.</>
+          {isExactZero
+            ? <>✓ 재정중립 anchor — 추 위치 0%에서는 PF 가산 변동도 ±0원 (의원 공단지급분 변화 KPI의 ② PF 가산 효과 행과 일치). 적용 시 PB drift 보정 외 PF 자체는 유지.</>
+            : isExtraNegative
+            ? "⚠ PF 차감 시나리오 — 일차의료 지원 재원 축소. 코디네이터·영양사 등 인력 운영 위축 가능. 의료계 수용성 검토 필요."
+            : <>PF 가산분이 의원당 등록환자({regDistTotal.toLocaleString()}명)에 직접 적용 — 코디네이터 간호사·영양사 등 일차의료 기능 강화 인력 채용·운영 재원으로 활용 가능.</>
           }
         </div>
       </div>

@@ -7,7 +7,7 @@ const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 const H2 = "font-bold text-base text-gray-900";
 const F_MAX = 600000;
 
-/* FCard (일차의료 기능보정 F) — B 카드와 동일한 4 슬라이더+NumBox 구조 */
+/* FCard (일차의료 기능보정 PF) — v6.9.3: UI 라벨 PF, 내부 변수 F_g 유지 */
 export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = false }) {
   const { F_g, P: B_g } = state;
 
@@ -43,7 +43,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = 
     <div className={bare ? "" : card + " p-4"}>
       <div className="mb-2 space-y-1.5">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <h2 className={H2}>2. 일차의료 기능보정 (F)</h2>
+          <h2 className={H2}>2. 일차의료 기능보정 (PF)</h2>
           <div className="flex flex-wrap gap-1 items-center">
             {actions.map(a => (
               <button key={a.label} onClick={a.onClick} title={a.title}
@@ -79,7 +79,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = 
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-bold flex items-center gap-1" style={{ color: CL[i] }}>
                   {g}
-                  {isNeg && <span className="text-rose-600 text-[10px]" title="음수 F (차감)">⚠</span>}
+                  {isNeg && <span className="text-rose-600 text-[10px]" title="음수 PF (차감)">⚠</span>}
                 </span>
                 <div className={isNeg ? "ring-1 ring-rose-300 rounded" : ""}>
                   <NumBox value={F_g[i]} onChange={v => updF(i, v)} color={isNeg ? "#dc2626" : CL[i]} suffix="원" />
@@ -87,7 +87,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = 
               </div>
               <input type="range" min={F_min} max={F_MAX} step={1000} value={F_clamped}
                 onChange={e => updF(i, parseFloat(e.target.value))}
-                aria-label={`${g} 일차의료 기능보정 슬라이더`}
+                aria-label={`${g} 일차의료 기능보정 PF 슬라이더`}
                 className="w-full big-thumb"
                 style={{ '--thumb-bg': isNeg ? "#dc2626" : CL[i], accentColor: isNeg ? "#dc2626" : CL[i], background: trackBg }} />
             </div>
@@ -112,7 +112,7 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
     <div className="rounded-xl border-2 shadow-md overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#4f46e5" }}>
       <div className="px-4 pt-3 pb-1 flex items-baseline gap-2 flex-wrap">
         <h2 className="font-extrabold text-lg tracking-tight" style={{ color: "#3730a3" }}>
-          {simple ? "일차의료수가" : "일차의료수가 (P = B × (1 − L1) + F)"}
+          {simple ? "일차의료수가" : "일차의료수가 (P = PB + PF)"}
         </h2>
         {!simple && (
           <span className="text-sm font-bold text-indigo-700">
