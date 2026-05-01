@@ -2,8 +2,9 @@
 
 **완료일**: 2026-05-01
 **선행**: v6.9.1 (3번 탭 라벨 재구성 — "절감 → 변화·성과·체계 지원" 프레임)
-**브랜치**: `feature/v6.9.2-f-balance-correction` (main 미머지 · 검증 후 사용자 명시 지시 시 머지)
+**브랜치 흐름**: `feature/v6.9.2-f-balance-correction` → `main` (`--no-ff` merge `15f4984`, tag `v6.9.2`) — 머지 완료, Vercel production 배포됨
 **입력 자료**: 사용자 코드 통합 지시서 (2026-05-01) — 「F 균형추 보정 모듈 v6.9.1 — 코드 통합 지시서 (보강판)」 + 페어 목업 HTML
+**누적 커밋**: 19690ee → 7bc1c12 → 41d88d3 → 0c9866d → b9add55 → 머지 15f4984
 
 ---
 
@@ -216,17 +217,23 @@ reducer SET 핸들러에서 `action.key === "M_clinics"` 시 `totalN = (totalN/M
 
 ---
 
-## 8. 머지 안내
+## 8. 머지 완료 (2026-05-01)
 
-본 브랜치 (`feature/v6.9.2-f-balance-correction`)는 **검증 후 사용자 명시 지시 대기 중**. 머지 명령 시:
+본 브랜치 (`feature/v6.9.2-f-balance-correction`)는 사용자 명시 지시("머지")로 main에 통합 완료:
 
 ```bash
-git checkout main
 git merge --no-ff feature/v6.9.2-f-balance-correction \
   -m "Merge 'feature/v6.9.2-f-balance-correction' — v6.9.2 F 균형추 보정 모듈 (정책 모드 전용)"
+# → 머지 커밋 15f4984
 git tag -a v6.9.2 -m "v6.9.2 — F 균형추 보정 모듈 (정책 모드 · F 박스 직후 마운트)"
-git push origin main --tags
+git push origin main && git push origin v6.9.2
 ```
+
+- **머지 커밋**: [15f4984](https://github.com/shleefm/primary-simulator/commit/15f4984)
+- **태그**: `v6.9.2` (push 완료)
+- **production**: https://primary-simulator.vercel.app/?mode=policy (Vercel 자동 배포)
+
+후속 docs/v6.9.2-session-cleanup 브랜치에서 CLAUDE.md v6.9.2 블록을 사용자 피드백 후 변경(좌측 카드·등록환자 NumBox·totalN 자동 동기화·위치 이동)에 맞춰 정돈하고 main에 추가 머지.
 
 ---
 
