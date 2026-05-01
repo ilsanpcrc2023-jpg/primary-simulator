@@ -1,6 +1,7 @@
 import { memo, useState, useMemo, useRef, useEffect } from "react";
-import { f, fAuto, fMan, diffMan } from "../utils";
+import { f, fAuto, fMan, diffMan, diffAuto } from "../utils";
 import { SH, CL } from "../constants";
+import NumBox from "./shared/NumBox";
 
 // v6.9.2: F 균형추 보정 모듈 (정책 모드 전용)
 // - 추 위치(0~10%) = 현재 공단 의원급 외래 지출(T.nhi) 대비 추가 투입 강도
@@ -55,10 +56,6 @@ const PRESETS = [
   { v: 5, label: "+5%", sub: "적극투입" },
 ];
 
-// v6.9.2: 사업 참여 의원 수 미러 프리셋 (환자군 패널 M 컨트롤과 동일 state 공유).
-// 균형추의 분모(T.nhi)·분자(Σ n_reg) 모두 M에 비례하므로, 균형추 헤더에서 직접 조정 가능하도록 노출.
-const M_PRESETS = [10, 100, 1000, 3000];
-
 export default memo(function FBalanceCorrection({
   state, set, G, T, performance: perfMemo, setFAll
 }) {
@@ -90,13 +87,15 @@ export default memo(function FBalanceCorrection({
     (s, n_pc, i) => s + (dF_array[i] || 0) * n_pc, 0
   );
 
-  // 좌측 윈윈: 포괄관리 성과가산 잠재 (L2 5%p 추가 개선 가정)
-  // 추가 가산 = Σ 0.05 × B × n_reg × trackMul (현재 Track 반영)
-  const trackMul = Math.max(0, Math.min(1, state.hccPct / 100));
-  const additionalPerf_5pp_total = G.reduce(
-    (s, r) => s + 0.05 * r.p * r.n_reg * trackMul, 0
-  );
-  const additionalPerf_5pp_perClinic = additionalPerf_5pp_total / M;
+  // 좌측 카드 (v6.9.2 사용자 피드백 반영): 공단 외래 지출 변화 — 현재 vs 균형추 적용 후 비교.
+  // 균형추는 F를 ΔF만큼 증가시키므로 공단 지출도 ΔF_total만큼 증가 (등록환자에게 직접 가산).
+  const nhiBaseline = T.nhi0;                              // 참여 전 baseline
+  const nhiNow = T.nhi;                                    // 현재 시뮬 (L2 반영)
+  const nhiAfterBalance = nhiNow + deltaTotal;             // ΔF 추가 투입 후
+  const changeNow = nhiNow - nhiBaseline;
+  const changeAfter = nhiAfterBalance - nhiBaseline;
+  const pctNow = nhiBaseline > 0 ? (changeNow / nhiBaseline) * 100 : 0;
+  const pctAfter = nhiBaseline > 0 ? (changeAfter / nhiBaseline) * 100 : 0;
 
   // ── 신호등 + 추 위치 ─────────────────────────────────────────
   const sig = signalLevel(pct);
@@ -152,29 +151,27 @@ export default memo(function FBalanceCorrection({
         </button>
       </div>
 
-      {/* v6.9.2: 사업 참여 의원 수 미러 프리셋 — 환자군 패널 M과 동일 state 공유.
-          M은 분모(T.nhi)·분자(Σ n_reg) 양쪽을 동시에 흔드는 1차 변수이므로 균형추에서 직접 조정 가능. */}
-      <div className="flex items-center gap-2 flex-wrap bg-violet-50/70 border border-violet-200 rounded-lg px-3 py-2">
-        <span className="text-[11px] font-bold text-violet-800">🏢 사업 참여 의원 수</span>
-        <div className="flex gap-1 flex-wrap">
-          {M_PRESETS.map(m => {
-            const active = state.M_clinics === m;
-            return (
-              <button key={m} onClick={() => set("M_clinics", m)}
-                className={`px-2.5 py-0.5 rounded-md text-xs font-semibold transition border ${
-                  active
-                    ? "bg-violet-600 text-white border-violet-600 shadow-sm"
-                    : "bg-white text-slate-700 border-violet-200 hover:border-violet-400 hover:text-violet-700"
-                }`}>
-                {m.toLocaleString()}
-              </button>
-            );
-          })}
-        </div>
-        <span className="text-[10px] text-violet-700/70 ml-auto">
-          현재 <b className="font-semibold tabular-nums">{state.M_clinics.toLocaleString()}</b>개 (환자군 패널과 동기화)
-        </span>
-      </div>
+      {/* v6.9.2: 등록환자 규모 NumBox — 정책 의사결정의 1차 변수.
+          NumBox에 사업 전체 등록환자수 직접 입력 → 의원당 등록환자수(regDist합) 보존하면서 M_clinics derive.
+          reducer 자동 동기화로 totalN도 함께 갱신 (사업 규모 정합성). */}
+      {(() => {
+        const nRegPerClinic = Math.max(1, state.regDist.reduce((s, n) => s + n, 0));
+        const totalRegistered = state.M_clinics * nRegPerClinic;
+        const onScaleChange = (v) => {
+          const newM = Math.max(1, Math.round(v / nRegPerClinic));
+          set("M_clinics", newM);
+        };
+        return (
+          <div className="flex items-center gap-3 flex-wrap bg-violet-50/70 border border-violet-200 rounded-lg px-3 py-2">
+            <span className="text-[11px] font-bold text-violet-800 shrink-0">🏢 등록환자 규모</span>
+            <NumBox value={totalRegistered} onChange={onScaleChange} color="#7c3aed" suffix="명" />
+            <span className="text-[10px] text-violet-700/70 leading-relaxed">
+              = 의원당 <b className="font-semibold">{nRegPerClinic.toLocaleString()}명</b> × 의원 <b className="font-semibold tabular-nums">{state.M_clinics.toLocaleString()}개</b>
+              <span className="text-violet-400 mx-1">·</span>의원당 등록환자는 환자군 패널에서 조정
+            </span>
+          </div>
+        );
+      })()}
 
       {/* ━━━━━━━━ 슬라이더 영역 ━━━━━━━━ */}
       <div className="bg-white rounded-xl border border-violet-100 p-4 sm:p-5 space-y-4">
@@ -262,17 +259,31 @@ export default memo(function FBalanceCorrection({
           </div>
         </div>
 
-        {/* 윈윈 카드 */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${pct < 0.5 ? "opacity-60" : ""}`}>
-          {/* 좌: 포괄관리 성과가산 잠재 (보조 표시) */}
-          <div className="rounded-xl p-3 border" style={{ background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)", borderColor: "#86efac" }}>
-            <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">🟢 포괄관리 성과가산 잠재</div>
-            <div className="text-xl font-extrabold tabular-nums text-emerald-800">
-              +{fMan(additionalPerf_5pp_perClinic)}
+        {/* 좌·우 카드 (v6.9.2 사용자 피드백): 좌=공단 외래 지출 변화 / 우=의원 수입 강화 — 정책 trade-off 시각화 */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${pct < 0.5 ? "opacity-70" : ""}`}>
+          {/* 좌: 공단 외래 지출 변화 — 현재 시뮬 vs 균형추 적용 후 (참여 전 baseline 대비) */}
+          <div className="rounded-xl p-3 border" style={{ background: "linear-gradient(135deg, #f0f9ff 0%, #cffafe 100%)", borderColor: "#7dd3fc" }}>
+            <div className="text-[10px] font-bold text-cyan-700 uppercase tracking-wider mb-1.5">🔵 공단 외래 지출 변화</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-md bg-white/60 px-2 py-1.5 border border-cyan-100">
+                <div className="text-[10px] text-slate-500 font-semibold">현재 시뮬</div>
+                <div className="text-base font-extrabold tabular-nums leading-tight"
+                  style={{ color: changeNow < 0 ? "#0e7490" : "#dc2626" }}>
+                  {diffAuto(0, changeNow)}
+                </div>
+                <div className="text-[10px] text-slate-500 font-mono">{pctNow >= 0 ? "+" : ""}{pctNow.toFixed(2)}%</div>
+              </div>
+              <div className="rounded-md bg-violet-50 px-2 py-1.5 border border-violet-200">
+                <div className="text-[10px] text-violet-700 font-semibold">균형추 +{pct.toFixed(1)}% 적용 시</div>
+                <div className="text-base font-extrabold tabular-nums leading-tight"
+                  style={{ color: changeAfter < 0 ? "#0e7490" : "#dc2626" }}>
+                  {diffAuto(0, changeAfter)}
+                </div>
+                <div className="text-[10px] text-slate-500 font-mono">{pctAfter >= 0 ? "+" : ""}{pctAfter.toFixed(2)}%</div>
+              </div>
             </div>
-            <div className="text-[10px] text-slate-500 font-mono">/의원·년 (L2 5%p 추가 개선 시)</div>
             <div className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
-              주치의 포괄·지속 진료가 닥터쇼핑·중복검사를 줄여 의료비 자체가 감소 → 시스템 선순환
+              공단 지출이 ΔF <b className="font-mono">{fAuto(deltaTotal)}</b>만큼 증가 — 절감폭이 그만큼 축소됩니다 (참여 전 baseline {fAuto(nhiBaseline)} 대비).
             </div>
           </div>
           {/* 우: 의원 수입 강화 (F 가산 효과 — 본 모듈 직접 효과) */}
