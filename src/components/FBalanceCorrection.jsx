@@ -195,7 +195,7 @@ export default memo(function FBalanceCorrection({
         </button>
       </div>
 
-      {/* 등록환자 규모 NumBox */}
+      {/* 등록환자 규모 + 사업 예산 규모 (정책 의사결정 1차 anchor) */}
       {(() => {
         const nRegPerClinic = Math.max(1, state.regDist.reduce((s, n) => s + n, 0));
         const totalRegistered = state.M_clinics * nRegPerClinic;
@@ -203,14 +203,45 @@ export default memo(function FBalanceCorrection({
           const newM = Math.max(1, Math.round(v / nRegPerClinic));
           set("M_clinics", newM);
         };
+        // 등록환자 규모 프리셋 (10만 / 100만 / 1,000만 / 3,000만 명)
+        const SCALE_PRESETS = [
+          { v: 100_000,    label: "10만" },
+          { v: 1_000_000,  label: "100만" },
+          { v: 10_000_000, label: "1,000만" },
+          { v: 30_000_000, label: "3,000만" },
+        ];
         return (
-          <div className="flex items-center gap-3 flex-wrap bg-violet-50/70 border border-violet-200 rounded-lg px-3 py-2">
-            <span className="text-[11px] font-bold text-violet-800 shrink-0">🏢 등록환자 규모</span>
-            <NumBox value={totalRegistered} onChange={onScaleChange} color="#7c3aed" suffix="명" />
-            <span className="text-[10px] text-violet-700/70 leading-relaxed">
-              = 의원당 <b className="font-semibold">{nRegPerClinic.toLocaleString()}명</b> × 의원 <b className="font-semibold tabular-nums">{state.M_clinics.toLocaleString()}개</b>
-              <span className="text-violet-400 mx-1">·</span>의원당 등록환자는 환자군 패널에서 조정
-            </span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 flex-wrap bg-violet-50/70 border border-violet-200 rounded-lg px-3 py-2">
+              <span className="text-[11px] font-bold text-violet-800 shrink-0">🏢 등록환자 규모</span>
+              <NumBox value={totalRegistered} onChange={onScaleChange} color="#7c3aed" suffix="명" />
+              <div className="flex flex-wrap gap-1">
+                {SCALE_PRESETS.map(p => {
+                  const active = totalRegistered === p.v;
+                  return (
+                    <button key={p.v} onClick={() => onScaleChange(p.v)}
+                      className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                      style={active
+                        ? { background: "#ede9fe", borderColor: "#a78bfa", color: "#6d28d9" }
+                        : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                      {p.label}명
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="text-[10px] text-violet-700/70 leading-relaxed">
+                의원당 <b className="font-semibold">{nRegPerClinic.toLocaleString()}명</b> × 의원 <b className="font-semibold tabular-nums">{state.M_clinics.toLocaleString()}개</b>
+              </span>
+            </div>
+            {/* 사업 예산 규모 — baseline 공단 외래 지출 (자동 계산, 정책 anchor) */}
+            <div className="flex items-center gap-3 flex-wrap bg-amber-50/70 border border-amber-200 rounded-lg px-3 py-2">
+              <span className="text-[11px] font-bold text-amber-800 shrink-0">💰 사업 예산 규모</span>
+              <span className="text-base font-extrabold tabular-nums text-amber-900">{(T_nhi0 / 1e8).toFixed(0).toLocaleString()}</span>
+              <span className="text-xs font-bold text-amber-700">억원</span>
+              <span className="text-[10px] text-amber-700/70 leading-relaxed">
+                = baseline 공단 외래 지출 (참여 전 전원 FFS 기준 · 등록환자·B·M1·L 자동 산출)
+              </span>
+            </div>
           </div>
         );
       })()}
@@ -231,11 +262,11 @@ export default memo(function FBalanceCorrection({
         </div>
 
         {/* 슬라이더 본체 — 6단계 그라디언트 + 0% 중심선 + 양방향 thumb */}
-        <div className="relative pt-2 pb-7">
+        <div className="relative pt-9 pb-7">
           {/* 0% 중심선 (33.33%) — 절대 재정중립 시각적 강조 */}
           <div className="absolute pointer-events-none"
             style={{
-              left: `${pctToLeft(0)}%`, top: 8, bottom: 28, width: 2,
+              left: `${pctToLeft(0)}%`, top: 36, bottom: 28, width: 2,
               background: "rgba(16,185,129,0.65)",
               transform: "translateX(-50%)",
               zIndex: 1,
@@ -244,6 +275,29 @@ export default memo(function FBalanceCorrection({
               style={{ textShadow: "0 0 4px rgba(255,255,255,0.9)" }}>
               재정중립
             </div>
+          </div>
+
+          {/* 추 위 floating % bubble — 추 위치를 따라 이동, sig 색상 매칭 */}
+          <div className="absolute pointer-events-none transition-all"
+            style={{
+              left: `${pctToLeft(pct)}%`,
+              top: 0,
+              transform: "translateX(-50%)",
+              zIndex: 3,
+            }}>
+            <div className="px-2 py-0.5 rounded-md text-xs font-extrabold tabular-nums whitespace-nowrap shadow-md border-2"
+              style={{ background: "white", color: sig.color, borderColor: sig.color }}>
+              {pct >= 0 ? "+" : ""}{pct.toFixed(1)}%
+            </div>
+            {/* 말풍선 꼬리 — 추 위쪽 가운데로 향하는 화살표 */}
+            <div className="absolute left-1/2 -translate-x-1/2"
+              style={{
+                top: "100%",
+                width: 0, height: 0,
+                borderLeft: "5px solid transparent",
+                borderRight: "5px solid transparent",
+                borderTop: `5px solid ${sig.color}`,
+              }} />
           </div>
 
           {/* 슬라이더 — pct ∈ [-5, +10] → value ∈ [-50, +100], step=1 (0.1% 정밀도) */}
@@ -298,30 +352,22 @@ export default memo(function FBalanceCorrection({
           <div className="text-center text-red-700"      style={{ width: "13.33%" }}>협상한계</div>
         </div>
 
-        {/* 프리셋 6개 + 추 표시 */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex gap-1 flex-wrap flex-1">
-            {PRESETS.map(p => {
-              const active = Math.abs(p.v - pct) < 0.05;
-              return (
-                <button key={p.v} onClick={() => setPct(p.v)}
-                  className={`flex-1 min-w-[52px] px-1.5 py-1.5 rounded-lg border font-semibold text-xs transition ${
-                    active
-                      ? "bg-violet-600 text-white border-violet-600 shadow"
-                      : "bg-white text-slate-700 border-slate-200 hover:border-violet-400 hover:text-violet-700"
-                  }`}>
-                  <div>{p.label}</div>
-                  <div className={`text-[10px] font-medium ${active ? "text-violet-100" : "text-slate-400"}`}>{p.sub}</div>
-                </button>
-              );
-            })}
-          </div>
-          <div className="bg-violet-50 border border-violet-200 rounded-lg px-3 py-1.5 text-center min-w-[88px]">
-            <div className="text-[10px] text-violet-600 font-semibold">현재 추 위치</div>
-            <div className="text-base font-extrabold text-violet-700 tabular-nums">
-              {pct >= 0 ? "+" : ""}{pct.toFixed(1)}%
-            </div>
-          </div>
+        {/* 프리셋 6개 — 현재 % 는 추 위 floating bubble로 통합 표기 */}
+        <div className="flex items-center gap-1 flex-wrap">
+          {PRESETS.map(p => {
+            const active = Math.abs(p.v - pct) < 0.05;
+            return (
+              <button key={p.v} onClick={() => setPct(p.v)}
+                className={`flex-1 min-w-[52px] px-1.5 py-1.5 rounded-lg border font-semibold text-xs transition ${
+                  active
+                    ? "bg-violet-600 text-white border-violet-600 shadow"
+                    : "bg-white text-slate-700 border-slate-200 hover:border-violet-400 hover:text-violet-700"
+                }`}>
+                <div>{p.label}</div>
+                <div className={`text-[10px] font-medium ${active ? "text-violet-100" : "text-slate-400"}`}>{p.sub}</div>
+              </button>
+            );
+          })}
         </div>
 
         {/* 직접입력 */}

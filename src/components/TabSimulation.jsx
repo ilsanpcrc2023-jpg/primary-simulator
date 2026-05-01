@@ -179,32 +179,28 @@ export default memo(function TabSimulation({
       </button>
       {showAdvanced && (
         <div className="px-4 pb-4 pt-1 border-t border-dashed border-slate-300 space-y-4">
-          {/* B 직접 조정 */}
+          {/* B 직접 조정 — 슬라이더 없이 NumBox만 (HCC×CR 산출값, 소소한 수정 용도만) */}
           <div>
             <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-              <div className="text-sm font-semibold text-slate-700 flex items-baseline gap-2">
+              <div className="text-sm font-semibold text-slate-700 flex items-baseline gap-2 flex-wrap">
                 환자군 기준의료비 (B)
-                <span className="text-[11px] font-normal text-slate-400">B = HCC 평균 × 의원급 외래 비중</span>
+                <span className="text-[11px] font-normal text-slate-400">B = HCC 평균 × 의원급 외래 비중 (분석 산출값)</span>
               </div>
               <button onClick={resetP}
                 className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
                 ↩ 초기화
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {SH.map((g, i) => (
-                <div key={i} className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold" style={{ color: CL[i] }}>{g}</span>
-                    <NumBox value={P[i]} onChange={v => updP(i, Math.max(0, Math.round(v)))} color={CL[i]} suffix="원" />
-                  </div>
-                  <input type="range" min={50000} max={2000000} step={10000} value={P[i]}
-                    onChange={e => updP(i, parseFloat(e.target.value))}
-                    aria-label={`${g} 환자군 기준의료비 B 슬라이더`}
-                    className="w-full big-thumb"
-                    style={{ '--thumb-bg': CL[i], accentColor: CL[i], background: `linear-gradient(to right, ${CL[i]} ${((P[i] - 50000) / 1950000) * 100}%, #e5e7eb 0%)` }} />
+                <div key={i} className="flex items-center gap-1.5 bg-white rounded-lg px-2 py-1.5 border border-slate-200">
+                  <span className="text-[11px] font-bold shrink-0" style={{ color: CL[i] }}>{g}</span>
+                  <NumBox value={P[i]} onChange={v => updP(i, Math.max(0, Math.round(v)))} color={CL[i]} suffix="원" />
                 </div>
               ))}
+            </div>
+            <div className="mt-1.5 text-[10px] text-slate-500 leading-relaxed">
+              ※ 통상 엑셀 업로드(HCC×CR 자동 산출)로 설정되며, 미세 수정만 권장. 변경 시 위 PB 카드가 자동 재계산됩니다.
             </div>
           </div>
 
