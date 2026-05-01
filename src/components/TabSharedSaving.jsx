@@ -1,12 +1,8 @@
 import { memo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { fAuto, fMan } from "../utils";
+import { fAuto, fMan, fChangeAuto } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
-
-// v6.9.1: 음수(−) 표기는 마이너스 부호 U+2212 사용 (하이픈 대신).
-// 0이면 부호 없이, 양수 절감액에는 −prefix 부착하여 "변화액 = 음(−)" 프레임 일관성.
-const fChangeAuto = (v) => v > 0 ? `−${fAuto(v)}` : fAuto(v);
 
 export default memo(function TabSharedSaving({ mode = "policy", state, set, handleMacroSync, SS, resetSsCost, tracks }) {
   const { ssTotalCost, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,

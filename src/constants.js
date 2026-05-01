@@ -102,4 +102,13 @@ export const sliderCSS = `
   input[type=range].big-thumb { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; outline: none; }
   input[type=range].big-thumb::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); background: var(--thumb-bg, #3b82f6); }
   input[type=range].big-thumb::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); background: var(--thumb-bg, #3b82f6); }
+
+  /* v6.9.2: F 균형추 슬라이더 — 신호등 그라디언트 트랙 + 큰 둥근 무게추 thumb */
+  input[type=range].balance-thumb { -webkit-appearance: none; appearance: none; height: 14px; border-radius: 7px; outline: none; box-shadow: inset 0 2px 4px rgba(15,23,42,0.1); border: 1px solid rgba(15,23,42,0.06); }
+  input[type=range].balance-thumb::-webkit-slider-thumb { -webkit-appearance: none; width: 56px; height: 56px; margin-top: -22px; border-radius: 50%; cursor: grab; border: 3px solid var(--thumb-bg, #7c3aed); background: radial-gradient(circle at 50% 30%, #ffffff 0%, #f1f5f9 100%); box-shadow: 0 6px 18px rgba(124,58,237,0.35), inset 0 -3px 6px rgba(15,23,42,0.06), inset 0 3px 6px rgba(255,255,255,0.8); transition: transform 0.15s ease; }
+  input[type=range].balance-thumb::-webkit-slider-thumb:hover { transform: scale(1.06); }
+  input[type=range].balance-thumb::-webkit-slider-thumb:active { cursor: grabbing; }
+  input[type=range].balance-thumb::-moz-range-thumb { width: 56px; height: 56px; border-radius: 50%; cursor: grab; border: 3px solid var(--thumb-bg, #7c3aed); background: radial-gradient(circle at 50% 30%, #ffffff 0%, #f1f5f9 100%); box-shadow: 0 6px 18px rgba(124,58,237,0.35); }
+  input[type=range].balance-thumb::-moz-range-track { background: transparent; border-radius: 7px; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.4); } }
 `;

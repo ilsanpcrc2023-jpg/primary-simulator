@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { FCard, TCard, RegScaleCard } from "./RegistrationPanel";
+import FBalanceCorrection from "./FBalanceCorrection";
 import { SH, CL, INIT_REG_DIST, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fMan, diffMan } from "../utils";
@@ -121,6 +122,12 @@ export default memo(function TabSimulation({
   return (<>
     {/* 정책 고정값 (B · F · L1) — v6.8.1: 의원 모드에서는 완전히 숨김 (공단지급 수가는 TCard에서 금액만 노출) */}
     {mode === "policy" && policyVariables}
+
+    {/* v6.9.2: F 균형추 보정 모듈 — 정책 모드 전용. F 박스 직후 위치. */}
+    {mode === "policy" && (
+      <FBalanceCorrection
+        state={state} G={G} T={T} performance={perfMemo} setFAll={setFAll} />
+    )}
 
     {/* ④ 일차의료수가 — 의원 모드에서는 "환자군별 공단지급 수가" 라벨, 공식·L1 개별 표시 숨김 */}
     <TCard state={state} G={G} mode={mode} />
