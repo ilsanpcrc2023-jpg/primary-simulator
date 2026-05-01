@@ -522,7 +522,7 @@ function WinWinGrid({ pct, isExactZero, isNegative, changeAfterApply, T_nhi0, ex
           {isExactZero
             ? "✓ 공단 외래 지출이 baseline과 정확히 일치. 건정심 협상 시 가장 친화적 영역 (재정중립)."
             : isNegative
-            ? <>F를 음수로 설정하여 baseline 대비 <b className="text-blue-700">{fChangeAuto(Math.abs(changeAfterApply))}</b> 절감 — 재정 보수 시나리오. 단, 의원 수입 영향 검토 필요.</>
+            ? <>F를 음수로 설정하여 baseline 대비 <b className="text-blue-700">{fChangeAuto(Math.abs(changeAfterApply))}</b> 절감 — 재정 보수 시나리오. 단, 일차의료 지원 재원 축소 영향 검토 필요.</>
             : <>F 추가 투입으로 baseline 대비 <b className="text-rose-700">+{fAuto(changeAfterApply)}</b> 증가.</>
           }
         </div>
@@ -540,7 +540,9 @@ function WinWinGrid({ pct, isExactZero, isNegative, changeAfterApply, T_nhi0, ex
         }}>
         <div className="text-[10px] font-bold uppercase tracking-wider mb-1"
           style={{ color: isExtraNegative ? "#b45309" : isExactZero ? "#475569" : "#1d4ed8" }}>
-          {isExtraNegative ? "🟡 의원 수입 영향 (F 차감)" : isExactZero ? "🔵 의원 수입 영향" : "🔵 의원 수입 강화 (F 가산)"}
+          {/* 일차의료 지원 프레임 — F는 의사 개인 수입 증가가 아니라 코디네이터 간호사·영양사
+              등 일차의료 기능 강화 인력 채용·운영 재원으로 활용되는 지원금 성격을 명시. */}
+          {isExtraNegative ? "🟡 일차의료 지원 영향 (F 차감)" : isExactZero ? "🔵 일차의료 지원 영향" : "🔵 일차의료 지원 강화 (F 가산)"}
         </div>
         <div className="text-xl font-extrabold tabular-nums"
           style={{ color: isExtraNegative ? "#b45309" : isExactZero ? "#475569" : "#1d4ed8" }}>
@@ -551,10 +553,10 @@ function WinWinGrid({ pct, isExactZero, isNegative, changeAfterApply, T_nhi0, ex
         </div>
         <div className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
           {isExtraNegative
-            ? "⚠ F 차감 시나리오 — 환자군 기본수가에서 차감 적용. 의원 선지급 수입 감소. 의료계 수용성 검토 필요."
+            ? "⚠ F 차감 시나리오 — 일차의료 지원 재원 축소. 코디네이터·영양사 등 인력 운영 위축 가능. 의료계 수용성 검토 필요."
             : isExactZero && Math.abs(extraPerClinic) < 1e3
-            ? <>현재 F와 동일 — F 변화 없음. 적용 후 슬라이더 4개 값 유지 (의원당 등록환자 {regDistTotal.toLocaleString()}명).</>
-            : <>F 변화분이 의원당 등록환자({regDistTotal.toLocaleString()}명)에 직접 적용됩니다. ΔF × 의원당 등록 합계.</>
+            ? <>현재 F와 동일 — 지원 변화 없음. 적용 후 슬라이더 4개 값 유지 (의원당 등록환자 {regDistTotal.toLocaleString()}명).</>
+            : <>F 가산분이 의원당 등록환자({regDistTotal.toLocaleString()}명)에 직접 적용 — 코디네이터 간호사·영양사 등 일차의료 기능 강화 인력 채용·운영 재원으로 활용 가능.</>
           }
         </div>
       </div>
