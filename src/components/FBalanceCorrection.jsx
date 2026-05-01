@@ -127,8 +127,6 @@ export default memo(function FBalanceCorrection({
   const targetNHI = T_nhi0 * (1 + pct / 100);
   const nhiAfterApply = targetNHI;                    // 적용 후 NHI = baseline + pct
   const changeAfterApply = nhiAfterApply - T_nhi0;    // = T_nhi0 × pct/100
-  const changeNow = T_nhi - T_nhi0;                   // 현재 시뮬 변화량
-  const pctNow = T_nhi0 > 0 ? (changeNow / T_nhi0) * 100 : 0;
 
   // ── 의원당 효과 (참고 표시) ─────────────────────────────────
   // F 가산분 의원당 = Σ ΔF[i] × regDist[i] (의원당 등록환자에 분배)
@@ -345,8 +343,6 @@ export default memo(function FBalanceCorrection({
           pct={pct}
           isExactZero={isExactZero}
           isNegative={isNegative}
-          changeNow={changeNow}
-          pctNow={pctNow}
           changeAfterApply={changeAfterApply}
           T_nhi0={T_nhi0}
           extraPerClinic={extraPerClinic}
@@ -488,7 +484,7 @@ export default memo(function FBalanceCorrection({
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 윈윈 카드 — 3-mode 분기 (양수 / 음수 / 0%)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function WinWinGrid({ pct, isExactZero, isNegative, changeNow, pctNow, changeAfterApply, T_nhi0, extraPerClinic, regDistTotal, M }) {
+function WinWinGrid({ pct, isExactZero, isNegative, changeAfterApply, T_nhi0, extraPerClinic, regDistTotal, M }) {
   // 공통: 우측은 "F 가산 효과" (적용 시 의원당 F 가산분 변화 = ΔF × regDist)
   const isExtraPositive = extraPerClinic > 0;
   const isExtraNegative = extraPerClinic < 0;
@@ -498,7 +494,7 @@ function WinWinGrid({ pct, isExactZero, isNegative, changeNow, pctNow, changeAft
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      {/* 좌: 공단 외래 지출 변화 (3-mode 라벨 분기) */}
+      {/* 좌: 공단 외래 지출 영향 (단일 표시 · A안 — 현재 시뮬 비교 칸 제거. 본 모듈 위 KPI 박스에서 이미 노출) */}
       <div className="rounded-xl p-3 border"
         style={{
           background: isExactZero
@@ -513,37 +509,21 @@ function WinWinGrid({ pct, isExactZero, isNegative, changeNow, pctNow, changeAft
           style={{ color: isExactZero ? "#047857" : isNegative ? "#1d4ed8" : "#0e7490" }}>
           {isExactZero ? "🟢 재정 중립 달성" : isNegative ? "🟦 공단 외래 지출 절감" : "🔵 공단 외래 지출 변화"}
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-md bg-white/60 px-2 py-1.5 border border-slate-200">
-            <div className="text-[10px] text-slate-500 font-semibold">현재 시뮬</div>
-            <div className="text-base font-extrabold tabular-nums leading-tight"
-              style={{ color: changeNow < 0 ? "#0e7490" : changeNow > 0 ? "#dc2626" : "#475569" }}>
-              {diffAuto(0, changeNow)}
-            </div>
-            <div className="text-[10px] text-slate-500 font-mono">{pctNow >= 0 ? "+" : ""}{pctNow.toFixed(2)}%</div>
-          </div>
-          <div className="rounded-md px-2 py-1.5 border"
-            style={{
-              background: isExactZero ? "rgba(16,185,129,0.12)" : "#faf5ff",
-              borderColor: isExactZero ? "#10b981" : "#c4b5fd",
-            }}>
-            <div className="text-[10px] font-semibold"
-              style={{ color: isExactZero ? "#047857" : "#7c3aed" }}>
-              균형추 {pct >= 0 ? "+" : ""}{pct.toFixed(1)}% 적용 시
-            </div>
-            <div className="text-base font-extrabold tabular-nums leading-tight"
-              style={{ color: isExactZero ? "#059669" : changeAfterApply < 0 ? "#0e7490" : changeAfterApply > 0 ? "#dc2626" : "#475569" }}>
-              {isExactZero ? "±0원" : diffAuto(0, changeAfterApply)}
-            </div>
-            <div className="text-[10px] text-slate-500 font-mono">{pctAfter >= 0 ? "+" : ""}{pctAfter.toFixed(2)}%</div>
-          </div>
+        <div className="text-[11px] font-semibold mb-0.5"
+          style={{ color: isExactZero ? "#047857" : "#7c3aed" }}>
+          균형추 {pct >= 0 ? "+" : ""}{pct.toFixed(1)}% 적용 시 <span className="font-normal text-slate-500">· baseline 대비</span>
         </div>
+        <div className="text-2xl font-extrabold tabular-nums leading-tight"
+          style={{ color: isExactZero ? "#059669" : changeAfterApply < 0 ? "#0e7490" : changeAfterApply > 0 ? "#dc2626" : "#475569" }}>
+          {isExactZero ? "±0원" : diffAuto(0, changeAfterApply)}
+        </div>
+        <div className="text-[11px] text-slate-500 font-mono mt-0.5">{pctAfter >= 0 ? "+" : ""}{pctAfter.toFixed(2)}% · baseline {fAuto(T_nhi0)}</div>
         <div className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
           {isExactZero
-            ? "✓ baseline 대비 공단 외래 지출 변화 0원. 건정심 협상 시 가장 친화적 영역 (재정중립)."
+            ? "✓ 공단 외래 지출이 baseline과 정확히 일치. 건정심 협상 시 가장 친화적 영역 (재정중립)."
             : isNegative
-            ? <>F를 음수로 설정하여 공단 외래 지출이 baseline 대비 <b className="text-blue-700">{fChangeAuto(Math.abs(changeAfterApply))}</b> 절감 — 재정 보수 시나리오. 단, 의원 수입 영향 검토 필요.</>
-            : <>F 추가 투입으로 공단 외래 지출이 baseline 대비 <b className="text-rose-700">+{fAuto(changeAfterApply)}</b> 증가 (참여 전 baseline {fAuto(T_nhi0)} 대비).</>
+            ? <>F를 음수로 설정하여 baseline 대비 <b className="text-blue-700">{fChangeAuto(Math.abs(changeAfterApply))}</b> 절감 — 재정 보수 시나리오. 단, 의원 수입 영향 검토 필요.</>
+            : <>F 추가 투입으로 baseline 대비 <b className="text-rose-700">+{fAuto(changeAfterApply)}</b> 증가.</>
           }
         </div>
       </div>
