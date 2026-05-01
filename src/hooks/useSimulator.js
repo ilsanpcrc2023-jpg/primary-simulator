@@ -77,12 +77,15 @@ function reducer(state, action) {
       return { ...state, base };
     }
     case "SET_F_AT": {
+      // v6.9.2-bidir: F 음수 허용 (음수 = 환자군 기본수가에서 차감, 정책 협상 하한선 탐색용).
+      // 음수 하한 가드는 슬라이더 단(min = -B/2)에서 처리. reducer는 정수 라운딩만.
       const F_g = [...state.F_g];
-      F_g[action.i] = Math.max(0, Math.round(action.value));
+      F_g[action.i] = Math.round(action.value);
       return { ...state, F_g };
     }
     case "SET_F_ALL":
-      return { ...state, F_g: action.values.map(v => Math.max(0, Math.round(v))) };
+      // v6.9.2-bidir: F 음수 허용. 균형추 calcF_fromBalance가 음수 절대값을 반환할 수 있음.
+      return { ...state, F_g: action.values.map(v => Math.round(v)) };
     case "RESET_F":
       return { ...state, F_g: [...INIT_F] };
     case "RESET_P":

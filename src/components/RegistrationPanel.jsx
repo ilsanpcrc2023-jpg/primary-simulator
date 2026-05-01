@@ -62,19 +62,37 @@ export const FCard = memo(function FCard({ state, setFAll, updF, resetF, bare = 
       </div>
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-        {SH.map((g, i) => (
-          <div key={i} className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold" style={{ color: CL[i] }}>{g}</span>
-              <NumBox value={F_g[i]} onChange={v => updF(i, v)} color={CL[i]} suffix="원" />
+        {SH.map((g, i) => {
+          // v6.9.2-bidir: F 음수 허용. 음수 하한 = -B/2 (정책 가드레일).
+          const F_min = -Math.round((B_g[i] || 0) / 2);
+          const F_clamped = Math.max(F_min, Math.min(F_g[i], F_MAX));
+          const isNeg = F_g[i] < 0;
+          // 슬라이더 fill: 음수 영역은 빨강, 양수 영역은 환자군 색상.
+          // 트랙 절대 0 위치 = -F_min / (F_MAX - F_min) (×100%)
+          const zeroPct = F_MAX > F_min ? ((-F_min) / (F_MAX - F_min)) * 100 : 0;
+          const valuePct = F_MAX > F_min ? ((F_clamped - F_min) / (F_MAX - F_min)) * 100 : 0;
+          const trackBg = isNeg
+            ? `linear-gradient(to right, #e5e7eb 0%, #e5e7eb ${valuePct}%, #fecaca ${valuePct}%, #fecaca ${zeroPct}%, #e5e7eb ${zeroPct}%, #e5e7eb 100%)`
+            : `linear-gradient(to right, #e5e7eb 0%, #e5e7eb ${zeroPct}%, ${CL[i]} ${zeroPct}%, ${CL[i]} ${valuePct}%, #e5e7eb ${valuePct}%, #e5e7eb 100%)`;
+          return (
+            <div key={i} className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold flex items-center gap-1" style={{ color: CL[i] }}>
+                  {g}
+                  {isNeg && <span className="text-rose-600 text-[10px]" title="음수 F (차감)">⚠</span>}
+                </span>
+                <div className={isNeg ? "ring-1 ring-rose-300 rounded" : ""}>
+                  <NumBox value={F_g[i]} onChange={v => updF(i, v)} color={isNeg ? "#dc2626" : CL[i]} suffix="원" />
+                </div>
+              </div>
+              <input type="range" min={F_min} max={F_MAX} step={1000} value={F_clamped}
+                onChange={e => updF(i, parseFloat(e.target.value))}
+                aria-label={`${g} 일차의료 기능보정 슬라이더`}
+                className="w-full big-thumb"
+                style={{ '--thumb-bg': isNeg ? "#dc2626" : CL[i], accentColor: isNeg ? "#dc2626" : CL[i], background: trackBg }} />
             </div>
-            <input type="range" min={0} max={F_MAX} step={1000} value={Math.min(F_g[i], F_MAX)}
-              onChange={e => updF(i, parseFloat(e.target.value))}
-              aria-label={`${g} 일차의료 기능보정 슬라이더`}
-              className="w-full big-thumb"
-              style={{ '--thumb-bg': CL[i], accentColor: CL[i], background: `linear-gradient(to right, ${CL[i]} ${(Math.min(F_g[i], F_MAX) / F_MAX) * 100}%, #e5e7eb 0%)` }} />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
