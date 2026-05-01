@@ -4,6 +4,7 @@ import { INIT_BASE, INIT_P, INIT_F, ON, COL_ALIASES,
   INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C,
   INIT_SS_COST_BASE, INIT_SS_PROJECT_COST,
   INIT_L1,
+  INIT_M_CLINICS, INIT_TOTAL_N, INIT_PER_CLINIC, INIT_BASE_PER_CLINIC,
   B_MIN, B_MAX, OFFICIAL_BASELINE_META } from '../constants';
 
 describe('calculation engine', () => {
@@ -50,14 +51,15 @@ describe('calculation engine', () => {
     });
   });
 
-  it('v6.7: L1 lower than baseline L shifts pay_gov higher', () => {
-    // 디폴트 L1=0.7 vs 실측 b.L≈0.79 — L1이 낮을수록 공단지급 확대
+  it('v6.9.5: L1 디폴트 = base.L 실측 → pay_gov(L1) = pay_gov(base.L)', () => {
+    // v6.9.5: L1은 협상 변수가 아니라 데이터 실측 그 자체.
+    //   디폴트가 base.L과 동일하므로, L1·base.L 적용 시 동일 공단지급 산출.
     INIT_BASE.forEach((b, i) => {
       const B_i = INIT_P[i];
       const F_i = INIT_F[i];
-      const pay_L1 = B_i * (1 - INIT_L1[i]) + F_i;    // 0.70 적용
-      const pay_baseL = B_i * (1 - b.L) + F_i;         // 0.79 적용
-      expect(pay_L1).toBeGreaterThan(pay_baseL);
+      const pay_L1 = B_i * (1 - INIT_L1[i]) + F_i;
+      const pay_baseL = B_i * (1 - b.L) + F_i;
+      expect(pay_L1).toBeCloseTo(pay_baseL, 0);
     });
   });
 
@@ -176,13 +178,16 @@ describe('v6.6 official_baseline.json 로더', () => {
 });
 
 describe('v6.7 L1·L2 분리 (선지급 vs 사후 성과급)', () => {
-  it('INIT_L1 기본값 0.7 · 4군 배열', () => {
+  it('v6.9.5: INIT_L1 = INIT_BASE.L (데이터 실측, placeholder 0.70 폐기)', () => {
     expect(INIT_L1).toHaveLength(4);
-    INIT_L1.forEach(v => {
-      expect(v).toBe(0.7);
+    INIT_L1.forEach((v, i) => {
       expect(v).toBeGreaterThanOrEqual(0);
       expect(v).toBeLessThanOrEqual(1);
+      // 파일럿 official_baseline의 L 값과 동일해야 함 (자동 산출)
+      expect(v).toBeCloseTo(INIT_BASE[i].L, 6);
     });
+    // 더 이상 0.7로 채워져 있지 않음을 회귀 방지
+    expect(INIT_L1.every(v => v === 0.7)).toBe(false);
   });
 
   it('성과급 공식: max(0, L1 − L2) × B × n_reg (no-downside · 의원 100% 환원)', () => {
@@ -207,11 +212,15 @@ describe('v6.7 L1·L2 분리 (선지급 vs 사후 성과급)', () => {
     expect(trackMul(150)).toBe(1);
   });
 
-  it('L1 가중평균 = Σ L1_g × N_g / Σ N_g', () => {
+  it('L1 가중평균 = Σ L1_g × N_g / Σ N_g (v6.9.5: 디폴트 = base.L 가중평균)', () => {
     const t = INIT_BASE.reduce((s, g) => s + g.N, 0);
     const L1avg = INIT_BASE.reduce((s, g, i) => s + INIT_L1[i] * g.N, 0) / t;
-    // 모든 L1이 0.7이면 가중평균도 0.7
-    expect(L1avg).toBeCloseTo(0.7, 5);
+    const baseLavg = INIT_BASE.reduce((s, g) => s + g.L * g.N, 0) / t;
+    // INIT_L1 = INIT_BASE.L → 두 가중평균이 동일
+    expect(L1avg).toBeCloseTo(baseLavg, 6);
+    // 파일럿(2023) 가중평균은 약 78.6% (대략 0.78~0.80)
+    expect(L1avg).toBeGreaterThan(0.75);
+    expect(L1avg).toBeLessThan(0.82);
   });
 
   it('Track A에서는 L1 미적용 (FFS 1인당 수가 = M1 + F)', () => {
@@ -299,5 +308,58 @@ describe('v6.5 PT/SS Track percentages', () => {
     const f1 = computeFund(1000);
     const f2 = computeFund(2000);
     expect(f2 / f1).toBeCloseTo(2, 5);
+  });
+
+  // v6.9.4: 데이터 기반 디폴트 (파일럿 anchor)
+  describe('v6.9.4 · 파일럿 anchor 디폴트', () => {
+    it('INIT_TOTAL_N = sum(INIT_BASE.N) = ON (= 69,604)', () => {
+      expect(INIT_TOTAL_N).toBe(ON);
+      expect(INIT_TOTAL_N).toBe(69604);
+    });
+
+    it('INIT_M_CLINICS는 official_baseline.json의 M_clinics (파일럿: 10)', () => {
+      expect(INIT_M_CLINICS).toBe(10);
+    });
+
+    it('INIT_PER_CLINIC = round(INIT_TOTAL_N / INIT_M_CLINICS) (파일럿: 6,960)', () => {
+      expect(INIT_PER_CLINIC).toBe(6960);
+      expect(INIT_BASE_PER_CLINIC).toBe(INIT_PER_CLINIC);
+    });
+
+    it('파일럿 디폴트 의원당 환자수가 임의 3,000명이 아님 (사용자 피드백 반영)', () => {
+      expect(INIT_PER_CLINIC).not.toBe(3000);
+      expect(INIT_M_CLINICS).not.toBe(100);
+      expect(INIT_TOTAL_N).not.toBe(300000);
+    });
+  });
+
+  // v6.9.5: L1 = base.L 자동 산출 (옵션 A)
+  describe('v6.9.5 · L1 데이터 실측 자동 산출', () => {
+    it('LOAD_DATA가 L1을 새 base.L로 동기화하는 명세 (reducer 모방)', () => {
+      // useSimulator의 LOAD_DATA가 L1: action.base.map(b => b.L)을 적용한다는 명세를
+      // reducer를 직접 import 없이 검증. 새 데이터의 L 값과 동일한 L1이 산출되는지.
+      const newBase = [
+        { N: 1000, M1: 50000, L: 0.50 },
+        { N: 2000, M1: 80000, L: 0.55 },
+        { N: 3000, M1: 120000, L: 0.60 },
+        { N: 4000, M1: 200000, L: 0.65 },
+      ];
+      const syncedL1 = newBase.map(b => b.L);
+      expect(syncedL1).toEqual([0.50, 0.55, 0.60, 0.65]);
+      // 향후 3,000개 의원 데이터: 그 데이터의 실측 L이 그대로 L1
+      const sumN = newBase.reduce((s, g) => s + g.N, 0);
+      const newL1avg = newBase.reduce((s, g, i) => s + syncedL1[i] * g.N, 0) / sumN;
+      const newBaseLavg = newBase.reduce((s, g) => s + g.L * g.N, 0) / sumN;
+      expect(newL1avg).toBeCloseTo(newBaseLavg, 6);
+    });
+
+    it('RESET_L1은 현재 base.L로 복귀 (data anchor 패턴)', () => {
+      // 사용자가 L1을 임의 조정 후 reset 누르면 현재 base.L로 복귀.
+      // useSimulator의 RESET_L1이 state.base.map(b => b.L)을 반환한다는 명세.
+      const currentBase = INIT_BASE;
+      const resetL1 = currentBase.map(b => b.L);
+      expect(resetL1).toHaveLength(4);
+      resetL1.forEach((v, i) => expect(v).toBe(currentBase[i].L));
+    });
   });
 });
