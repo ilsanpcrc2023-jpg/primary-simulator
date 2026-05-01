@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { FCard, TCard, RegScaleCard } from "./RegistrationPanel";
+import FBalanceCorrection from "./FBalanceCorrection";
 import { SH, CL, INIT_REG_DIST, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fMan, diffMan } from "../utils";
@@ -37,8 +38,9 @@ export default memo(function TabSimulation({
   const perClinicPerf = decomp.performanceEffect / M;   // L2 성과급 (현재 선택 Track 반영)
   const perClinicNet = decomp.netChange / M;
 
-  const policyVariables = (<>
-    {/* ①+② B와 F 통합 박스 */}
+  // v6.9.2: policyVariables를 policyBF와 policyL1로 분리 — 균형추 모듈을 B+F 박스 직후·L1 박스 직전에 끼워 넣기 위함.
+  const policyBF = (
+    /* ①+② B와 F 통합 박스 */
     <div className={card + " p-4 space-y-4"}>
       {/* ① 환자군 기본수가 B */}
       <div>
@@ -74,8 +76,10 @@ export default memo(function TabSimulation({
       {/* ② 일차의료 기능보정 F */}
       <FCard state={state} setFAll={setFAll} updF={updF} resetF={resetF} bare />
     </div>
+  );
 
-    {/* ③ 선지급 기준 타원이용비중 L1 (P 박스 위 · 신규) */}
+  const policyL1 = (
+    /* ③ 선지급 기준 타원이용비중 L1 (P 박스 위 · v6.9.2부터 균형추 박스 다음 위치) */
     <div className="rounded-xl border-2 shadow-sm px-4 py-3" style={{ background: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)", borderColor: "#5eead4" }}>
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <div className="flex items-baseline gap-2 flex-wrap">
@@ -116,11 +120,20 @@ export default memo(function TabSimulation({
         ※ L1은 선지급 계산용(과거 평균). 데이터 수령 전 placeholder 0.70. &quot;엑셀 L → L1 복사&quot; 버튼으로 업로드 값 반영.
       </div>
     </div>
-  </>);
+  );
 
   return (<>
-    {/* 정책 고정값 (B · F · L1) — v6.8.1: 의원 모드에서는 완전히 숨김 (공단지급 수가는 TCard에서 금액만 노출) */}
-    {mode === "policy" && policyVariables}
+    {/* 정책 고정값 ① B + ② F 통합 박스 — v6.8.1: 의원 모드에서는 완전히 숨김 */}
+    {mode === "policy" && policyBF}
+
+    {/* v6.9.2: F 균형추 보정 모듈 — 정책 모드 전용. ② F 박스 직후·③ L1 박스 직전 위치. */}
+    {mode === "policy" && (
+      <FBalanceCorrection
+        state={state} set={set} G={G} T={T} performance={perfMemo} setFAll={setFAll} />
+    )}
+
+    {/* ③ 선지급 기준 타원이용비중 L1 — 의원 모드에서는 숨김 */}
+    {mode === "policy" && policyL1}
 
     {/* ④ 일차의료수가 — 의원 모드에서는 "환자군별 공단지급 수가" 라벨, 공식·L1 개별 표시 숨김 */}
     <TCard state={state} G={G} mode={mode} />

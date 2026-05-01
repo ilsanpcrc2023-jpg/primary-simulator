@@ -20,3 +20,8 @@ export const diffAuto = (a, b) => {
 // 만원 단위 고정 포매팅 (의원당 평균처럼 작은 차이 가독성 필요 시)
 export const fMan = (v) => Math.round(v / 1e4).toLocaleString("ko-KR") + "만원";
 export const diffMan = (delta) => (delta >= 0 ? "+" : "") + fMan(delta);
+
+// v6.9.1: 의료비 변화액 음(−) 표기 헬퍼 (U+2212).
+// 양수 절감액 → "−XXX억원" prefix 부착, 0이면 부호 없이.
+// "이용 감소 가정" 박스에서 양수 입력을 음(−) 변화로 표기할 때 사용.
+export const fChangeAuto = (v) => v > 0 ? `−${fAuto(v)}` : fAuto(v);

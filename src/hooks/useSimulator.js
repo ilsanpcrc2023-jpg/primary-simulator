@@ -52,6 +52,19 @@ const initialState = {
 function reducer(state, action) {
   switch (action.type) {
     case "SET":
+      // v6.9.2: M_clinics 변경 시 totalN을 자동 동기화 (사업 규모 정합성).
+      // perClinic = totalN / M을 보존하도록 newTotalN = perClinic × newM 으로 갱신.
+      // 이로써 균형추 미러 프리셋과 RegistrationPanel의 M 컨트롤이 같은 결과를 보장하고,
+      // M=1,000으로 늘릴 때 totalN clamp로 의원당 등록환자수가 비현실적으로 줄어드는 문제 해소.
+      // baseN_per_clinic(참여 전 기준선)은 패널 변화 효과 분해용 독립 변수이므로 변경 안 함.
+      if (action.key === "M_clinics") {
+        const newM = Math.max(1, Math.round(action.value));
+        const perClinic = state.M_clinics > 0
+          ? state.totalN / state.M_clinics
+          : state.baseN_per_clinic;
+        const newTotalN = Math.max(1, Math.round(perClinic * newM));
+        return { ...state, M_clinics: newM, totalN: newTotalN };
+      }
       return { ...state, [action.key]: action.value };
     case "SET_P": {
       const P = [...state.P];
