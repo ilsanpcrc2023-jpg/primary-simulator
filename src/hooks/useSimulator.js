@@ -83,15 +83,16 @@ function reducer(state, action) {
       return { ...state, base };
     }
     case "SET_F_AT": {
-      // v6.9.2-bidir: F 음수 허용 (음수 = 환자군 기본수가에서 차감, 정책 협상 하한선 탐색용).
-      // 음수 하한 가드는 슬라이더 단(min = -B/2)에서 처리. reducer는 정수 라운딩만.
+      // v6.9.6: PF 음수 금지 (사용자 결정). 0 floor.
+      //   v6.9.2-bidir에서 도입한 음수 PF 시나리오는 폐기.
+      //   균형추 calcPF_fromBalance가 음수 절대값을 반환해도 reducer 단에서 0으로 잘림.
       const F_g = [...state.F_g];
-      F_g[action.i] = Math.round(action.value);
+      F_g[action.i] = Math.max(0, Math.round(action.value));
       return { ...state, F_g };
     }
     case "SET_F_ALL":
-      // v6.9.2-bidir: F 음수 허용. 균형추 calcF_fromBalance가 음수 절대값을 반환할 수 있음.
-      return { ...state, F_g: action.values.map(v => Math.round(v)) };
+      // v6.9.6: PF 음수 금지. 균형추 산출 결과 음수도 0으로 floor.
+      return { ...state, F_g: action.values.map(v => Math.max(0, Math.round(v))) };
     case "RESET_F":
       return { ...state, F_g: [...INIT_F] };
     case "RESET_P":
