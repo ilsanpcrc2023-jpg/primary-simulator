@@ -79,7 +79,7 @@ export default memo(function TabSimulation({
     </div>
   );
 
-  // ① PB 카드 (연회색 · 데이터 기반 배지)
+  // ① PB 카드 (연회색 · 데이터 기반 배지) — 산출값이므로 NumBox만, 슬라이더 없음
   const PBcard = (
     <div className="rounded-xl border shadow-sm p-4"
       style={{ background: "#f8fafc", borderColor: "#e2e8f0" }}>
@@ -98,35 +98,23 @@ export default memo(function TabSimulation({
         PB = 환자군 기준의료비(B) × (1 − L1)
         <span className="text-slate-400 ml-1">· L1은 디폴트 0.70 (고급 패널에서 조정)</span>
       </div>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {SH.map((g, i) => {
           const PB_val = PB[i];
           const L1_g = L1?.[i] ?? 0.7;
-          // 슬라이더 range: 현재 PB의 ±50% (B 기반 절대 clamp는 PBtoB에서 적용)
-          const sliderMin = Math.max(1000, Math.round(PB_val * 0.5));
-          const sliderMax = Math.max(sliderMin + 1000, Math.round(PB_val * 1.5));
-          const valuePct = sliderMax > sliderMin ? ((PB_val - sliderMin) / (sliderMax - sliderMin)) * 100 : 0;
           return (
-            <div key={i} className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold" style={{ color: CL[i] }}>{g}</span>
-                <NumBox value={PB_val} onChange={v => {
-                  const newB = Math.max(50000, Math.min(2000000, PBtoB(Math.max(0, Math.round(v)), L1_g)));
-                  updP(i, newB);
-                }} color={CL[i]} suffix="원" />
-              </div>
-              <input type="range" min={sliderMin} max={sliderMax} step={1000} value={PB_val}
-                onChange={e => {
-                  const newPB = parseFloat(e.target.value);
-                  const newB = Math.max(50000, Math.min(2000000, PBtoB(newPB, L1_g)));
-                  updP(i, newB);
-                }}
-                aria-label={`${g} 일차의료 기본수가 PB 슬라이더`}
-                className="w-full big-thumb"
-                style={{ '--thumb-bg': CL[i], accentColor: CL[i], background: `linear-gradient(to right, ${CL[i]} ${valuePct}%, #e5e7eb 0%)` }} />
+            <div key={i} className="flex items-center gap-1.5 bg-white rounded-lg px-2 py-1.5 border border-slate-200">
+              <span className="text-[11px] font-bold shrink-0" style={{ color: CL[i] }}>{g}</span>
+              <NumBox value={PB_val} onChange={v => {
+                const newB = Math.max(50000, Math.min(2000000, PBtoB(Math.max(0, Math.round(v)), L1_g)));
+                updP(i, newB);
+              }} color={CL[i]} suffix="원" />
             </div>
           );
         })}
+      </div>
+      <div className="mt-1.5 text-[10px] text-slate-500 leading-relaxed">
+        ※ 통상 엑셀 업로드(HCC×CR 자동 산출)와 L1 디폴트로 결정. 미세 수정만 권장 — 변경 시 내부 B 자동 역산.
       </div>
     </div>
   );
