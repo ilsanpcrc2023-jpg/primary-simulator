@@ -148,7 +148,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        일차의료 지불체계 시뮬레이터 v6.9.2 · 일차의료개발센터 · © 2026
+        일차의료 지불체계 시뮬레이터 v6.9.2-bidir · 일차의료개발센터 · © 2026
       </div>
     </div>
   );
