@@ -278,21 +278,28 @@ TCard에서 의원 모드는 `simple={true}` → "일차의료수가" 단순 라
 
 ---
 
-## 8. 머지 가이드
+## 8. 머지 완료 (2026-05-02)
+
+✅ **main 머지 완료** — commit `40f7f86` (--no-ff), tag `v6.9.3` push.
+
+Vercel 자동 배포: https://primary-simulator.vercel.app/?mode=policy — 약 1~2분 후 v6.9.3 화면 적용.
 
 ```bash
-# 사용자 승인 후
-git checkout main
-git pull
-git merge --no-ff feature/v6.9.3-naming-pb-pf -m "Merge 'feature/v6.9.3-naming-pb-pf' — v6.9.3 명칭 체계 PB·PF + KPI 재정의"
-git tag v6.9.3 -m "v6.9.3: PB·PF 명칭 체계 + 의원 공단지급분 KPI"
+# 실행된 명령
+git checkout main && git pull
+git merge --no-ff feature/v6.9.3-naming-pb-pf -m "Merge ... v6.9.3 명칭 PB·PF + KPI 공단지급분 변화 재정의"
+git tag v6.9.3 -m "v6.9.3: PB·PF 명칭 체계 + 의원 공단지급분 KPI 재정의"
 git push origin main --tags
 ```
 
-Vercel 자동 배포 (https://primary-simulator.vercel.app/) — 약 1~2분.
+검증 권장:
+- production URL 정책 모드 진입 → 공식 박스 + PB 카드 + PF 카드 + 접힌 균형추 + 접힌 고급 패널
+- 의원 KPI "의원 공단지급분 변화" + ② "PF 가산 효과" + 본인부담 disclaimer
+- 균형추 펼치기 → 추 사다리꼴 + floating % bubble
 
 ---
 
 *문서 작성: 2026-05-02*
-*세션 완료 커밋: c86c77e → f08df26 → 9d3e4f0 → b62f751*
+*머지 commit: 40f7f86 / tag: v6.9.3*
+*세션 commits: c86c77e → f08df26 → 9d3e4f0 → b62f751 → 7511d0c → 40f7f86 (merge)*
 *핵심 결정: PB·PF 명칭 채택, modelEffect → pfEffect 교체 (A2 옵션), 산출값 NumBox-only 패턴 통일, 사다리꼴 추 + floating bubble*
