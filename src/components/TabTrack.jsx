@@ -74,13 +74,13 @@ export default memo(function TabTrack({
       )}
     </div>
 
-    {/* ② L2 슬라이더 (위로 승격) — 수가 시뮬레이션 탭과 state 공유 */}
+    {/* ② L2 슬라이더 (위로 승격) — 수가 시뮬레이션 탭과 state 공유 (v6.10.0: 범위 -25~0%p, 5%p 간격 표기) */}
     {(() => {
       const L1avg = perfMemo?.L1avg ?? 0.7;
-      const L2delta = Math.max(-50, Math.min(0, (L2_display - L1avg) * 100));
-      const sliderBg = `linear-gradient(to right, #7c3aed ${((L2delta + 50) / 50) * 100}%, #e5e7eb 0%)`;
+      const L2delta = Math.max(-25, Math.min(0, (L2_display - L1avg) * 100));
+      const sliderBg = `linear-gradient(to right, #7c3aed ${((L2delta + 25) / 25) * 100}%, #e5e7eb 0%)`;
       const setL2FromDelta = (dPct) => {
-        const d = Math.max(-50, Math.min(0, dPct));
+        const d = Math.max(-25, Math.min(0, dPct));
         setL2?.(Math.max(0, Math.min(1, L1avg + d / 100)));
       };
       return (
@@ -100,13 +100,13 @@ export default memo(function TabTrack({
               ↩ 초기화
             </button>
           </div>
-          <input type="range" min={-50} max={0} step={0.5} value={L2delta}
+          <input type="range" min={-25} max={0} step={0.5} value={L2delta}
             onChange={e => setL2FromDelta(parseFloat(e.target.value))}
             aria-label="Track 탭 포괄관리 지표 L2 변화율 슬라이더"
             className="w-full big-thumb"
             style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: sliderBg }} />
           <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
-            <span>-50%p</span><span>-40%p</span><span>-30%p</span><span>-20%p</span><span>-10%p</span><span>0%p</span>
+            <span>-25%p</span><span>-20%p</span><span>-15%p</span><span>-10%p</span><span>-5%p</span><span>0%p</span>
           </div>
           <div className="mt-1 text-[10px] text-purple-700/70 leading-relaxed">
             ※ L2가 작아질수록(개선) 포괄관리 성과가산 발생 (no-downside) · 수가 시뮬레이션 탭과 값 공유

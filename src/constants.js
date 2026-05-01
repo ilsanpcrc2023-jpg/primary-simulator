@@ -37,7 +37,15 @@ export const OFFICIAL_BASELINE_META = {
 // F = 일차의료 기능보정 (환자군별 차등) — 정책 슬라이더 (엑셀 업로드와 무관)
 // B = 환자군 기본수가 — 정책 슬라이더 (엑셀 업로드 시 HCC×의원비중 자동 유도)
 // P = B + F (일차의료수가, 명목 청구수가)
-export const INIT_R = [10000, 20000, 30000, 40000];   // 차등 디폴트 (환자군별 1·2·3·4만원, F 값)
+//
+// v6.10.0: PF 디폴트 = B의 10% (HCC 비례 자동, 데이터 기반).
+//   기존 [1·2·3·4만원] 임의값은 폐기 — "1군 28,083원 = B 280,832원의 10%"가 가장 강한 답변.
+//   파일럿 baseline(B=[280832, 300199, 523581, 745317]) 적용 시: [28083, 30020, 52358, 74532].
+//   PF 통합 슬라이더의 디폴트 위치(10%)와 정합.
+export const INIT_PF_PCT = 10;               // PF 통합 슬라이더 디폴트 (B의 X%, 0~20)
+export const INIT_PF_RULE = "hcc";           // 분배 규칙 디폴트 (hcc|equal|inverse)
+export const INIT_F = INIT_B.map(b => Math.round(b * INIT_PF_PCT / 100));
+export const INIT_R = INIT_F;                // 하위 호환 alias (v6.9.x까지의 명칭)
 export const INIT_REG_DIST = [100, 600, 200, 100];
 
 // v6.9.4: 데이터 기반 디폴트로 전환.
@@ -72,7 +80,6 @@ export const INIT_SS_COST_BASE = "project";
 export const INIT_SS_PROJECT_COST = 10000;  // 억원 (사업 참여 의원 환자군 총진료비 추정 디폴트)
 // 이전 명칭 유지 (하위 호환)
 export const INIT_P = INIT_B;
-export const INIT_F = INIT_R;
 export const ON = INIT_BASE.reduce((s, g) => s + g.N, 0);
 
 export const NATIONAL_POP = 51_411_696;
@@ -88,6 +95,19 @@ export const CLINIC_PRESETS = [
   { key: "general", label: "일반 의원",  regDist: [100, 600, 200, 100] },
   { key: "elderly", label: "노인 집중",  regDist: [30, 200, 400, 370] },
   { key: "custom",  label: "사용자 지정", regDist: null },
+];
+
+// v6.10.0: 정책 모드 환자군 패널 시나리오 프리셋 (의원당 환자수 기준).
+//   - 파일럿: 2023 실측 (10기관 / 69,604명 / 의원당 6,960명)
+//   - 시범사업: 복지부 시범사업안 (의원당 1,500명)
+//   - NHS: 영국 1차의료 평균 등록 패널 규모 (의원당 약 2,200명)
+//   - 네덜란드: GP 평균 등록 패널 규모 (의원당 약 2,200명)
+//   - 의원 모드는 CLINIC_PRESETS(분포)를 사용 — 정책 모드는 패널 규모 비교가 핵심.
+export const POLICY_SCENARIOS = [
+  { key: "pilot",    label: "파일럿",   perClinic: 6960, sub: "2023 실측" },
+  { key: "korea",    label: "시범사업", perClinic: 1500, sub: "복지부안" },
+  { key: "nhs",      label: "NHS",      perClinic: 2200, sub: "영국 GP" },
+  { key: "nl",       label: "네덜란드", perClinic: 2200, sub: "GP 평균" },
 ];
 
 // v6.7: L1 · L2 분리 (선지급 vs 사후 성과급)
@@ -118,18 +138,9 @@ export const COL_ALIASES = {
   CR:  ["의원비중", "의원급외래 비중", "의원급외래비중", "의원급외래\n비중"],
 };
 
+// v6.10.0: balance-thumb CSS 제거 (균형추 모듈 폐지와 함께).
 export const sliderCSS = `
   input[type=range].big-thumb { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; outline: none; }
   input[type=range].big-thumb::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); background: var(--thumb-bg, #3b82f6); }
   input[type=range].big-thumb::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); background: var(--thumb-bg, #3b82f6); }
-
-  /* v6.9.2: F 균형추 슬라이더 — 신호등 그라디언트 트랙 + 사다리꼴 추(weight) thumb (v6.9.3.1 모양 변경) */
-  input[type=range].balance-thumb { -webkit-appearance: none; appearance: none; height: 14px; border-radius: 7px; outline: none; box-shadow: inset 0 2px 4px rgba(15,23,42,0.1); border: 1px solid rgba(15,23,42,0.06); }
-  /* 사다리꼴 추 (위가 좁고 아래가 넓은 무게추 모양). 둥근 모서리는 border-radius로 부드럽게. */
-  input[type=range].balance-thumb::-webkit-slider-thumb { -webkit-appearance: none; width: 50px; height: 56px; margin-top: -22px; cursor: grab; border: none; background: var(--thumb-bg, #7c3aed); clip-path: polygon(22% 0%, 78% 0%, 100% 100%, 0% 100%); box-shadow: 0 6px 18px rgba(124,58,237,0.35); transition: transform 0.15s ease; }
-  input[type=range].balance-thumb::-webkit-slider-thumb:hover { transform: scale(1.08); }
-  input[type=range].balance-thumb::-webkit-slider-thumb:active { cursor: grabbing; }
-  input[type=range].balance-thumb::-moz-range-thumb { width: 50px; height: 56px; cursor: grab; border: none; background: var(--thumb-bg, #7c3aed); clip-path: polygon(22% 0%, 78% 0%, 100% 100%, 0% 100%); box-shadow: 0 6px 18px rgba(124,58,237,0.35); }
-  input[type=range].balance-thumb::-moz-range-track { background: transparent; border-radius: 7px; }
-  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.4); } }
 `;

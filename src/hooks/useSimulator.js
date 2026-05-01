@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
@@ -34,7 +34,10 @@ const initialState = {
   ssMacroPct: 0.1,
   ssClinicShare: 50,
   // v2.7: 일차의료 기능수가 F (환자군별 차등, 복지부 공식안 준용)
+  // v6.10.0: 디폴트 = B × INIT_PF_PCT/100 (HCC 비례 자동 산출).
   F_g: [...INIT_F],
+  // v6.10.0: PF 분배 규칙 (hcc|equal|inverse) — PF 카드 분배 토글에서 사용.
+  pfRule: INIT_PF_RULE,
   M_clinics: INIT_M_CLINICS,
   // 의원당 환자군별 등록환자수 (부록 추정치 100/600/200/100)
   regDist: [...INIT_REG_DIST],
@@ -93,8 +96,11 @@ function reducer(state, action) {
     case "SET_F_ALL":
       // v6.9.6: PF 음수 금지. 균형추 산출 결과 음수도 0으로 floor.
       return { ...state, F_g: action.values.map(v => Math.max(0, Math.round(v))) };
+    case "SET_PF_RULE":
+      return { ...state, pfRule: action.value };
     case "RESET_F":
-      return { ...state, F_g: [...INIT_F] };
+      // v6.10.0: 디폴트 복귀 = INIT_F (B × 10%, HCC 비례). pfRule도 디폴트 복귀.
+      return { ...state, F_g: [...INIT_F], pfRule: INIT_PF_RULE };
     case "RESET_P":
       return { ...state, P: [...INIT_P] };
     // v6.7: L1·L2·α 액션
@@ -486,6 +492,7 @@ export default function useSimulator() {
   const updBase = useCallback((i, key, value) => dispatch({ type: "SET_BASE", i, key, value }), []);
   const updF = useCallback((i, value) => dispatch({ type: "SET_F_AT", i, value }), []);
   const setFAll = useCallback((values) => dispatch({ type: "SET_F_ALL", values }), []);
+  const setPfRule = useCallback((value) => dispatch({ type: "SET_PF_RULE", value }), []);
   const resetF = useCallback(() => dispatch({ type: "RESET_F" }), []);
   const resetP = useCallback(() => dispatch({ type: "RESET_P" }), []);
   // v6.7: L1·L2 setters / resetters (LC·α 제거)
@@ -673,7 +680,7 @@ export default function useSimulator() {
   }, []);
 
   return {
-    state, set, updP, updBase, updF, setFAll,
+    state, set, updP, updBase, updF, setFAll, setPfRule,
     resetF, resetP, resetReg,
     // v6.7 L1·L2 (α 제거)
     updL1, setL1All, resetL1,

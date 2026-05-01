@@ -3,7 +3,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { FCard, TCard, RegScaleCard } from "./RegistrationPanel";
-import FBalanceCorrection from "./FBalanceCorrection";
 import { SH, CL, INIT_REG_DIST, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB } from "../utils";
@@ -14,7 +13,7 @@ const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabSimulation({
   mode = "policy",
-  state, set, updP, updBase, updF, setFAll, resetF, resetP, resetReg,
+  state, set, updP, updBase, updF, setFAll, setPfRule, resetF, resetP, resetReg,
   updL1, setL1All, resetL1, setL2, resetL2,
   updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset,
   G, T, decomp, performance: perfMemo, tracks,
@@ -26,8 +25,7 @@ export default memo(function TabSimulation({
   const M = Math.max(1, M_clinics);
   const [showFormula, setShowFormula] = useState(false);
   const [policyExpanded, setPolicyExpanded] = useState(mode === "policy");
-  // v6.9.3: 균형추 도구 + 고급 패널 controlled accordion (둘 다 기본 접힘)
-  const [showBalance, setShowBalance] = useState(false);
+  // v6.10.0: 균형추 controlled accordion 제거. 고급 패널만 유지.
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // v6.9.3: PB = B × (1 − L1) — UI 표시값. 슬라이더 onChange는 PBtoB로 B 역산.
@@ -142,27 +140,10 @@ export default memo(function TabSimulation({
         </h2>
       </div>
       <div className="text-[11px] text-slate-600 mb-3 leading-relaxed">
-        등록관리 업무 대가 + 저평가 일차의료 본연 기능 보정. 환자군별 차등 가능. 코디네이터·간호사·영양사 등 일차의료 기능 강화 자원으로 활용.
+        등록관리 업무 대가 + 저평가 일차의료 본연 기능 보정. 통합 슬라이더(B의 X%)로 사업 규모 조정 후, 분배 규칙 토글로 환자군별 가중을 결정합니다. 코디네이터·간호사·영양사 등 일차의료 기능 강화 자원으로 활용.
       </div>
-      {/* 기존 FCard 재사용 — bare로 카드 외피만 제거. 라벨은 FCard 내에서 PF로 표시. */}
-      <FCard state={state} setFAll={setFAll} updF={updF} resetF={resetF} bare />
-
-      {/* 균형추 controlled accordion — 기본 접힘 */}
-      <div className="mt-3 pt-3 border-t border-dashed border-blue-300/60">
-        <button onClick={() => setShowBalance(v => !v)}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/70 border border-blue-200 hover:bg-white transition text-left">
-          <span className="text-blue-400 text-xs">{showBalance ? "▲" : "▶"}</span>
-          <span className="text-base">⚖️</span>
-          <span className="text-sm font-bold text-blue-800">PF 자동 산출 도구</span>
-          <span className="text-[11px] text-slate-500 hidden sm:inline">— baseline 대비 공단 지출 영향에서 PF 4군 절대값을 자동 산출</span>
-        </button>
-        {showBalance && (
-          <div className="mt-2">
-            <FBalanceCorrection
-              state={state} set={set} G={G} T={T} performance={perfMemo} setFAll={setFAll} />
-          </div>
-        )}
-      </div>
+      {/* 기존 FCard 재사용 — bare로 카드 외피만 제거. v6.10.0: 통합 슬라이더 + 분배 토글 + 4군 슬라이더 + mini display */}
+      <FCard state={state} setFAll={setFAll} updF={updF} setPfRule={setPfRule} resetF={resetF} bare />
     </div>
   );
 
@@ -262,13 +243,13 @@ export default memo(function TabSimulation({
     {/* ④ 일차의료수가 — 의원 모드에서는 "환자군별 공단지급 수가" 라벨, 공식·L1 개별 표시 숨김 */}
     <TCard state={state} G={G} mode={mode} />
 
-    {/* ⑤ 타원이용비중 (L2) 변화율 — 0%p=L1, 음수=개선 → 성과급 */}
+    {/* ⑤ 타원이용비중 (L2) 변화율 — 0%p=L1, 음수=개선 → 성과급 (v6.10.0: 범위 -25~0%p, 5%p 간격 표기) */}
     {(() => {
       const L1avg = perfMemo.L1avg;
-      const L2delta = Math.max(-50, Math.min(0, (L2_display - L1avg) * 100));
-      const sliderBg = `linear-gradient(to right, #7c3aed ${((L2delta + 50) / 50) * 100}%, #e5e7eb 0%)`;
+      const L2delta = Math.max(-25, Math.min(0, (L2_display - L1avg) * 100));
+      const sliderBg = `linear-gradient(to right, #7c3aed ${((L2delta + 25) / 25) * 100}%, #e5e7eb 0%)`;
       const setL2FromDelta = (dPct) => {
-        const d = Math.max(-50, Math.min(0, dPct));
+        const d = Math.max(-25, Math.min(0, dPct));
         setL2(Math.max(0, Math.min(1, L1avg + d / 100)));
       };
       return (
@@ -288,13 +269,13 @@ export default memo(function TabSimulation({
               ↩ 초기화
             </button>
           </div>
-          <input type="range" min={-50} max={0} step={0.5} value={L2delta}
+          <input type="range" min={-25} max={0} step={0.5} value={L2delta}
             onChange={e => setL2FromDelta(parseFloat(e.target.value))}
             aria-label="포괄관리 지표 L2 변화율 슬라이더"
             className="w-full big-thumb"
             style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: sliderBg }} />
           <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
-            <span>-50%p</span><span>-40%p</span><span>-30%p</span><span>-20%p</span><span>-10%p</span><span>0%p</span>
+            <span>-25%p</span><span>-20%p</span><span>-15%p</span><span>-10%p</span><span>-5%p</span><span>0%p</span>
           </div>
           <div className="mt-1.5 text-[10px] text-purple-700/70 leading-relaxed space-y-0.5">
             <div>※ 0%p = L1 수준(가산 0 기준점) · 음수로 갈수록 포괄관리 지표 개선 → 포괄관리 성과가산 발생 (no-downside)</div>

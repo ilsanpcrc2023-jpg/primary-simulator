@@ -109,7 +109,7 @@ export default function App() {
             mode={mode}
             state={state} set={set}
             updP={sim.updP} updBase={sim.updBase}
-            updF={sim.updF} setFAll={sim.setFAll}
+            updF={sim.updF} setFAll={sim.setFAll} setPfRule={sim.setPfRule}
             resetF={sim.resetF} resetP={sim.resetP} resetReg={sim.resetReg}
             updL1={sim.updL1} setL1All={sim.setL1All} resetL1={sim.resetL1}
             setL2={sim.setL2} resetL2={sim.resetL2}
@@ -148,7 +148,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        일차의료 지불체계 시뮬레이터 v6.9.3 · 일차의료개발센터 · © 2026
+        일차의료 지불체계 시뮬레이터 v6.10.0 · 일차의료개발센터 · © 2026
       </div>
     </div>
   );

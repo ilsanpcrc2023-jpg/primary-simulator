@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { INIT_BASE, INIT_P, INIT_F, ON, COL_ALIASES,
+import { INIT_BASE, INIT_P, INIT_F, INIT_R, INIT_PF_PCT, INIT_PF_RULE,
+  POLICY_SCENARIOS,
+  ON, COL_ALIASES,
   INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C,
   INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C,
   INIT_SS_COST_BASE, INIT_SS_PROJECT_COST,
   INIT_L1,
   INIT_M_CLINICS, INIT_TOTAL_N, INIT_PER_CLINIC, INIT_BASE_PER_CLINIC,
   B_MIN, B_MAX, OFFICIAL_BASELINE_META } from '../constants';
+import { distribute, calcPFfromPct, inferPFpct } from '../utils';
 
 describe('calculation engine', () => {
   it('ON: total patient count from INIT_BASE', () => {
@@ -361,5 +364,159 @@ describe('v6.5 PT/SS Track percentages', () => {
       expect(resetL1).toHaveLength(4);
       resetL1.forEach((v, i) => expect(v).toBe(currentBase[i].L));
     });
+  });
+});
+
+// v6.10.0: PF 디폴트 = B의 10% (HCC 비례 자동) + 통합 슬라이더 + 분배 함수
+describe('v6.10.0 · PF 디폴트 (B의 10%, HCC 비례 자동)', () => {
+  it('INIT_PF_PCT = 10 · INIT_PF_RULE = "hcc"', () => {
+    expect(INIT_PF_PCT).toBe(10);
+    expect(INIT_PF_RULE).toBe('hcc');
+  });
+
+  it('INIT_F = INIT_P × 10% (각 환자군별)', () => {
+    expect(INIT_F).toHaveLength(4);
+    INIT_F.forEach((v, i) => {
+      const expected = Math.round(INIT_P[i] * 0.10);
+      expect(v).toBe(expected);
+    });
+    // "1군 28,083원 = B 280,832원의 10%"가 가장 강한 답변 (사용자 결정)
+    expect(INIT_F[0]).toBe(28083);
+    expect(INIT_F[1]).toBe(30020);
+    expect(INIT_F[2]).toBe(52358);
+    expect(INIT_F[3]).toBe(74532);
+  });
+
+  it('INIT_R는 INIT_F alias (하위 호환)', () => {
+    expect(INIT_R).toBe(INIT_F);
+  });
+
+  it('이전 임의값 [10000, 20000, 30000, 40000] 폐기 — 회귀 방지', () => {
+    expect(INIT_F).not.toEqual([10000, 20000, 30000, 40000]);
+  });
+});
+
+describe('v6.10.0 · distribute() — PF 분배 함수 (utils 이전)', () => {
+  const B = [280832, 300199, 523581, 745317];
+  const n_g = [1000, 6000, 2000, 1000];   // 의원당 [100,600,200,100] × 10 의원
+
+  it('totalTarget = 0이면 전체 0', () => {
+    expect(distribute(0, 'hcc', B, n_g)).toEqual([0, 0, 0, 0]);
+    expect(distribute(0, 'equal', B, n_g)).toEqual([0, 0, 0, 0]);
+    expect(distribute(0, 'inverse', B, n_g)).toEqual([0, 0, 0, 0]);
+  });
+
+  it('equal: 1인당 동일 PF + 합산 보존', () => {
+    const totalTarget = 5e8;
+    const dF = distribute(totalTarget, 'equal', B, n_g);
+    // 1인당 동일
+    const v0 = dF[0];
+    dF.forEach(v => expect(v).toBeCloseTo(v0, 5));
+    // 합산 보존
+    const reconstructed = dF.reduce((s, v, i) => s + v * n_g[i], 0);
+    expect(reconstructed).toBeCloseTo(totalTarget, -2);
+  });
+
+  it('hcc: 위험도(B) 큰 군이 더 두텁고 합산 보존', () => {
+    const totalTarget = 5e8;
+    const dF = distribute(totalTarget, 'hcc', B, n_g);
+    expect(dF[3]).toBeGreaterThan(dF[2]);
+    expect(dF[2]).toBeGreaterThan(dF[1]);
+    expect(dF[1]).toBeGreaterThan(dF[0]);
+    const reconstructed = dF.reduce((s, v, i) => s + v * n_g[i], 0);
+    expect(reconstructed).toBeCloseTo(totalTarget, -2);
+  });
+
+  it('inverse: 위험도(B) 작은 군이 더 두텁고 합산 보존', () => {
+    const totalTarget = 5e8;
+    const dF = distribute(totalTarget, 'inverse', B, n_g);
+    expect(dF[0]).toBeGreaterThan(dF[1]);
+    expect(dF[1]).toBeGreaterThan(dF[2]);
+    expect(dF[2]).toBeGreaterThan(dF[3]);
+    const reconstructed = dF.reduce((s, v, i) => s + v * n_g[i], 0);
+    expect(reconstructed).toBeCloseTo(totalTarget, -2);
+  });
+});
+
+describe('v6.10.0 · 통합 슬라이더 (PF = B의 X%)', () => {
+  const B = [280832, 300199, 523581, 745317];
+  const n_g = [1000, 6000, 2000, 1000];
+
+  it('HCC 비례 10%: PF[i] = round(B[i] × 10%) — INIT_F와 정합', () => {
+    const PF = calcPFfromPct(10, 'hcc', B, n_g);
+    PF.forEach((v, i) => {
+      expect(v).toBeCloseTo(Math.round(B[i] * 0.10), -1);
+    });
+  });
+
+  it('inferPFpct(F = B×10%, B, n_g) ≈ 10%', () => {
+    const F = B.map(b => Math.round(b * 0.10));
+    const pct = inferPFpct(F, B, n_g);
+    expect(pct).toBeCloseTo(10, 1);
+  });
+
+  it('통합 슬라이더 0%면 PF 전체 0 (음수 불허)', () => {
+    const PF = calcPFfromPct(0, 'hcc', B, n_g);
+    expect(PF).toEqual([0, 0, 0, 0]);
+  });
+
+  it('음수 % 입력은 0으로 floor (음수 불허)', () => {
+    const PF = calcPFfromPct(-5, 'hcc', B, n_g);
+    expect(PF.every(v => v >= 0)).toBe(true);
+  });
+
+  it('PF 통합 슬라이더 합산 = pfBaseline × pfPct (HCC 비례 정밀)', () => {
+    const pfBaseline = B.reduce((s, b, i) => s + b * n_g[i], 0);
+    const PF = calcPFfromPct(10, 'hcc', B, n_g);
+    const totalSpend = PF.reduce((s, v, i) => s + v * n_g[i], 0);
+    // 라운딩 오차 ±1e6 이내
+    expect(Math.abs(totalSpend - pfBaseline * 0.10)).toBeLessThan(1e6);
+  });
+});
+
+describe('v6.10.0 · pfBaseline 동적 산출 (Σ regDist × M1 × M_clinics)', () => {
+  it('파일럿 디폴트 baseline = Σ regDist × M1 × M = 약 10.77억', () => {
+    const regDist = [100, 600, 200, 100];
+    const M = INIT_M_CLINICS;   // 10
+    const baseline = INIT_BASE.reduce((s, b, i) => s + regDist[i] * b.M1 * M, 0);
+    // 등록환자 의원급 외래 FFS 기준선
+    expect(baseline).toBeGreaterThan(1e9);
+    expect(baseline).toBeLessThan(2e9);   // 대략 10.77억
+  });
+
+  it('의원 수 M 변경 시 baseline 비례 (선형)', () => {
+    const regDist = [100, 600, 200, 100];
+    const baselineM10 = INIT_BASE.reduce((s, b, i) => s + regDist[i] * b.M1 * 10, 0);
+    const baselineM100 = INIT_BASE.reduce((s, b, i) => s + regDist[i] * b.M1 * 100, 0);
+    expect(baselineM100 / baselineM10).toBeCloseTo(10, 5);
+  });
+
+  it('하드코딩 2064.4억 fixture 폐기 (균형추 모듈 삭제로 회귀 방지)', () => {
+    // v6.9.x fBalance.test.js에 있던 가상 baseline 2,064.4억은 삭제됨.
+    // 실제 baseline은 항상 동적 산출 (regDist × M1 × M).
+    const regDist = INIT_BASE.map((b, i) => i === 0 ? 100 : i === 1 ? 600 : i === 2 ? 200 : 100);
+    const baseline = INIT_BASE.reduce((s, b, i) => s + regDist[i] * b.M1 * INIT_M_CLINICS, 0);
+    expect(baseline).not.toBe(2064.4e8);
+  });
+});
+
+describe('v6.10.0 · 정책 시나리오 프리셋 (환자군 패널)', () => {
+  it('POLICY_SCENARIOS는 4개 (파일럿/시범사업/NHS/네덜란드)', () => {
+    expect(POLICY_SCENARIOS).toHaveLength(4);
+    const keys = POLICY_SCENARIOS.map(p => p.key);
+    expect(keys).toEqual(['pilot', 'korea', 'nhs', 'nl']);
+  });
+
+  it('각 시나리오의 perClinic이 명시된 정책 근거값과 일치', () => {
+    const map = Object.fromEntries(POLICY_SCENARIOS.map(p => [p.key, p.perClinic]));
+    expect(map.pilot).toBe(6960);    // 파일럿: 2023 실측 (10기관 / 69,604명)
+    expect(map.korea).toBe(1500);    // 시범사업: 복지부안
+    expect(map.nhs).toBe(2200);      // NHS: 영국 1차의료 평균
+    expect(map.nl).toBe(2200);       // 네덜란드: GP 평균
+  });
+
+  it('파일럿 시나리오 perClinic = INIT_PER_CLINIC (디폴트 정합)', () => {
+    const pilot = POLICY_SCENARIOS.find(p => p.key === 'pilot');
+    expect(pilot.perClinic).toBe(INIT_PER_CLINIC);
   });
 });
