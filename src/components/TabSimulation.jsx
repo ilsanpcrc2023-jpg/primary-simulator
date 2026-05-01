@@ -44,6 +44,17 @@ export default memo(function TabSimulation({
   const perClinicPerf = decomp.performanceEffect / M;   // L2 성과급 (현재 선택 Track 반영)
   const perClinicNet = decomp.netChange / M;
 
+  // v6.9.3: 의원 공단지급분 변화 KPI (정책 모드) — modelEffect의 PB drift 제거, PF 가산만 노출.
+  // pfEffect = Σ_g n_reg_g × PF_g (현재 PF로 계산되는 절대 가산 효과)
+  // 설계 의도: PB는 L1을 흡수해 구조적으로 중립이어야 함. 데이터 캘리브레이션 drift는 KPI에서 숨김.
+  const pfEffect = G.reduce((s, g, i) => s + g.n_reg * (F_g[i] ?? 0), 0);
+  const perClinicPF = pfEffect / M;
+  const govNetChange = decomp.panelEffect + pfEffect + decomp.performanceEffect; // 공단지급분 관점 순 변화
+  const perClinicGovNet = govNetChange / M;
+  const govNetChgPct = decomp.baselineIncome > 0 ? (govNetChange / decomp.baselineIncome) * 100 : 0;
+  const govAfterIncome = decomp.baselineIncome + govNetChange;
+  const perClinicGovAfter = govAfterIncome / M;
+
   // v6.9.3: 정책 모드 첫 화면 — P = PB + PF 단순합 노출.
   //  · 상단 공식 박스 → ① PB 카드 (연회색·데이터 기반) → ② PF 카드 (연파랑·정책 협상)
   //    └ ②에 균형추 controlled accordion 종속 (기본 접힘)
@@ -351,15 +362,15 @@ export default memo(function TabSimulation({
           </div>
         </div>
       ) : (
-        /* ①②③ 세부 분해 — 정책 모드 전용 */
+        /* v6.9.3 A2: 의원 공단지급분 변화 — 정책 모드 전용 (modelEffect의 PB drift 제거, PF 가산 보존) */
         <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
           <div className="flex items-baseline justify-between mb-2">
-            <h3 className="font-bold text-base text-green-800">의원 수입 변화 <span className="text-[11px] font-normal text-green-700/70">(세부 분해)</span></h3>
+            <h3 className="font-bold text-base text-green-800">의원 공단지급분 변화 <span className="text-[11px] font-normal text-green-700/70">(세부 분해)</span></h3>
             <span className="text-xs font-semibold text-green-600">L1 {(perfMemo.L1avg * 100).toFixed(1)}% · L2 {(L2_display * 100).toFixed(1)}%</span>
           </div>
 
           <div className="flex items-baseline justify-between mb-1">
-            <span className="text-xs text-green-700/80 font-semibold">기준 수입 (참여 전, 전원 FFS)</span>
+            <span className="text-xs text-green-700/80 font-semibold">기준 공단지급 (참여 전, 전원 FFS)</span>
             <span className="text-sm font-bold text-green-800/80">{fMan(perClinicBaseline)}/의원·년</span>
           </div>
 
@@ -374,9 +385,9 @@ export default memo(function TabSimulation({
 
           <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
             <div className="flex items-baseline justify-between">
-              <span className="text-xs text-indigo-700 font-semibold">② 지불방식 전환 효과 (선지급)</span>
-              <span className="text-sm font-bold" style={{ color: decomp.modelEffect >= 0 ? "#16a34a" : "#dc2626" }}>
-                {diffMan(perClinicModel)}/의원
+              <span className="text-xs text-blue-700 font-semibold">② PF 가산 효과 <span className="text-[10px] font-normal text-blue-600/70">(Σ PF × 등록환자)</span></span>
+              <span className="text-sm font-bold" style={{ color: pfEffect >= 0 ? "#16a34a" : "#dc2626" }}>
+                {diffMan(perClinicPF)}/의원
               </span>
             </div>
           </div>
@@ -393,29 +404,33 @@ export default memo(function TabSimulation({
           <div className="mt-2 pt-2 border-t border-green-200/70">
             <div className="flex items-baseline justify-between mb-0.5">
               <span className="text-xs text-green-700 font-semibold">순 변화 (① + ② + ③)</span>
-              <span className="text-xs font-bold" style={{ color: decomp.netChgPct >= 0 ? "#16a34a" : "#dc2626" }}>
-                {pct(decomp.netChgPct)}
+              <span className="text-xs font-bold" style={{ color: govNetChgPct >= 0 ? "#16a34a" : "#dc2626" }}>
+                {pct(govNetChgPct / 100)}
               </span>
             </div>
             <div className="flex items-baseline justify-between">
               <span className="text-xs text-green-700/70">의원당</span>
-              <span className="text-2xl font-extrabold leading-tight" style={{ color: decomp.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
-                {diffMan(perClinicNet)}
+              <span className="text-2xl font-extrabold leading-tight" style={{ color: govNetChange >= 0 ? "#16a34a" : "#dc2626" }}>
+                {diffMan(perClinicGovNet)}
               </span>
             </div>
             <div className="flex items-baseline justify-between">
               <span className="text-xs text-green-700/70">전체</span>
-              <span className="text-base font-bold" style={{ color: decomp.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
-                {diffAuto(0, decomp.netChange)}
+              <span className="text-base font-bold" style={{ color: govNetChange >= 0 ? "#16a34a" : "#dc2626" }}>
+                {diffAuto(0, govNetChange)}
               </span>
             </div>
           </div>
 
           <div className="mt-2 pt-2 border-t border-green-200/70">
             <div className="flex items-baseline justify-between">
-              <span className="text-xs text-green-700 font-semibold">참여 후 의원당 수입</span>
-              <span className="text-lg font-extrabold text-green-900">{fMan(perClinicAfter)}/년</span>
+              <span className="text-xs text-green-700 font-semibold">참여 후 의원당 공단지급</span>
+              <span className="text-lg font-extrabold text-green-900">{fMan(perClinicGovAfter)}/년</span>
             </div>
+          </div>
+
+          <div className="mt-2 pt-2 border-t border-dashed border-green-300/70 text-[10px] text-green-700/70 leading-relaxed">
+            ⓘ 환자 본인부담은 의료행위별 본인부담률에 따라 다양하게 발생하며, 본 카드는 공단으로부터 의원에게 지급되는 금액만 표시합니다. PB(=B×(1−L1))는 L1을 흡수해 구조적으로 중립이므로, 수입 변화는 PF·L2·panel 효과로만 발생합니다.
           </div>
         </div>
       )}

@@ -195,7 +195,7 @@ export default memo(function FBalanceCorrection({
         </button>
       </div>
 
-      {/* 등록환자 규모 + 사업 예산 규모 (정책 의사결정 1차 anchor) */}
+      {/* 등록환자 규모 (정책 의사결정 1차 anchor) */}
       {(() => {
         const nRegPerClinic = Math.max(1, state.regDist.reduce((s, n) => s + n, 0));
         const totalRegistered = state.M_clinics * nRegPerClinic;
@@ -211,37 +211,26 @@ export default memo(function FBalanceCorrection({
           { v: 30_000_000, label: "3,000만" },
         ];
         return (
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 flex-wrap bg-violet-50/70 border border-violet-200 rounded-lg px-3 py-2">
-              <span className="text-[11px] font-bold text-violet-800 shrink-0">🏢 등록환자 규모</span>
-              <NumBox value={totalRegistered} onChange={onScaleChange} color="#7c3aed" suffix="명" />
-              <div className="flex flex-wrap gap-1">
-                {SCALE_PRESETS.map(p => {
-                  const active = totalRegistered === p.v;
-                  return (
-                    <button key={p.v} onClick={() => onScaleChange(p.v)}
-                      className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
-                      style={active
-                        ? { background: "#ede9fe", borderColor: "#a78bfa", color: "#6d28d9" }
-                        : { borderColor: "#e5e7eb", color: "#6b7280" }}>
-                      {p.label}명
-                    </button>
-                  );
-                })}
-              </div>
-              <span className="text-[10px] text-violet-700/70 leading-relaxed">
-                의원당 <b className="font-semibold">{nRegPerClinic.toLocaleString()}명</b> × 의원 <b className="font-semibold tabular-nums">{state.M_clinics.toLocaleString()}개</b>
-              </span>
+          <div className="flex items-center gap-3 flex-wrap bg-violet-50/70 border border-violet-200 rounded-lg px-3 py-2">
+            <span className="text-[11px] font-bold text-violet-800 shrink-0">🏢 등록환자 규모</span>
+            <NumBox value={totalRegistered} onChange={onScaleChange} color="#7c3aed" suffix="명" />
+            <div className="flex flex-wrap gap-1">
+              {SCALE_PRESETS.map(p => {
+                const active = totalRegistered === p.v;
+                return (
+                  <button key={p.v} onClick={() => onScaleChange(p.v)}
+                    className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                    style={active
+                      ? { background: "#ede9fe", borderColor: "#a78bfa", color: "#6d28d9" }
+                      : { borderColor: "#e5e7eb", color: "#6b7280" }}>
+                    {p.label}명
+                  </button>
+                );
+              })}
             </div>
-            {/* 사업 예산 규모 — baseline 공단 외래 지출 (자동 계산, 정책 anchor) */}
-            <div className="flex items-center gap-3 flex-wrap bg-amber-50/70 border border-amber-200 rounded-lg px-3 py-2">
-              <span className="text-[11px] font-bold text-amber-800 shrink-0">💰 사업 예산 규모</span>
-              <span className="text-base font-extrabold tabular-nums text-amber-900">{(T_nhi0 / 1e8).toFixed(0).toLocaleString()}</span>
-              <span className="text-xs font-bold text-amber-700">억원</span>
-              <span className="text-[10px] text-amber-700/70 leading-relaxed">
-                = baseline 공단 외래 지출 (참여 전 전원 FFS 기준 · 등록환자·B·M1·L 자동 산출)
-              </span>
-            </div>
+            <span className="text-[10px] text-violet-700/70 leading-relaxed">
+              의원당 <b className="font-semibold">{nRegPerClinic.toLocaleString()}명</b> × 의원 <b className="font-semibold tabular-nums">{state.M_clinics.toLocaleString()}개</b>
+            </span>
           </div>
         );
       })()}
@@ -578,34 +567,37 @@ function WinWinGrid({ pct, isExactZero, isNegative, changeAfterApply, T_nhi0, ex
         </div>
       </div>
 
-      {/* 우: 의원 수입 영향 (PF 가산 효과 — 양수/음수 색상 분기) */}
+      {/* 우: 일차의료 지원 변동 (PF 가산 효과 — 양수/음수 색상 분기, 0%는 ±0원 우선 표기) */}
       <div className="rounded-xl p-3 border"
         style={{
-          background: isExtraNegative
+          background: isExactZero
+            ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)"
+            : isExtraNegative
             ? "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)"
-            : isExactZero
-            ? "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)"
             : "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
-          borderColor: isExtraNegative ? "#fbbf24" : isExactZero ? "#cbd5e1" : "#93c5fd",
+          borderColor: isExactZero ? "#34d399" : isExtraNegative ? "#fbbf24" : "#93c5fd",
         }}>
         <div className="text-[10px] font-bold uppercase tracking-wider mb-1"
-          style={{ color: isExtraNegative ? "#b45309" : isExactZero ? "#475569" : "#1d4ed8" }}>
+          style={{ color: isExactZero ? "#047857" : isExtraNegative ? "#b45309" : "#1d4ed8" }}>
           {/* 일차의료 지원 프레임 — PF는 의사 개인 수입 증가가 아니라 코디네이터 간호사·영양사
-              등 일차의료 기능 강화 인력 채용·운영 재원으로 활용되는 지원금 성격을 명시. */}
-          {isExtraNegative ? "🟡 일차의료 지원 영향 (PF 차감)" : isExactZero ? "🔵 일차의료 지원 영향" : "🔵 일차의료 지원 강화 (PF 가산)"}
+              등 일차의료 기능 강화 인력 채용·운영 재원으로 활용되는 지원금 성격을 명시.
+              v6.9.3 A2: 0%(재정중립)에서는 항상 "±0원"으로 표기 (정책 의도 = 의원 지원 변동 없음). */}
+          {isExactZero ? "🟢 일차의료 지원 변동" : isExtraNegative ? "🟡 일차의료 지원 영향 (PF 차감)" : "🔵 일차의료 지원 강화 (PF 가산)"}
         </div>
         <div className="text-xl font-extrabold tabular-nums"
-          style={{ color: isExtraNegative ? "#b45309" : isExactZero ? "#475569" : "#1d4ed8" }}>
-          {isExtraNegative ? fMan(extraPerClinic) : `+${fMan(Math.abs(extraPerClinic))}`}
+          style={{ color: isExactZero ? "#059669" : isExtraNegative ? "#b45309" : "#1d4ed8" }}>
+          {isExactZero ? "±0원" : isExtraNegative ? fMan(extraPerClinic) : `+${fMan(Math.abs(extraPerClinic))}`}
         </div>
         <div className="text-[10px] text-slate-500 font-mono">
-          /의원·년 · 사업 전체 {extraPerClinic >= 0 ? "+" : ""}{fAuto(extraPerClinic * M)}
+          {isExactZero
+            ? "/의원·년 · 사업 전체 ±0원"
+            : <>/의원·년 · 사업 전체 {extraPerClinic >= 0 ? "+" : ""}{fAuto(extraPerClinic * M)}</>}
         </div>
         <div className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
-          {isExtraNegative
+          {isExactZero
+            ? <>✓ 재정중립 anchor — 추 위치 0%에서는 PF 가산 변동도 ±0원 (의원 공단지급분 변화 KPI의 ② PF 가산 효과 행과 일치). 적용 시 PB drift 보정 외 PF 자체는 유지.</>
+            : isExtraNegative
             ? "⚠ PF 차감 시나리오 — 일차의료 지원 재원 축소. 코디네이터·영양사 등 인력 운영 위축 가능. 의료계 수용성 검토 필요."
-            : isExactZero && Math.abs(extraPerClinic) < 1e3
-            ? <>현재 PF와 동일 — 지원 변화 없음. 적용 후 슬라이더 4개 값 유지 (의원당 등록환자 {regDistTotal.toLocaleString()}명).</>
             : <>PF 가산분이 의원당 등록환자({regDistTotal.toLocaleString()}명)에 직접 적용 — 코디네이터 간호사·영양사 등 일차의료 기능 강화 인력 채용·운영 재원으로 활용 가능.</>
           }
         </div>
