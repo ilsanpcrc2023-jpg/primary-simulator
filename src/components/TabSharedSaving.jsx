@@ -1,18 +1,71 @@
 import { memo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { fAuto } from "../utils";
+import { fAuto, fMan } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS, resetSsCost }) {
+export default memo(function TabSharedSaving({ mode = "policy", state, set, handleMacroSync, SS, resetSsCost, tracks }) {
   const { ssTotalCost, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
-    ssCostBase, ssProjectCost } = state;
+    ssCostBase, ssProjectCost, M_clinics, hccPct } = state;
   const isProject = ssCostBase === "project";
+  const readOnly = mode === "clinic";
+  const M = Math.max(1, M_clinics);
+
+  // 의원 모드 Hero 박스용 — 현재 Track 기준 의원당 성과배분
+  const activeTrack = tracks?.find(t => t.hc === hccPct) || tracks?.[2] || null;
+  const trackName = hccPct === 0 ? "A (FFS)" : hccPct === 100 ? "C (환자군)" : `B (혼합 ${hccPct}%)`;
+  const myClinicSsAmt = activeTrack?.ssAmt ?? 0;
+  const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
 
   return (<>
+    {/* ★ 의원 모드 Hero — 우리 의원 예상 연간 성과배분 (v6.9) */}
+    {mode === "clinic" && (
+      <div className="rounded-2xl border-2 shadow-md p-5 text-center" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", borderColor: "#86efac" }}>
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider">🏥 우리 의원 예상 연간 성과배분</span>
+          <span className="text-[10px] text-emerald-700/70 font-semibold">
+            현재 Track: <b className="text-emerald-800">{trackName}</b>
+            <span className="mx-1 text-emerald-400">·</span>
+            2년차부터 매년
+          </span>
+        </div>
+
+        <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight"
+          style={{ color: myClinicSsAmt > 0 ? "#047857" : "#9ca3af" }}>
+          {fMan(myClinicSsAmt)}<span className="text-base text-gray-500 font-bold"> / 년</span>
+        </div>
+
+        <div className="mt-4 bg-white rounded-xl px-4 py-3 text-left text-xs leading-relaxed border border-emerald-100 shadow-sm">
+          <div className="text-[11px] text-gray-500 font-semibold mb-1.5">📐 산출 공식</div>
+          <div className="space-y-1 text-gray-700">
+            <div>= 사업대상 절감배분액 <b className="text-emerald-800">{fAuto(SS?.clinicFromItem ?? 0)}</b> <span className="text-gray-400">(성과배분 {ssClinicShare}%)</span></div>
+            <div>÷ 참여 의원 <b className="text-emerald-800">{M.toLocaleString()}개</b> = 의원당 기준 <b className="text-emerald-800">{fMan(ssPerClinicFull)}</b></div>
+            <div>× Track {hccPct === 0 ? "A" : hccPct === 100 ? "C" : "B"} 지급률 <b className="text-emerald-800">{Math.round((myClinicSsAmt / Math.max(1, ssPerClinicFull)) * 100)}%</b></div>
+          </div>
+        </div>
+
+        <div className="mt-3 text-[11px] text-emerald-700/80 leading-relaxed">
+          ※ 절감률 · 배분율은 정책 가정값입니다 — <b>정책 모드</b>에서 조정 가능 ·
+          Track 변경은 <b>Track 탭</b>에서 가능
+        </div>
+      </div>
+    )}
+
+    {/* 의원 모드 — 절감률 슬라이더 영역 안내 */}
+    {readOnly && (
+      <div className="rounded-lg border border-gray-300 bg-gray-50 p-3 text-xs text-gray-600 leading-relaxed">
+        💡 아래 절감률·배분율 슬라이더는 <b>정책 가정값</b>입니다. 의원 모드에서는 읽기 전용으로 표시되며,
+        조정은 정책 모드에서 가능합니다. 의원 입장에서 의미 있는 결과는 위의 <b>"우리 의원 성과배분"</b>입니다.
+      </div>
+    )}
+
+    <fieldset disabled={readOnly} className={readOnly ? "opacity-70 space-y-3" : "contents"}>
     {/* ① 항목별 절감 — 실제 입력 (위로) */}
     <div className={card + " p-4"}>
-      <h2 className="font-bold text-gray-900 text-sm mb-3">항목별 절감 시뮬레이션</h2>
+      <h2 className="font-bold text-gray-900 text-sm mb-3">
+        항목별 절감 시뮬레이션
+        {readOnly && <span className="text-[11px] font-normal text-gray-400 ml-1">(정책 가정값 · 읽기 전용)</span>}
+      </h2>
 
       {[
         { label: "급성기 입원비", icon: "🏥", color: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
@@ -146,6 +199,7 @@ export default memo(function TabSharedSaving({ state, set, handleMacroSync, SS, 
         {ssClinicShare > 0 && <div style={{ width: `${ssClinicShare}%`, background: "#16a34a" }} className="flex items-center justify-center transition-all">{ssClinicShare > 15 ? "성과배분" : ""}</div>}
       </div>
     </div>
+    </fieldset>
 
     {/* 배분 결과 파이 차트 */}
     <div className={card + " p-3"}>

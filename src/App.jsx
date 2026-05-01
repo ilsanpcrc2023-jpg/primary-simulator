@@ -9,8 +9,8 @@ import { sliderCSS } from "./constants";
 
 const TABS = [
   { full: "📋 수가 시뮬레이션", short: "📋 수가" },
-  { full: "📊 Track", short: "📊 Track" },
-  { full: "💰 Shared Saving", short: "💰 Saving" },
+  { full: "📊 Track 선택", short: "📊 Track" },
+  { full: "💰 절감 성과 배분", short: "💰 배분" },
 ];
 
 const tabStyle = (active) => ({
@@ -30,18 +30,18 @@ const tabStyle = (active) => ({
 
 const ZOOM_LEVELS = [0.9, 1.0, 1.15, 1.3];
 const ZOOM_KEY = "primarySim.zoom";
-const MODE_KEY = "primarySim.mode";
 const VALID_MODES = ["policy", "clinic"];
 
+// v6.9.0: 의원 모드를 디폴트 화면으로 고정.
+// URL `?mode=policy` 진입 시에만 정책 모드, 그 외 모든 첫 진입은 의원 모드.
+// localStorage 우선순위는 제거(이전 세션 캐시로 정책 모드가 첫 화면이 되는 일 없음).
 function readInitialMode() {
   try {
     const params = new URLSearchParams(window.location.search);
     const fromURL = params.get("mode");
     if (fromURL && VALID_MODES.includes(fromURL)) return fromURL;
   } catch { /* ignore */ }
-  const saved = localStorage.getItem(MODE_KEY);
-  if (saved && VALID_MODES.includes(saved)) return saved;
-  return "clinic"; // v6.8 디폴트: 의원 모드
+  return "clinic";
 }
 
 export default function App() {
@@ -58,7 +58,7 @@ export default function App() {
   const decZoom = () => setZoomIdx(i => Math.max(0, i - 1));
 
   const [mode, setMode] = useState(readInitialMode);
-  useEffect(() => { localStorage.setItem(MODE_KEY, mode); }, [mode]);
+  // v6.9.0: localStorage 저장 제거 — 의원 모드를 항상 첫 화면으로 고정. URL ?mode=policy만 정책 진입.
   // v6.8.1: 첫 진입은 useSimulator 초기 state(tab=0, 수가 탭)로. 모드 전환 시 현재 탭 유지.
 
   return (
@@ -125,6 +125,7 @@ export default function App() {
 
         {tab === 1 && (
           <TabTrack
+            mode={mode}
             state={state} set={set}
             G={sim.G} T={sim.T} SS={sim.SS} performance={sim.performance} tracks={sim.tracks}
             nhiChg={sim.nhiChg}
@@ -136,9 +137,10 @@ export default function App() {
 
         {tab === 2 && (
           <TabSharedSaving
+            mode={mode}
             state={state} set={set}
             handleMacroSync={sim.handleMacroSync}
-            SS={sim.SS}
+            SS={sim.SS} tracks={sim.tracks}
             resetSsCost={sim.resetSsCost}
           />
         )}
@@ -146,7 +148,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        일차의료 지불체계 시뮬레이터 v6.8.3 · 일차의료개발센터 · © 2026
+        일차의료 지불체계 시뮬레이터 v6.9.0 · 일차의료개발센터 · © 2026
       </div>
     </div>
   );
