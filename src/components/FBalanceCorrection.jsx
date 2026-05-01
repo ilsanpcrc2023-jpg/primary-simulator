@@ -55,8 +55,12 @@ const PRESETS = [
   { v: 5, label: "+5%", sub: "적극투입" },
 ];
 
+// v6.9.2: 사업 참여 의원 수 미러 프리셋 (환자군 패널 M 컨트롤과 동일 state 공유).
+// 균형추의 분모(T.nhi)·분자(Σ n_reg) 모두 M에 비례하므로, 균형추 헤더에서 직접 조정 가능하도록 노출.
+const M_PRESETS = [10, 100, 1000, 3000];
+
 export default memo(function FBalanceCorrection({
-  state, G, T, performance: perfMemo, setFAll
+  state, set, G, T, performance: perfMemo, setFAll
 }) {
   const [pct, setPct] = useState(3.0);
   const [rule, setRule] = useState("hcc");
@@ -146,6 +150,30 @@ export default memo(function FBalanceCorrection({
           className="text-xs text-violet-700 hover:text-red-600 border border-violet-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
           ↩ 초기화
         </button>
+      </div>
+
+      {/* v6.9.2: 사업 참여 의원 수 미러 프리셋 — 환자군 패널 M과 동일 state 공유.
+          M은 분모(T.nhi)·분자(Σ n_reg) 양쪽을 동시에 흔드는 1차 변수이므로 균형추에서 직접 조정 가능. */}
+      <div className="flex items-center gap-2 flex-wrap bg-violet-50/70 border border-violet-200 rounded-lg px-3 py-2">
+        <span className="text-[11px] font-bold text-violet-800">🏢 사업 참여 의원 수</span>
+        <div className="flex gap-1 flex-wrap">
+          {M_PRESETS.map(m => {
+            const active = state.M_clinics === m;
+            return (
+              <button key={m} onClick={() => set("M_clinics", m)}
+                className={`px-2.5 py-0.5 rounded-md text-xs font-semibold transition border ${
+                  active
+                    ? "bg-violet-600 text-white border-violet-600 shadow-sm"
+                    : "bg-white text-slate-700 border-violet-200 hover:border-violet-400 hover:text-violet-700"
+                }`}>
+                {m.toLocaleString()}
+              </button>
+            );
+          })}
+        </div>
+        <span className="text-[10px] text-violet-700/70 ml-auto">
+          현재 <b className="font-semibold tabular-nums">{state.M_clinics.toLocaleString()}</b>개 (환자군 패널과 동기화)
+        </span>
       </div>
 
       {/* ━━━━━━━━ 슬라이더 영역 ━━━━━━━━ */}
@@ -338,7 +366,10 @@ export default memo(function FBalanceCorrection({
 
       {/* 메모 */}
       <div className="text-[11px] text-slate-500 leading-relaxed bg-slate-50/60 rounded-lg p-2.5 border-l-2 border-slate-300">
-        <div><b className="text-slate-700">분모</b>: 현재 공단 의원급 외래 지출 = <b className="font-mono">{fAuto(baseNHI)}</b> (사업 후·L2 반영). 추 위치 ×%만큼 추가 투입.</div>
+        <div>
+          <b className="text-slate-700">규모 기준</b>: 사업 참여 의원 수 <b className="font-mono text-violet-700">M = {M.toLocaleString()}개</b>. M을 바꾸면 분모·분자가 함께 변해 자릿수가 통째로 달라집니다.
+        </div>
+        <div className="mt-1"><b className="text-slate-700">분모</b>: 현재 공단 의원급 외래 지출 = <b className="font-mono">{fAuto(baseNHI)}</b> (사업 후·L2 반영). 추 위치 ×%만큼 추가 투입.</div>
         <div className="mt-1"><b className="text-slate-700">분자</b>: 사업 참여 등록환자 = <b className="font-mono">{N_reg_total.toLocaleString()}명</b> · 의원당 평균 <b className="font-mono">{(N_reg_total / M).toLocaleString()}명</b>.</div>
         <div className="mt-1"><b className="text-slate-700">신호등 임계값</b>: 시각적 가이드 (정책 근거 없음, v6.9.2).</div>
       </div>
