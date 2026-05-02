@@ -458,14 +458,14 @@ export default function useSimulator() {
   }, [ssTotalCost, ssProjectCost, ssCostBase, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare]);
 
   // v6.11.0: Shared Saving은 Track 가산에서 분리 (시범사업 검증 후 도입 검토).
-  //   - tracks.ongoing 합산식에서 ssAmt 제외 → ongoing = income + perfAmt
-  //   - ssAmt 산출 자체는 유지 (SS 탭 시연용 표시)
-  //   - 의원 수입 KPI(decomp.afterIncome = T.inc + performanceEffect)는 이미 SS 미반영
-  // 각 항목: income(선지급) · ptAmt(1년차 PT) · ssAmt(SS 탭 시연용) · perfAmt(매년 포괄관리성과) · firstYear · ongoing
+  // v7.0: 각 Track에 netChange 추가 (= ongoing − baselinePerClinic) — 수가 시뮬 KPI(perClinicNet)와 정확히 일치.
+  //   기존엔 perClinicBase = T.inc0/M (totalN 기반) 사용해 baseN_per_clinic 기반 KPI와 미세 차이 발생.
+  // 각 항목: income(선지급) · ptAmt(1년차 PT) · ssAmt(SS 탭 시연용) · perfAmt(매년 포괄관리성과) · firstYear · ongoing · netChange
   const tracks = useMemo(() => {
     const M = Math.max(1, M_clinics);
     const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
     const perfPerClinicFull = (performance?.perf_total ?? 0) / M;
+    const baselinePerClinic = (decomp?.baselineIncome ?? 0) / M;
     const list = [
       { n: "Track A", d: "FFS 100%",   hc: 0,   c: "#22c55e", bg: "#f0fdf4", bd: "#86efac",
         income: T.tA / M, chg: tAchg, ptPct: state.ptPctA, ssPct: state.ssPctA, perfMul: 0 },
@@ -478,16 +478,19 @@ export default function useSimulator() {
       const ptAmt = state.pt_base * t.ptPct / 100;
       const ssAmt = ssPerClinicFull * t.ssPct / 100;     // SS 탭 시연용 (Track 가산 합산에서 제외)
       const perfAmt = perfPerClinicFull * t.perfMul;
+      const ongoing = t.income + perfAmt;                  // v6.11.0: ssAmt 제외
       return {
         ...t, ptAmt, ssAmt, perfAmt,
         firstYear: t.income + ptAmt,
-        ongoing:   t.income + perfAmt,                    // v6.11.0: ssAmt 제외
+        ongoing,
+        netChange: ongoing - baselinePerClinic,            // v7.0: 수가 시뮬 KPI와 일치
       };
     });
   }, [M_clinics, T.tA, T.tB, T.tC, tAchg, tBchg, tCchg,
       state.ptPctA, state.ptPctB, state.ptPctC,
       state.ssPctA, state.ssPctB, state.ssPctC,
-      state.pt_base, SS.clinicFromItem, performance.perf_total]);
+      state.pt_base, SS.clinicFromItem, performance.perf_total,
+      decomp.baselineIncome]);
 
   const set = useCallback((key, value) => dispatch({ type: "SET", key, value }), []);
   const updP = useCallback((i, value) => dispatch({ type: "SET_P", i, value }), []);

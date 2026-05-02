@@ -103,7 +103,7 @@ export default memo(function TabTrack({
       );
     })()}
 
-    {/* ③ Track 별 의원 수입 비교 — v7.0: 카드 클릭으로 Track 선택 가능 (button 변경) */}
+    {/* ③ Track 별 의원 수입 비교 — v7.0: 단일 변화액 한 줄 (포괄관리성과 포함, PT 미포함) */}
     <div className={card + " p-4"}>
       <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
         <h2 className="font-bold text-base text-gray-900">💰 Track 별 의원 수입 비교 <span className="text-xs font-normal text-gray-500">(참여 전 FFS 대비 · 의원당)</span></h2>
@@ -112,8 +112,6 @@ export default memo(function TabTrack({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {tracks.map(t => {
           const active = hccPct === t.hc;
-          const firstChange = t.firstYear - perClinicBase;
-          const ongoingChange = t.ongoing - perClinicBase;
           return (
             <button key={t.n} onClick={() => set("hccPct", t.hc)}
               aria-selected={active}
@@ -133,70 +131,31 @@ export default memo(function TabTrack({
               <div className="text-sm font-extrabold" style={{ color: t.c }}>{t.n}</div>
               <div className="text-[11px] text-gray-500 mt-0.5">{t.d}</div>
 
-              {/* 1년차 변화액 */}
-              <div className="mt-3 pb-3 border-b border-dashed border-gray-200">
-                <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">1년차 변화액</div>
-                <div className="text-xl sm:text-2xl font-extrabold tabular-nums mt-1"
-                  style={{ color: firstChange >= 0 ? "#16a34a" : "#dc2626" }}>
-                  {diffMan(firstChange)}
+              {/* 변화액 (지불체계 전환 효과 + 포괄관리성과, PT 별도) */}
+              <div className="mt-4">
+                <div className={`font-extrabold tabular-nums ${active ? "text-3xl sm:text-4xl" : "text-2xl sm:text-3xl"}`}
+                  style={{ color: t.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
+                  {diffMan(t.netChange)}
                 </div>
-                <div className="text-[10px] text-gray-400 font-normal mt-0.5">/ 년</div>
+                <div className="text-[11px] text-gray-500 font-normal mt-1">/ 년 · 참여 전 대비</div>
               </div>
-
-              {/* 2년차~ 변화액 */}
-              <div className="mt-3">
-                <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">2년차~ 변화액</div>
-                <div className={`font-extrabold tabular-nums mt-1 ${active ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"}`}
-                  style={{ color: ongoingChange >= 0 ? "#16a34a" : "#dc2626" }}>
-                  {diffMan(ongoingChange)}
-                </div>
-                <div className="text-[10px] text-gray-400 font-normal mt-0.5">/ 년</div>
-              </div>
-
-              {active && (
-                <div className="mt-3 pt-3 border-t border-dashed" style={{ borderColor: t.c + "55" }}>
-                  <div className="text-[10px] text-gray-500 font-semibold mb-1.5">📊 가산 항목</div>
-                  <div className="space-y-0.5 text-[11px] text-left">
-                    <div className="flex justify-between"><span className="text-amber-700">+ 일차의료 전환지원금(PT) (1년차만)</span><span className="font-bold tabular-nums text-amber-800">+{fMan(t.ptAmt)}</span></div>
-                    <div className="flex justify-between"><span className="text-cyan-700">+ 포괄관리성과 (매년)</span><span className="font-bold tabular-nums text-cyan-800">+{fMan(t.perfAmt)}</span></div>
-                  </div>
-                </div>
-              )}
             </button>
           );
         })}
       </div>
 
       <div className="mt-3 text-[11px] text-gray-500 leading-relaxed">
-        · <b>1년차 변화액</b> = 지불체계 전환 효과 + 일차의료 전환지원금(PT) · <b>2년차~ 변화액</b> = 지불체계 전환 효과 + 포괄관리성과
+        · 변화액 = 지불체계 전환 효과 + 포괄관리성과 (매년 · 일차의료 전환지원금은 1년차 별도 지급)
         <br/>· <span className="text-gray-400">※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도.</span>
       </div>
     </div>
 
-    {/* ④ 입력값 참고 박스 (접힘 아코디언) — PT · 포괄관리성과 편집 UI (v6.11.0: SS 분리) */}
-    <div className={card + " overflow-hidden"}>
-      <button onClick={() => setShowInputs(v => !v)}
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400 text-xs">{showInputs ? "▲" : "▼"}</span>
-          <span>📎 적용된 입력값 (일차의료 전환지원금 · 포괄관리성과)</span>
-        </div>
-      </button>
-
-      {/* 접힌 상태에서도 1줄 요약 표시 — v6.11.0: SS 행 제거 (Track 가산에서 분리) */}
-      {!showInputs && (
-        <div className="px-4 pb-3 pt-1 border-t border-gray-100 text-[11px] text-gray-600 leading-relaxed space-y-0.5">
-          <div>· <b className="text-amber-700">PT</b>: 1년차 1회 · A {fMan(tracks[0].ptAmt)} / B {fMan(tracks[1].ptAmt)} / C {fMan(tracks[2].ptAmt)}</div>
-          <div>· <b className="text-cyan-700">포괄관리성과</b>: 매년 · L2={(L2_display * 100).toFixed(1)}% → A {fMan(tracks[0].perfAmt)} / B {fMan(tracks[1].perfAmt)} / C {fMan(tracks[2].perfAmt)}</div>
-        </div>
-      )}
-
-      {showInputs && (
-        <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-3">
-          {/* PT 박스 */}
+    {/* ④ 입력 박스 — v7.0: 아코디언 토글 제거, 항상 노출 */}
+    <div className="space-y-3">
+          {/* PT 박스 — v7.0: cf 이모지 (참고/별도 지급 의미) */}
           <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
             <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
-              <h3 className="font-bold text-sm text-amber-900">일차의료 전환지원금 (PT) <span className="text-xs font-normal text-amber-700">· 1년차 1회</span></h3>
+              <h3 className="font-bold text-sm text-amber-900">📋 (cf) 일차의료 전환지원금 (PT) <span className="text-xs font-normal text-amber-700">· 1년차 1회 · 위 변화액 별도</span></h3>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-amber-700 font-semibold">사업 투자액</span>
                 <NumBox value={pt_base} onChange={v => set("pt_base", Math.max(0, Math.round(v)))} color="#b45309" suffix="원" />
@@ -260,8 +219,6 @@ export default memo(function TabTrack({
               })}
             </div>
           </div>
-        </div>
-      )}
     </div>
 
     {/* ⑤ Track 차트 */}
