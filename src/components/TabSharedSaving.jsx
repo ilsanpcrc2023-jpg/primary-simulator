@@ -1,52 +1,63 @@
 import { memo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { fAuto, fMan, fChangeAuto } from "../utils";
+import NumBox from "./shared/NumBox";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
-export default memo(function TabSharedSaving({ mode = "policy", state, set, handleMacroSync, SS, resetSsCost, tracks }) {
+export default memo(function TabSharedSaving({ mode = "policy", state, set, handleMacroSync, SS, resetSsCost, resetSsPct, tracks }) {
   const { ssTotalCost, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
-    ssCostBase, ssProjectCost, M_clinics, hccPct } = state;
+    ssCostBase, ssProjectCost, M_clinics, hccPct,
+    ssPctA, ssPctB, ssPctC } = state;
   const isProject = ssCostBase === "project";
   const readOnly = mode === "clinic";
   const M = Math.max(1, M_clinics);
 
-  // 의원 모드 Hero 박스용 — 현재 Track 기준 의원당 성과배분
+  // 의원 모드 Hero 박스용 — 현재 Track 기준 의원당 성과배분 (참고 시나리오)
   const activeTrack = tracks?.find(t => t.hc === hccPct) || tracks?.[2] || null;
   const trackName = hccPct === 0 ? "A (FFS)" : hccPct === 100 ? "C (환자군)" : `B (혼합 ${hccPct}%)`;
   const myClinicSsAmt = activeTrack?.ssAmt ?? 0;
   const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
 
   return (<>
-    {/* ★ 의원 모드 Hero — 우리 의원 예상 연간 성과배분 (v6.9) */}
+    {/* v6.11.0: 참고 시나리오 배너 — Shared Saving은 Track 가산에서 분리됨 */}
+    <div className="rounded-xl border-2 px-4 py-3 leading-relaxed"
+      style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
+      <div className="text-sm font-bold text-amber-900 mb-1">⚠️ 참고 시나리오 — 시범사업 검증 후 도입 검토</div>
+      <div className="text-xs text-amber-800/90">
+        Shared Saving은 입원·응급·요양병원 절감 기반 분배 모델로, 시범사업 1~2년 종단 데이터로 검증한 후 도입을 별도 검토합니다.
+        <b className="text-amber-900"> 현재 의원 수입 변화(KPI)·Track 비교에는 미반영</b>됩니다. 본 탭의 슬라이더·추정 로직은 정책 시연·협의용입니다.
+      </div>
+    </div>
+
+    {/* ★ 의원 모드 Hero — 참고 시나리오 톤다운 (slate 회색조) */}
     {mode === "clinic" && (
-      <div className="rounded-2xl border-2 shadow-md p-5 text-center" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", borderColor: "#86efac" }}>
+      <div className="rounded-2xl border-2 shadow-sm p-5 text-center" style={{ background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)", borderColor: "#cbd5e1" }}>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider">🏥 우리 의원 예상 연간 성과배분</span>
-          <span className="text-[10px] text-emerald-700/70 font-semibold">
-            현재 Track: <b className="text-emerald-800">{trackName}</b>
-            <span className="mx-1 text-emerald-400">·</span>
-            2년차부터 매년
+          <span className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">🏥 우리 의원 예상 연간 성과배분 <span className="ml-1 px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 text-[9px]">참고</span></span>
+          <span className="text-[10px] text-slate-500 font-semibold">
+            현재 Track: <b className="text-slate-700">{trackName}</b>
+            <span className="mx-1 text-slate-400">·</span>
+            2년차부터 매년 (가정)
           </span>
         </div>
 
         <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight"
-          style={{ color: myClinicSsAmt > 0 ? "#047857" : "#9ca3af" }}>
+          style={{ color: myClinicSsAmt > 0 ? "#475569" : "#9ca3af" }}>
           {fMan(myClinicSsAmt)}<span className="text-base text-gray-500 font-bold"> / 년</span>
         </div>
 
-        <div className="mt-4 bg-white rounded-xl px-4 py-3 text-left text-xs leading-relaxed border border-emerald-100 shadow-sm">
-          <div className="text-[11px] text-gray-500 font-semibold mb-1.5">📐 산출 공식</div>
+        <div className="mt-4 bg-white rounded-xl px-4 py-3 text-left text-xs leading-relaxed border border-slate-200 shadow-sm">
+          <div className="text-[11px] text-gray-500 font-semibold mb-1.5">📐 산출 공식 (참고)</div>
           <div className="space-y-1 text-gray-700">
-            <div>= 사업대상 성과배분 재원 <b className="text-emerald-800">{fAuto(SS?.clinicFromItem ?? 0)}</b> <span className="text-gray-400">(성과배분 {ssClinicShare}%)</span></div>
-            <div>÷ 참여 의원 <b className="text-emerald-800">{M.toLocaleString()}개</b> = 의원당 기준 <b className="text-emerald-800">{fMan(ssPerClinicFull)}</b></div>
-            <div>× Track {hccPct === 0 ? "A" : hccPct === 100 ? "C" : "B"} 지급률 <b className="text-emerald-800">{Math.round((myClinicSsAmt / Math.max(1, ssPerClinicFull)) * 100)}%</b></div>
+            <div>= 사업대상 성과배분 재원 <b className="text-slate-700">{fAuto(SS?.clinicFromItem ?? 0)}</b> <span className="text-gray-400">(성과배분 {ssClinicShare}%)</span></div>
+            <div>÷ 참여 의원 <b className="text-slate-700">{M.toLocaleString()}개</b> = 의원당 기준 <b className="text-slate-700">{fMan(ssPerClinicFull)}</b></div>
+            <div>× Track {hccPct === 0 ? "A" : hccPct === 100 ? "C" : "B"} 지급률 (가정값)</div>
           </div>
         </div>
 
-        <div className="mt-3 text-[11px] text-emerald-700/80 leading-relaxed">
-          ※ 변화율 · 배분율은 정책 가정값입니다 — <b>정책 모드</b>에서 조정 가능 ·
-          Track 변경은 <b>Track 선택</b> 탭에서 가능
+        <div className="mt-3 text-[11px] text-slate-600 leading-relaxed">
+          ※ 시범사업 검증 후 도입을 별도 검토합니다 — 현재 의원 수입 변화·Track 비교 KPI에는 미반영.
         </div>
       </div>
     )}
@@ -55,7 +66,7 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
     {readOnly && (
       <div className="rounded-lg border border-gray-300 bg-gray-50 p-3 text-xs text-gray-600 leading-relaxed">
         💡 아래 변화율·배분율 슬라이더는 <b>정책 가정값</b>입니다. 의원 모드에서는 읽기 전용으로 표시되며,
-        조정은 정책 모드에서 가능합니다. 의원 입장에서 의미 있는 결과는 위의 <b>"우리 의원 성과배분"</b>입니다.
+        조정은 정책 모드에서 가능합니다.
       </div>
     )}
 
@@ -211,6 +222,49 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
         {ssClinicShare > 0 && <div style={{ width: `${ssClinicShare}%`, background: "#16a34a" }} className="flex items-center justify-center transition-all">{ssClinicShare > 15 ? "성과 배분" : ""}</div>}
       </div>
     </div>
+    </fieldset>
+
+    {/* v6.11.0: Track 지급률 (참여의원 성과배분) — Track 탭에서 이동, 시연용 */}
+    <fieldset disabled={readOnly} className={readOnly ? "opacity-70" : ""}>
+      <div className={card + " p-4"}>
+        <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
+          <h3 className="font-bold text-sm text-green-800">참여의원 성과배분 — Track 지급률 (시연용)</h3>
+          {resetSsPct && (
+            <button onClick={resetSsPct}
+              className="text-xs text-green-700 hover:text-green-900 hover:bg-green-100 rounded px-2 py-1 transition"
+              title="성과배분 Track 지급률 10/50/100%로 복귀">↩ 초기화</button>
+          )}
+        </div>
+        <div className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+          재원 = 위 항목별 절감 합 × 성과배분 비율 = <b className="text-slate-700">{fAuto(SS?.clinicFromItem ?? 0)}</b>
+          <span className="text-gray-400"> ÷ {M.toLocaleString()}개 의원 = 의원당 기준 <b className="text-slate-700">{fMan(ssPerClinicFull)}</b></span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { n: "Track A", key: "ssPctA", pctVal: ssPctA, hc: 0, c: "#22c55e" },
+            { n: "Track B", key: "ssPctB", pctVal: ssPctB, hc: 50, c: "#3b82f6" },
+            { n: "Track C", key: "ssPctC", pctVal: ssPctC, hc: 100, c: "#f97316" },
+          ].map(t => {
+            const amt = ssPerClinicFull * t.pctVal / 100;
+            return (
+              <div key={t.n}
+                className="rounded-lg p-2 text-center transition"
+                style={{ background: "#f8fafc", border: "2px solid #e2e8f0" }}>
+                <div className="text-xs font-bold" style={{ color: t.c }}>{t.n}</div>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                  <NumBox value={t.pctVal}
+                    onChange={v => set(t.key, Math.max(0, Math.min(500, v)))}
+                    color="#15803d" suffix="%" />
+                </div>
+                <div className="text-base font-extrabold text-slate-700 mt-0.5">{fMan(amt)}</div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-2 text-[10px] text-gray-500 leading-relaxed">
+          ※ 본 시연은 의원 수입 변화·Track 비교 KPI에는 미반영됩니다 (시범사업 검증 후 도입 검토).
+        </div>
+      </div>
     </fieldset>
 
     {/* 배분 결과 파이 차트 */}

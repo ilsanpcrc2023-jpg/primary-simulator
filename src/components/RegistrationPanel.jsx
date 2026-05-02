@@ -69,9 +69,6 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
           </div>
           <div className="text-xs font-semibold tabular-nums" style={{ color: pfExpenditure >= 0 ? "#0369a1" : "#dc2626" }}>
             공단지출 {pfExpenditure >= 0 ? "+" : "−"}{fE(Math.abs(pfExpenditure))}억
-            <span className="text-slate-500 font-normal ml-1">
-              ({pfExpenditure >= 0 ? "+" : "−"}{Math.abs(pfPctOfBaseline).toFixed(1)}%)
-            </span>
           </div>
         </div>
         <input type="range" min={0} max={PF_PCT_MAX} step={0.5}
@@ -84,7 +81,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
           <span>0%</span><span>5%</span><span>10%</span><span>15%</span><span>20%</span>
         </div>
         <div className="mt-1 text-[10px] text-slate-500 leading-relaxed">
-          ※ 분모(공단지출 %) = 등록환자 의원급 외래 FFS = Σ regDist × M1 × M = <b className="font-mono">{fE(pfBaseline)}억</b> (동적)
+          ※ 분모 anchor = 등록환자 의원급 외래 FFS = Σ regDist × M1 × M = <b className="font-mono">{fE(pfBaseline)}억</b> (동적)
         </div>
       </div>
 

@@ -278,7 +278,7 @@ export default memo(function TabSimulation({
             <span>-25%p</span><span>-20%p</span><span>-15%p</span><span>-10%p</span><span>-5%p</span><span>0%p</span>
           </div>
           <div className="mt-1.5 text-[10px] text-purple-700/70 leading-relaxed space-y-0.5">
-            <div>※ 0%p = L1 수준(가산 0 기준점) · 음수로 갈수록 포괄관리 지표 개선 → 포괄관리 성과가산 발생 (no-downside)</div>
+            <div>※ 0%p = L1 수준(가산 0 기준점) · 음수로 갈수록 포괄관리 지표 개선 → 포괄관리성과 발생 (no-downside)</div>
             <div>※ 주치의의 포괄적·지속적 진료로 닥터쇼핑·중복검사가 감소한 성과를 수가에 반영</div>
           </div>
         </div>
@@ -291,7 +291,7 @@ export default memo(function TabSimulation({
          공단 박스(우측)는 양쪽 모드 공통 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {mode === "clinic" ? (
-        /* Hero Before/After — 의원 모드 전용 */
+        /* Hero — 의원 모드 전용 · v6.11.0: 절대값/% 노출 차단, 변화액 단독 hero */
         <div className="rounded-2xl border-2 shadow-md p-5" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", borderColor: "#86efac" }}>
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider">우리 의원 연간 수입 변화</span>
@@ -302,57 +302,34 @@ export default memo(function TabSimulation({
             </span>
           </div>
 
-          <div className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr auto 1fr" }}>
-            <div className="text-center">
-              <div className="text-[11px] text-gray-500 font-semibold mb-1">현재 (FFS)</div>
-              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums text-gray-700 leading-tight">
-                {fMan(perClinicBaseline)}
-              </div>
-            </div>
-            <div className="text-2xl sm:text-3xl text-emerald-600 font-bold">→</div>
-            <div className="text-center">
-              <div className="text-[11px] text-emerald-700 font-semibold mb-1">참여 후</div>
-              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums leading-tight"
-                style={{ color: decomp.netChange >= 0 ? "#047857" : "#dc2626" }}>
-                {fMan(perClinicAfter)}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 bg-white rounded-xl px-3 py-2.5 text-center shadow-sm border border-emerald-100">
-            <div className="text-2xl sm:text-3xl font-extrabold tabular-nums leading-tight"
+          <div className="bg-white rounded-xl px-4 py-5 text-center shadow-sm border border-emerald-100">
+            <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight"
               style={{ color: decomp.netChange >= 0 ? "#059669" : "#dc2626" }}>
               {diffMan(perClinicNet)}<span className="text-base text-gray-500 font-bold"> / 년</span>
             </div>
-            <div className="text-sm font-bold mt-0.5"
-              style={{ color: decomp.netChgPct >= 0 ? "#059669" : "#dc2626" }}>
-              {pct(decomp.netChgPct)}
-              <span className="text-[11px] text-gray-500 font-normal ml-1">vs 현재 FFS</span>
-            </div>
+            <div className="text-[11px] text-gray-500 font-normal mt-1">참여 전 대비 의원당 수입 변화액</div>
           </div>
 
           <div className="mt-3 text-[11px] text-emerald-700/80 text-center leading-relaxed">
             {perClinicPerf >= 5000 ? (
-              <>※ 위 금액에 <b className="text-emerald-800">포괄관리 성과가산 {fMan(perClinicPerf)}/년</b>이 이미 포함되어 있습니다 (L2 슬라이더로 조정).</>
+              <>※ 위 금액에 <b className="text-emerald-800">포괄관리성과 효과</b>가 이미 포함되어 있습니다 (L2 슬라이더로 조정).</>
             ) : (
-              <>※ <b className="text-emerald-800">L2 슬라이더</b>를 L1보다 낮추면 포괄관리 성과가산이 추가되어 금액이 더 커집니다.</>
+              <>※ <b className="text-emerald-800">L2 슬라이더</b>를 L1보다 낮추면 포괄관리성과 효과가 추가되어 금액이 더 커집니다.</>
             )}
           </div>
           <div className="mt-1.5 text-[10px] text-gray-500 text-center">
             전체 사업 합계: <b>{diffAuto(0, decomp.netChange)}</b> ({M.toLocaleString()}개 의원)
           </div>
+          <div className="mt-2 pt-2 border-t border-dashed border-emerald-200/70 text-[10px] text-emerald-700/70 text-center leading-relaxed">
+            ※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도.
+          </div>
         </div>
       ) : (
-        /* v6.9.3 A2: 의원 공단지급분 변화 — 정책 모드 전용 (modelEffect의 PB drift 제거, PF 가산 보존) */
+        /* v6.11.0: 의원 수입 변화 (세부 분해) — 정책 모드 전용. 절대값·% 노출 차단, 변화액만 표기. */
         <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
           <div className="flex items-baseline justify-between mb-2">
-            <h3 className="font-bold text-base text-green-800">의원 공단지급분 변화 <span className="text-[11px] font-normal text-green-700/70">(세부 분해)</span></h3>
+            <h3 className="font-bold text-base text-green-800">의원 수입 변화 <span className="text-[11px] font-normal text-green-700/70">(세부 분해)</span></h3>
             <span className="text-xs font-semibold text-green-600">L1 {(perfMemo.L1avg * 100).toFixed(1)}% · L2 {(L2_display * 100).toFixed(1)}%</span>
-          </div>
-
-          <div className="flex items-baseline justify-between mb-1">
-            <span className="text-xs text-green-700/80 font-semibold">기준 공단지급 (참여 전, 전원 FFS)</span>
-            <span className="text-sm font-bold text-green-800/80">{fMan(perClinicBaseline)}/의원·년</span>
           </div>
 
           <div className="mt-2 bg-white/60 rounded px-2 py-1.5">
@@ -375,7 +352,7 @@ export default memo(function TabSimulation({
 
           <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
             <div className="flex items-baseline justify-between">
-              <span className="text-xs text-amber-700 font-semibold">③ 포괄관리 성과가산 (L2 기반)</span>
+              <span className="text-xs text-amber-700 font-semibold">③ 포괄관리성과 (L2 기반)</span>
               <span className="text-sm font-bold" style={{ color: decomp.performanceEffect > 0 ? "#16a34a" : "#6b7280" }}>
                 {diffMan(perClinicPerf)}/의원
               </span>
@@ -383,12 +360,7 @@ export default memo(function TabSimulation({
           </div>
 
           <div className="mt-2 pt-2 border-t border-green-200/70">
-            <div className="flex items-baseline justify-between mb-0.5">
-              <span className="text-xs text-green-700 font-semibold">순 변화 (① + ② + ③)</span>
-              <span className="text-xs font-bold" style={{ color: govNetChgPct >= 0 ? "#16a34a" : "#dc2626" }}>
-                {pct(govNetChgPct / 100)}
-              </span>
-            </div>
+            <div className="text-xs text-green-700 font-semibold mb-1">순 변화 (① + ② + ③)</div>
             <div className="flex items-baseline justify-between">
               <span className="text-xs text-green-700/70">의원당</span>
               <span className="text-2xl font-extrabold leading-tight" style={{ color: govNetChange >= 0 ? "#16a34a" : "#dc2626" }}>
@@ -403,15 +375,8 @@ export default memo(function TabSimulation({
             </div>
           </div>
 
-          <div className="mt-2 pt-2 border-t border-green-200/70">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-green-700 font-semibold">참여 후 의원당 공단지급</span>
-              <span className="text-lg font-extrabold text-green-900">{fMan(perClinicGovAfter)}/년</span>
-            </div>
-          </div>
-
           <div className="mt-2 pt-2 border-t border-dashed border-green-300/70 text-[10px] text-green-700/70 leading-relaxed">
-            ⓘ 환자 본인부담은 의료행위별 본인부담률에 따라 다양하게 발생하며, 본 카드는 공단으로부터 의원에게 지급되는 금액만 표시합니다. PB(=B×(1−L1))는 L1을 흡수해 구조적으로 중립이므로, 수입 변화는 PF·L2·panel 효과로만 발생합니다.
+            ※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도. 환자 본인부담은 의료행위별 본인부담률에 따라 다양하게 발생하며, 본 카드는 공단으로부터 의원에게 지급되는 금액의 <b>변화분</b>만 표시합니다. PB(=B×(1−L1))는 L1을 흡수해 구조적으로 중립이므로, 수입 변화는 PF·L2·panel 효과로만 발생합니다.
           </div>
         </div>
       )}
@@ -422,12 +387,11 @@ export default memo(function TabSimulation({
         </div>
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-3xl sm:text-4xl font-extrabold text-blue-700 leading-tight">{diffAuto(T.nhi0, T.nhi + perfMemo.perf_blended)}</span>
-          <span className="text-base sm:text-lg font-bold text-blue-700/80 leading-tight">{pct(nhiChg, 2)}</span>
         </div>
         <div className="text-sm sm:text-base text-blue-700/70 font-semibold mt-1">{fE(T.nhi0)}억 → <b className="text-blue-800">{fE(T.nhi + perfMemo.perf_blended)}억</b></div>
         <div className="mt-2 pt-2 border-t border-blue-200/70 text-xs text-blue-700/70 leading-relaxed">
           <div>· 등록환자 공단지급 + L2 기반 타원 외래비 반영</div>
-          <div>· 포괄관리 성과가산 {fE(perfMemo.perf_blended)}억 (현재 Track 반영) 포함</div>
+          <div>· 포괄관리성과 {fE(perfMemo.perf_blended)}억 (현재 Track 반영) 포함</div>
         </div>
       </div>
     </div>
@@ -477,14 +441,14 @@ export default memo(function TabSimulation({
     {mode === "clinic" && tracks && (
       <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)", borderColor: "#c7d2fe" }}>
         <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
-          <h3 className="font-bold text-base text-indigo-900">📊 Track별 2년차 이후 연간 수입 <span className="text-xs font-normal text-indigo-700">(의원당 · 단일 선택 시나리오)</span></h3>
+          <h3 className="font-bold text-base text-indigo-900">📊 Track별 2년차 이후 연간 수입 변화액 <span className="text-xs font-normal text-indigo-700">(의원당 · 단일 선택 시나리오)</span></h3>
           <span className="text-[11px] text-indigo-600/80">→ Track을 변경하려면 Track 탭에서 선택</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {tracks.map(t => {
             const active = state.hccPct === t.hc;
             const baseInc = T.inc0 / Math.max(1, M);
-            const chgPct = baseInc > 0 ? ((t.ongoing - baseInc) / baseInc) * 100 : 0;
+            const change = t.ongoing - baseInc;
             return (
               <div key={t.n}
                 className="rounded-lg p-3 text-center transition relative"
@@ -499,19 +463,16 @@ export default memo(function TabSimulation({
                   </div>
                 )}
                 <div className="text-xs font-extrabold" style={{ color: t.c }}>{TRACK_LABELS[t.hc] ?? t.n}</div>
-                <div className="mt-1.5 text-lg sm:text-xl font-extrabold tabular-nums" style={{ color: active ? "#312e81" : "#374151" }}>
-                  {fMan(t.ongoing)}
+                <div className="mt-1.5 text-lg sm:text-xl font-extrabold tabular-nums" style={{ color: change >= 0 ? "#16a34a" : "#dc2626" }}>
+                  {diffMan(change)}
                 </div>
-                <div className="text-[10px] text-gray-500">/년</div>
-                <div className="mt-1 text-xs font-bold" style={{ color: chgPct >= 0 ? "#16a34a" : "#dc2626" }}>
-                  ({chgPct >= 0 ? "+" : ""}{chgPct.toFixed(1)}%)
-                </div>
+                <div className="text-[10px] text-gray-500">/년 · 참여 전 대비</div>
               </div>
             );
           })}
         </div>
         <div className="mt-2 text-[10px] text-indigo-700/70 leading-relaxed">
-          ※ 표시 금액 = Track 선지급 + 성과배분(SS) + 포괄관리 성과가산(L2). 1년차 PT 제외 · 변화율은 참여 전 FFS 대비.
+          ※ 표시 금액 = Track 선지급 변화 + 포괄관리성과(L2). 1년차 PT 제외. Shared Saving은 Track 가산에서 분리되어 별도 검토.
         </div>
       </div>
     )}
@@ -521,9 +482,9 @@ export default memo(function TabSimulation({
       { t: "국민 (환자)", c: "#059669", bg: "#ecfdf5", bd: "#a7f3d0",
         txt: "주치의 환자관리\n본인부담 현행 유지\n불필요한 병원 이용 감소" },
       { t: "의원 (의사)", c: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
-        txt: `환자군 기반 적절 보상\n의원당 ${diffMan(perClinicNet)}\n포괄관리 성과가산 ${fMan(perClinicPerf)}/년` },
+        txt: `환자군 기반 적절 보상\n의원당 ${diffMan(perClinicNet)}\n포괄관리성과 ${diffMan(perClinicPerf)}/년` },
       { t: "공단 (정부)", c: "#dc2626", bg: "#fef2f2", bd: "#fecaca",
-        txt: `지출 ${pct(nhiChg, 2)}\n예측 가능성 향상\n*Saving 효과 별도` },
+        txt: `지출 ${diffAuto(T.nhi0, T.nhi + perfMemo.perf_blended)}\n예측 가능성 향상\n*Shared Saving 효과 별도` },
     ]} />
 
     {/* ⑪ 공식 구조 — v6.8.1: 의원 모드에서는 숨김 (정책 모드 전용) */}
@@ -542,7 +503,7 @@ export default memo(function TabSimulation({
             <div><b className="text-indigo-700">공단지급 = P</b>  (단일화)</div>
             <div><b className="text-indigo-700">본인부담 = M1 × 30%</b>  (고정)</div>
             <div className="pt-1 mt-1 border-t border-gray-300">
-              <b className="text-amber-700">포괄관리_성과가산 = Σ max(0, L1_g − L2) × B_g × n_reg_g × TrackMul</b>
+              <b className="text-amber-700">포괄관리성과 가산 = Σ max(0, L1_g − L2) × B_g × n_reg_g × TrackMul</b>
             </div>
             <div className="text-gray-500">n_reg_g = 의원당 환자군별 등록환자수 · TrackMul: A=0 / B=0.5 / C=1.0</div>
             <div className="text-gray-500">no-downside: L2 &gt; L1이면 가산 0 (환수 없음) · 의원 100% 환원 (공유율 없음)</div>

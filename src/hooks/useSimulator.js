@@ -457,9 +457,11 @@ export default function useSimulator() {
     };
   }, [ssTotalCost, ssProjectCost, ssCostBase, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare]);
 
-  // v6.8.2: Track 비교 메모 — TabTrack의 tracks 계산을 훅으로 끌어올려 단일 소스 오브 트루스로 통합.
-  // TabSimulation(의원 모드)의 Track 비교 3카드와 TabTrack의 비교 테이블이 동일한 숫자를 보장.
-  // 각 항목: income(선지급) · ptAmt(1년차 PT) · ssAmt(매년 성과배분) · perfAmt(매년 포괄관리 성과가산) · firstYear · ongoing
+  // v6.11.0: Shared Saving은 Track 가산에서 분리 (시범사업 검증 후 도입 검토).
+  //   - tracks.ongoing 합산식에서 ssAmt 제외 → ongoing = income + perfAmt
+  //   - ssAmt 산출 자체는 유지 (SS 탭 시연용 표시)
+  //   - 의원 수입 KPI(decomp.afterIncome = T.inc + performanceEffect)는 이미 SS 미반영
+  // 각 항목: income(선지급) · ptAmt(1년차 PT) · ssAmt(SS 탭 시연용) · perfAmt(매년 포괄관리성과) · firstYear · ongoing
   const tracks = useMemo(() => {
     const M = Math.max(1, M_clinics);
     const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
@@ -474,12 +476,12 @@ export default function useSimulator() {
     ];
     return list.map(t => {
       const ptAmt = state.pt_base * t.ptPct / 100;
-      const ssAmt = ssPerClinicFull * t.ssPct / 100;
+      const ssAmt = ssPerClinicFull * t.ssPct / 100;     // SS 탭 시연용 (Track 가산 합산에서 제외)
       const perfAmt = perfPerClinicFull * t.perfMul;
       return {
         ...t, ptAmt, ssAmt, perfAmt,
         firstYear: t.income + ptAmt,
-        ongoing:   t.income + ssAmt + perfAmt,
+        ongoing:   t.income + perfAmt,                    // v6.11.0: ssAmt 제외
       };
     });
   }, [M_clinics, T.tA, T.tB, T.tC, tAchg, tBchg, tCchg,

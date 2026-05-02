@@ -109,24 +109,23 @@ export default memo(function TabTrack({
             <span>-25%p</span><span>-20%p</span><span>-15%p</span><span>-10%p</span><span>-5%p</span><span>0%p</span>
           </div>
           <div className="mt-1 text-[10px] text-purple-700/70 leading-relaxed">
-            ※ L2가 작아질수록(개선) 포괄관리 성과가산 발생 (no-downside) · 수가 시뮬레이션 탭과 값 공유
+            ※ L2가 작아질수록(개선) 포괄관리성과 발생 (no-downside) · 수가 시뮬레이션 탭과 값 공유
           </div>
         </div>
       );
     })()}
 
-    {/* ③ ★ 메인 결과: Track별 우리 의원 연수입 (1년차/2년차~ 두 숫자 강조) */}
+    {/* ③ ★ 메인 결과: Track별 우리 의원 연수입 변화 — v6.11.0: 절대값·% 차단, 변화액 단독 */}
     <div className={card + " p-4"}>
       <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
-        <h2 className="font-bold text-base text-gray-900">💰 Track별 의원 연수입 비교 <span className="text-xs font-normal text-gray-500">(의원당 · 선택한 L2 기준)</span></h2>
-        <span className="text-[11px] text-gray-500">기준 FFS: <b className="text-gray-700">{fMan(perClinicBase)}/년</b></span>
+        <h2 className="font-bold text-base text-gray-900">💰 Track별 의원 연수입 변화 <span className="text-xs font-normal text-gray-500">(참여 전 FFS 대비 · 의원당 · 선택한 L2 기준)</span></h2>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {tracks.map(t => {
           const active = hccPct === t.hc;
-          const firstChg = perClinicBase > 0 ? ((t.firstYear - perClinicBase) / perClinicBase) * 100 : 0;
-          const ongoingChg = perClinicBase > 0 ? ((t.ongoing - perClinicBase) / perClinicBase) * 100 : 0;
+          const firstChange = t.firstYear - perClinicBase;
+          const ongoingChange = t.ongoing - perClinicBase;
           return (
             <div key={t.n}
               className="rounded-xl p-4 text-center transition-all relative"
@@ -145,38 +144,33 @@ export default memo(function TabTrack({
               <div className="text-sm font-extrabold" style={{ color: t.c }}>{t.n}</div>
               <div className="text-[11px] text-gray-500 mt-0.5">{t.d}</div>
 
-              {/* 1년차 */}
+              {/* 1년차 변화액 */}
               <div className="mt-3 pb-3 border-b border-dashed border-gray-200">
-                <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">1년차</div>
-                <div className="text-xl sm:text-2xl font-extrabold tabular-nums mt-1" style={{ color: "#1e293b" }}>
-                  {fMan(t.firstYear)}
+                <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">1년차 변화액</div>
+                <div className="text-xl sm:text-2xl font-extrabold tabular-nums mt-1"
+                  style={{ color: firstChange >= 0 ? "#16a34a" : "#dc2626" }}>
+                  {diffMan(firstChange)}
                 </div>
-                <div className="text-[11px] font-bold mt-0.5" style={{ color: firstChg >= 0 ? "#16a34a" : "#dc2626" }}>
-                  {firstChg >= 0 ? "+" : ""}{firstChg.toFixed(1)}% <span className="text-gray-400 font-normal">vs 기준 FFS</span>
-                </div>
+                <div className="text-[10px] text-gray-400 font-normal mt-0.5">/ 년</div>
               </div>
 
-              {/* 2년차~ */}
+              {/* 2년차~ 변화액 */}
               <div className="mt-3">
-                <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">2년차~</div>
+                <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">2년차~ 변화액</div>
                 <div className={`font-extrabold tabular-nums mt-1 ${active ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"}`}
-                  style={{ color: active ? "#b45309" : "#1e293b" }}>
-                  {fMan(t.ongoing)}
+                  style={{ color: ongoingChange >= 0 ? "#16a34a" : "#dc2626" }}>
+                  {diffMan(ongoingChange)}
                 </div>
-                <div className="text-[11px] font-bold mt-0.5" style={{ color: ongoingChg >= 0 ? "#16a34a" : "#dc2626" }}>
-                  {ongoingChg >= 0 ? "+" : ""}{ongoingChg.toFixed(1)}% <span className="text-gray-400 font-normal">vs 기준 FFS</span>
-                </div>
+                <div className="text-[10px] text-gray-400 font-normal mt-0.5">/ 년</div>
               </div>
 
-              {/* 활성 Track만 분해 자동 펼침 */}
+              {/* 활성 Track만 분해 자동 펼침 — 가산 항목만 (선지급 베이스값 노출 차단) */}
               {active && (
                 <div className="mt-3 pt-3 border-t border-dashed" style={{ borderColor: t.c + "55" }}>
-                  <div className="text-[10px] text-gray-500 font-semibold mb-1.5">📊 구성 분해</div>
+                  <div className="text-[10px] text-gray-500 font-semibold mb-1.5">📊 가산 항목</div>
                   <div className="space-y-0.5 text-[11px] text-left">
-                    <div className="flex justify-between"><span className="text-gray-600">선지급</span><span className="font-bold tabular-nums text-gray-800">{fMan(t.income)}</span></div>
                     <div className="flex justify-between"><span className="text-amber-700">+ PT (1년차만)</span><span className="font-bold tabular-nums text-amber-800">+{fMan(t.ptAmt)}</span></div>
-                    <div className="flex justify-between"><span className="text-green-700">+ SS (매년)</span><span className="font-bold tabular-nums text-green-800">+{fMan(t.ssAmt)}</span></div>
-                    <div className="flex justify-between"><span className="text-cyan-700">+ 포괄관리 성과가산 (매년)</span><span className="font-bold tabular-nums text-cyan-800">+{fMan(t.perfAmt)}</span></div>
+                    <div className="flex justify-between"><span className="text-cyan-700">+ 포괄관리성과 (매년)</span><span className="font-bold tabular-nums text-cyan-800">+{fMan(t.perfAmt)}</span></div>
                   </div>
                 </div>
               )}
@@ -186,28 +180,28 @@ export default memo(function TabTrack({
       </div>
 
       <div className="mt-3 text-[11px] text-gray-500 leading-relaxed">
-        · <b>1년차</b> = 선지급 + PT (일회성 전환지원금) · <b>2년차~</b> = 선지급 + SS(성과배분) + 포괄관리 성과가산
+        · <b>1년차 변화액</b> = 지불체계 전환 효과 + PT(일회성 전환지원금) · <b>2년차~ 변화액</b> = 지불체계 전환 효과 + 포괄관리성과
         <br/>· 카드를 클릭해 Track을 변경하면 수가 시뮬레이션 탭의 KPI도 함께 업데이트됩니다.
+        <br/>· <span className="text-gray-400">※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도.</span>
       </div>
     </div>
 
-    {/* ④ 입력값 참고 박스 (접힘 아코디언) — PT · SS · 포괄관리 성과가산 편집 UI 통합 */}
+    {/* ④ 입력값 참고 박스 (접힘 아코디언) — PT · 포괄관리성과 편집 UI (v6.11.0: SS 분리) */}
     <div className={card + " overflow-hidden"}>
       <button onClick={() => setShowInputs(v => !v)}
         className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
         <div className="flex items-center gap-2">
           <span className="text-gray-400 text-xs">{showInputs ? "▲" : "▼"}</span>
-          <span>📎 적용된 입력값 (PT · SS · 포괄관리 성과가산)</span>
+          <span>📎 적용된 입력값 (PT · 포괄관리성과)</span>
         </div>
         <span className="text-[11px] text-gray-400 font-normal">{mode === "policy" ? "정책 협의 시 편집" : "정책 가정값"}</span>
       </button>
 
-      {/* 접힌 상태에서도 1줄 요약 표시 */}
+      {/* 접힌 상태에서도 1줄 요약 표시 — v6.11.0: SS 행 제거 (Track 가산에서 분리) */}
       {!showInputs && (
         <div className="px-4 pb-3 pt-1 border-t border-gray-100 text-[11px] text-gray-600 leading-relaxed space-y-0.5">
           <div>· <b className="text-amber-700">PT</b>: 1년차 1회 · A {fMan(tracks[0].ptAmt)} / B {fMan(tracks[1].ptAmt)} / C {fMan(tracks[2].ptAmt)}</div>
-          <div>· <b className="text-green-700">SS</b>: 매년 · A {fMan(tracks[0].ssAmt)} / B {fMan(tracks[1].ssAmt)} / C {fMan(tracks[2].ssAmt)} <span className="text-gray-400">(성과 배분 탭에서 조정)</span></div>
-          <div>· <b className="text-cyan-700">포괄관리 성과가산</b>: 매년 · L2={(L2_display * 100).toFixed(1)}% → A {fMan(tracks[0].perfAmt)} / B {fMan(tracks[1].perfAmt)} / C {fMan(tracks[2].perfAmt)}</div>
+          <div>· <b className="text-cyan-700">포괄관리성과</b>: 매년 · L2={(L2_display * 100).toFixed(1)}% → A {fMan(tracks[0].perfAmt)} / B {fMan(tracks[1].perfAmt)} / C {fMan(tracks[2].perfAmt)}</div>
         </div>
       )}
 
@@ -253,20 +247,23 @@ export default memo(function TabTrack({
             </div>
           </div>
 
-          {/* 포괄관리 성과가산 박스 */}
+          {/* 포괄관리성과 박스 — v6.11.0: 라벨 단순화 */}
           <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)", borderColor: perfEnabled ? "#06b6d4" : "#d1d5db", opacity: perfEnabled ? 1 : 0.7 }}>
             <div className="mb-2">
-              <h3 className="font-bold text-sm text-cyan-800">포괄관리 성과가산 (L2 기반) <span className="text-xs font-normal text-cyan-700">· 2년차부터 매년</span></h3>
+              <h3 className="font-bold text-sm text-cyan-800">포괄관리성과 (L2 기반) <span className="text-xs font-normal text-cyan-700">· 2년차부터 매년</span></h3>
             </div>
             {!perfEnabled && (
               <div className="rounded-lg bg-white/70 border border-gray-300 px-3 py-2 text-xs text-gray-600 mb-2">
-                💡 위 <b>L2 슬라이더</b>를 L1보다 낮게 설정해야 포괄관리 성과가산 발생 (no-downside).
+                💡 위 <b>L2 슬라이더</b>를 L1보다 낮게 설정해야 포괄관리성과 발생 (no-downside).
               </div>
             )}
             <div className="text-xs text-cyan-700/80 mb-2 leading-relaxed">
+              <div className="text-[10px] text-cyan-600/80 mb-1">
+                위계: <b>포괄관리 지표(L2)</b> → <b>포괄관리성과 = max(0, L1 − L2)</b> → <b>지급액 = 포괄관리성과 × B × n_reg × TrackMul</b>
+              </div>
               <div>공식: Σ <code className="text-cyan-900 bg-cyan-100 px-1 rounded">max(0, L1 − L2) × B × n_reg</code> × Track 배수</div>
               <div className="text-[10px] text-cyan-600/70 mt-0.5">
-                n_reg = 의원당 환자군별 등록환자수 · 이용 감소분은 의원 100% 환원 (성과 배분과 달리 공유율 없음)
+                n_reg = 의원당 환자군별 등록환자수 · 이용 감소분은 의원 100% 환원 (Shared Saving과 달리 공유율 없음)
               </div>
               <div className="mt-1">
                 L2 현재 <b className="text-cyan-900">{((perfMemo?.L2eff ?? 0) * 100).toFixed(1)}%</b>
@@ -293,52 +290,12 @@ export default memo(function TabTrack({
             </div>
           </div>
 
-          {/* 참여의원 성과배분 (SS) 박스 */}
-          <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: ssEnabled ? "#86efac" : "#d1d5db", opacity: ssEnabled ? 1 : 0.7 }}>
-            <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
-              <h3 className="font-bold text-sm text-green-800">참여의원 성과배분 (SS) <span className="text-xs font-normal text-green-700">· 2년차부터 매년</span></h3>
-              <button onClick={resetSsPct}
-                className="text-xs text-green-700 hover:text-green-900 hover:bg-green-100 rounded px-2 py-1 transition"
-                title="성과배분 Track 지급률 10/50/100%로 복귀">↩ 초기화</button>
-            </div>
-            {!ssEnabled && (
-              <div className="rounded-lg bg-white/70 border border-gray-300 px-3 py-2 text-xs text-gray-600 mb-2">
-                💡 성과 배분 탭에서 <b>참여의원 성과배분 비율</b>을 0% 초과로 설정해야 활성화됩니다.
-              </div>
-            )}
-            <div className="text-xs text-green-700/80 mb-2 leading-relaxed">
-              <div>재원: 성과 배분 탭에서 산정된 <b className="text-green-800">사업대상 환자 성과배분 재원</b></div>
-              <div className="mt-0.5">
-                = <b>{fAuto(SS?.clinicFromItem ?? 0)}</b>
-                <span className="text-green-600/60"> (성과배분 {Math.round((SS?.clinicPct ?? 0) * 100)}%)</span>
-                <span className="text-green-500/70"> ÷ {f(M)}개 의원 = 의원당 <b>{fMan(ssPerClinicFull)}</b></span>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { n: "Track A", key: "ssPctA", pctVal: ssPctA, hc: 0, c: "#22c55e" },
-                { n: "Track B", key: "ssPctB", pctVal: ssPctB, hc: 50, c: "#3b82f6" },
-                { n: "Track C", key: "ssPctC", pctVal: ssPctC, hc: 100, c: "#f97316" },
-              ].map(t => {
-                const active = hccPct === t.hc;
-                const amt = ssPerClinicFull * t.pctVal / 100;
-                return (
-                  <div key={t.n}
-                    className="rounded-lg p-2 text-center transition"
-                    style={{ background: active ? "#dcfce7" : "#f0fdf4", border: `2px solid ${active ? "#22c55e" : "#bbf7d0"}` }}>
-                    <button onClick={() => set("hccPct", t.hc)}
-                      aria-selected={active}
-                      className="block w-full text-xs font-bold cursor-pointer"
-                      style={{ color: t.c }}>{t.n}</button>
-                    <div className="flex items-center justify-center gap-1 mt-1">
-                      <NumBox value={t.pctVal}
-                        onChange={v => set(t.key, Math.max(0, Math.min(500, v)))}
-                        color="#15803d" suffix="%" />
-                    </div>
-                    <div className="text-base font-extrabold text-green-900 mt-0.5">{fMan(amt)}</div>
-                  </div>
-                );
-              })}
+          {/* v6.11.0: Shared Saving 분리 — Track 가산에서 제외, SS 탭으로 이동 */}
+          <div className="rounded-xl border border-dashed shadow-sm p-3 text-xs leading-relaxed"
+            style={{ background: "#f8fafc", borderColor: "#cbd5e1", color: "#475569" }}>
+            <div className="font-semibold text-slate-700 mb-1">📌 Shared Saving은 Track 가산에서 분리되었습니다</div>
+            <div className="text-[11px] text-slate-500">
+              입원·응급·요양병원 절감 기반 분배(SS)는 시범사업 1~2년 종단 데이터로 검증 후 도입을 별도 검토합니다. 현재 Track 비교·의원 수입 변화(KPI)에는 반영되지 않습니다 — 시연용 추정 로직과 Track 지급률 편집은 <b>성과 배분 (Shared Saving) 탭</b>에서 확인 가능합니다.
             </div>
           </div>
         </div>

@@ -10,7 +10,7 @@ import { sliderCSS } from "./constants";
 const TABS = [
   { full: "📋 수가 시뮬레이션", short: "📋 수가" },
   { full: "📊 Track 선택", short: "📊 Track" },
-  { full: "💰 성과 배분", short: "💰 배분" },
+  { full: "💰 성과 배분 (Shared Saving)", short: "💰 SS" },
 ];
 
 const tabStyle = (active) => ({
@@ -142,13 +142,14 @@ export default function App() {
             handleMacroSync={sim.handleMacroSync}
             SS={sim.SS} tracks={sim.tracks}
             resetSsCost={sim.resetSsCost}
+            resetSsPct={sim.resetSsPct}
           />
         )}
       </div>
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        일차의료 지불체계 시뮬레이터 v6.10.0 · 일차의료개발센터 · © 2026
+        일차의료 지불체계 시뮬레이터 v6.11.0 · 일차의료개발센터 · © 2026
       </div>
     </div>
   );
