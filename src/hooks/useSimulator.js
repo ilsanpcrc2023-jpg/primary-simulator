@@ -28,8 +28,8 @@ const initialState = {
   ssAcute: 29.9,
   ssEmergency: 3.5,
   ssLtc: 10.0,
-  ssAcutePct: 2,
-  ssEmergencyPct: 3,
+  ssAcutePct: 1,         // v7.0: 디폴트 -1% (총 의료비 영향 ≈ -0.392%)
+  ssEmergencyPct: 1,
   ssLtcPct: 1,
   ssMacroPct: 0.1,
   ssClinicShare: 50,
@@ -457,13 +457,15 @@ export default function useSimulator() {
     };
   }, [ssTotalCost, ssProjectCost, ssCostBase, ssAcute, ssEmergency, ssLtc, ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare]);
 
-  // v6.8.2: Track 비교 메모 — TabTrack의 tracks 계산을 훅으로 끌어올려 단일 소스 오브 트루스로 통합.
-  // TabSimulation(의원 모드)의 Track 비교 3카드와 TabTrack의 비교 테이블이 동일한 숫자를 보장.
-  // 각 항목: income(선지급) · ptAmt(1년차 PT) · ssAmt(매년 성과배분) · perfAmt(매년 포괄관리 성과가산) · firstYear · ongoing
+  // v6.11.0: Shared Saving은 Track 가산에서 분리 (시범사업 검증 후 도입 검토).
+  // v7.0: 각 Track에 netChange 추가 (= ongoing − baselinePerClinic) — 수가 시뮬 KPI(perClinicNet)와 정확히 일치.
+  //   기존엔 perClinicBase = T.inc0/M (totalN 기반) 사용해 baseN_per_clinic 기반 KPI와 미세 차이 발생.
+  // 각 항목: income(선지급) · ptAmt(1년차 PT) · ssAmt(SS 탭 시연용) · perfAmt(매년 포괄관리성과) · firstYear · ongoing · netChange
   const tracks = useMemo(() => {
     const M = Math.max(1, M_clinics);
     const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
     const perfPerClinicFull = (performance?.perf_total ?? 0) / M;
+    const baselinePerClinic = (decomp?.baselineIncome ?? 0) / M;
     const list = [
       { n: "Track A", d: "FFS 100%",   hc: 0,   c: "#22c55e", bg: "#f0fdf4", bd: "#86efac",
         income: T.tA / M, chg: tAchg, ptPct: state.ptPctA, ssPct: state.ssPctA, perfMul: 0 },
@@ -474,18 +476,21 @@ export default function useSimulator() {
     ];
     return list.map(t => {
       const ptAmt = state.pt_base * t.ptPct / 100;
-      const ssAmt = ssPerClinicFull * t.ssPct / 100;
+      const ssAmt = ssPerClinicFull * t.ssPct / 100;     // SS 탭 시연용 (Track 가산 합산에서 제외)
       const perfAmt = perfPerClinicFull * t.perfMul;
+      const ongoing = t.income + perfAmt;                  // v6.11.0: ssAmt 제외
       return {
         ...t, ptAmt, ssAmt, perfAmt,
         firstYear: t.income + ptAmt,
-        ongoing:   t.income + ssAmt + perfAmt,
+        ongoing,
+        netChange: ongoing - baselinePerClinic,            // v7.0: 수가 시뮬 KPI와 일치
       };
     });
   }, [M_clinics, T.tA, T.tB, T.tC, tAchg, tBchg, tCchg,
       state.ptPctA, state.ptPctB, state.ptPctC,
       state.ssPctA, state.ssPctB, state.ssPctC,
-      state.pt_base, SS.clinicFromItem, performance.perf_total]);
+      state.pt_base, SS.clinicFromItem, performance.perf_total,
+      decomp.baselineIncome]);
 
   const set = useCallback((key, value) => dispatch({ type: "SET", key, value }), []);
   const updP = useCallback((i, value) => dispatch({ type: "SET_P", i, value }), []);

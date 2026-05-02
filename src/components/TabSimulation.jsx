@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
-import { FCard, TCard, RegScaleCard } from "./RegistrationPanel";
+import { FCard, TCard, ClinicCountCard } from "./RegistrationPanel";
 import { SH, CL, INIT_REG_DIST, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB } from "../utils";
@@ -12,7 +12,7 @@ const TRACK_LABELS = { 0: "Track A 유지", 50: "Track B 혼합", 100: "Track C 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabSimulation({
-  mode = "policy",
+  mode = "policy", setMode,
   state, set, updP, updBase, updF, setFAll, setPfRule, resetF, resetP, resetReg,
   updL1, setL1All, resetL1, setL2, resetL2,
   updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset,
@@ -88,7 +88,7 @@ export default memo(function TabSimulation({
     </div>
   );
 
-  // ① PB 카드 (연회색 · 데이터 기반 배지) — 산출값이므로 NumBox만, 슬라이더 없음
+  // ① PB 카드 (연회색) — v6.11.0: 배지 "환자군 위험도(HCC) 기반" · 안내문 삭제
   const PBcard = (
     <div className="rounded-xl border shadow-sm p-4"
       style={{ background: "#f8fafc", borderColor: "#e2e8f0" }}>
@@ -96,16 +96,12 @@ export default memo(function TabSimulation({
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2">
           <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-200 text-slate-700 text-xs font-extrabold">1</span>
           일차의료 기본수가 (PB)
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">데이터 기반</span>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">환자군 위험도(HCC) 기반</span>
         </h2>
         <button onClick={resetP}
           className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
           ↩ 초기화
         </button>
-      </div>
-      <div className="text-[11px] text-slate-500 mb-3 px-2 py-1 bg-white rounded font-mono inline-block">
-        PB = 환자군 기준의료비(B) × (1 − L1)
-        <span className="text-slate-400 ml-1">· L1은 디폴트 0.70 (고급 패널에서 조정)</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {SH.map((g, i) => {
@@ -122,32 +118,26 @@ export default memo(function TabSimulation({
           );
         })}
       </div>
-      <div className="mt-1.5 text-[10px] text-slate-500 leading-relaxed">
-        ※ 통상 엑셀 업로드(HCC×CR 자동 산출)와 L1 디폴트로 결정. 미세 수정만 권장 — 변경 시 내부 B 자동 역산.
-      </div>
     </div>
   );
 
-  // ② PF 카드 (연파랑 · 정책 협상 배지) + 균형추 종속 아코디언
+  // ② PF 카드 (연파랑) — v6.11.0: 배지 2종(일차의료 기능강화·환자등록관리) · 설명문 삭제
   const PFcard = (
     <div className="rounded-xl border shadow-sm p-4"
       style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#bfdbfe" }}>
-      <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
-        <h2 className="font-bold text-base text-slate-800 flex items-center gap-2">
+      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+        <h2 className="font-bold text-base text-slate-800 flex items-center gap-2 flex-wrap">
           <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-blue-200 text-blue-800 text-xs font-extrabold">2</span>
           일차의료 기능보정 (PF)
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">정책 협상</span>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">일차의료 기능강화</span>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">환자등록관리</span>
         </h2>
       </div>
-      <div className="text-[11px] text-slate-600 mb-3 leading-relaxed">
-        등록관리 업무 대가 + 저평가 일차의료 본연 기능 보정. 통합 슬라이더(B의 X%)로 사업 규모 조정 후, 분배 규칙 토글로 환자군별 가중을 결정합니다. 코디네이터·간호사·영양사 등 일차의료 기능 강화 자원으로 활용.
-      </div>
-      {/* 기존 FCard 재사용 — bare로 카드 외피만 제거. v6.10.0: 통합 슬라이더 + 분배 토글 + 4군 슬라이더 + mini display */}
       <FCard state={state} setFAll={setFAll} updF={updF} setPfRule={setPfRule} resetF={resetF} bare />
     </div>
   );
 
-  // 고급 패널 — B 직접 조정 + L1 환자군별 차등
+  // 고급 패널 — v6.11.0: 부제·B 안내문·amber 박스 삭제 · L1 헤더 "평균 타원이용비중(L1)" · 버튼 통합 (RESET_L1이 base.L 복귀)
   const advancedPanel = (
     <div className="rounded-xl border border-dashed shadow-sm overflow-hidden"
       style={{ background: "#fafafa", borderColor: "#cbd5e1" }}>
@@ -155,16 +145,15 @@ export default memo(function TabSimulation({
         className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-slate-100 transition text-left">
         <span className="text-slate-400 text-xs">{showAdvanced ? "▲" : "▼"}</span>
         <span className="text-sm font-semibold text-slate-700">⚙️ 고급 설정</span>
-        <span className="text-[11px] text-slate-500 hidden sm:inline">— 환자군 기준의료비(B) · 타원이용비중(L1) 직접 조정</span>
       </button>
       {showAdvanced && (
         <div className="px-4 pb-4 pt-1 border-t border-dashed border-slate-300 space-y-4">
-          {/* B 직접 조정 — 슬라이더 없이 NumBox만 (HCC×CR 산출값, 소소한 수정 용도만) */}
+          {/* B 직접 조정 */}
           <div>
             <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
               <div className="text-sm font-semibold text-slate-700 flex items-baseline gap-2 flex-wrap">
                 환자군 기준의료비 (B)
-                <span className="text-[11px] font-normal text-slate-400">B = HCC 평균 × 의원급 외래 비중 (분석 산출값)</span>
+                <span className="text-[11px] font-normal text-slate-400">B = HCC 평균 × 의원급 외래 비중</span>
               </div>
               <button onClick={resetP}
                 className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
@@ -179,33 +168,19 @@ export default memo(function TabSimulation({
                 </div>
               ))}
             </div>
-            <div className="mt-1.5 text-[10px] text-slate-500 leading-relaxed">
-              ※ 통상 엑셀 업로드(HCC×CR 자동 산출)로 설정되며, 미세 수정만 권장. 변경 시 위 PB 카드가 자동 재계산됩니다.
-            </div>
           </div>
 
-          {/* L1 환자군별 차등 — v6.9.5: 디폴트 = base.L 실측, LOAD_DATA 시 자동 동기화 */}
+          {/* L1 환자군별 차등 — v6.11.0: 헤더 "평균 타원이용비중(L1)", 단일 초기화 버튼 (base.L 복귀) */}
           <div className="rounded-lg border-2 px-3 py-2.5"
             style={{ background: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)", borderColor: "#5eead4" }}>
             <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <h3 className="text-sm font-bold" style={{ color: "#0f766e" }}>
-                  선지급 기준 타원이용비중 (L1)
-                </h3>
-                <span className="text-[11px] text-teal-700/80">가중평균 {(perfMemo.L1avg * 100).toFixed(1)}% · 디폴트 = 데이터 실측 L</span>
-              </div>
-              <div className="flex items-center gap-1 flex-wrap">
-                <button
-                  onClick={() => setL1All(base.map(b => b.L))}
-                  title="L1을 현재 데이터의 실측 L 값으로 다시 동기화 (사용자가 슬라이더로 임의 조정한 후 되돌리는 용도)"
-                  className="text-xs px-2 py-0.5 rounded border border-teal-300 bg-white text-teal-700 hover:bg-teal-50 font-medium">
-                  ↩ 실측 L로 동기화
-                </button>
-                <button onClick={resetL1}
-                  className="text-xs text-teal-700 hover:text-red-600 border border-teal-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
-                  ↩ 초기화
-                </button>
-              </div>
+              <h3 className="text-sm font-bold" style={{ color: "#0f766e" }}>
+                평균 타원이용비중 (L1)
+              </h3>
+              <button onClick={resetL1}
+                className="text-xs text-teal-700 hover:text-red-600 border border-teal-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
+                ↩ 초기화
+              </button>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {SH.map((g, i) => (
@@ -223,22 +198,41 @@ export default memo(function TabSimulation({
               ))}
             </div>
           </div>
-
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 leading-relaxed">
-            ℹ️ 고급 설정 변경 시 위쪽 PB 카드 값이 자동 재계산됩니다 (PB = B × (1 − L1)). 산출 근거 항목이므로 일반적으로 디폴트 값 유지를 권장합니다.
-          </div>
         </div>
       )}
     </div>
   );
 
   return (<>
-    {/* v6.9.3: 정책 모드 — 상단 공식 박스 → PB 카드 → PF 카드(균형추 종속) → 고급 패널(B·L1).
-        의원 모드는 완전 숨김 (수가 산출 근거는 의원이 다룰 영역 아님). */}
-    {mode === "policy" && formulaBox}
+    {/* v7.0: 관점 선택 — 헤더에서 이동, 수가 시뮬레이션 탭 전용 */}
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-xs font-semibold text-gray-700 shrink-0">관점 선택</span>
+      <div className="inline-flex items-center gap-0.5 rounded-lg p-0.5 border border-gray-200 bg-white">
+        {[
+          { id: "policy", label: "🏛 정책 모드", activeBg: "#1E3A8A" },
+          { id: "clinic", label: "🏥 의원 모드", activeBg: "#10B981" },
+        ].map(o => {
+          const active = mode === o.id;
+          return (
+            <button key={o.id} type="button" onClick={() => setMode?.(o.id)}
+              aria-pressed={active}
+              className="text-xs sm:text-sm font-semibold px-3 py-1 rounded-md transition"
+              style={{
+                background: active ? o.activeBg : "transparent",
+                color: active ? "#fff" : "#475569",
+                fontWeight: active ? 700 : 600,
+              }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+
+    {/* v6.11.0: 정책 모드 — PB 카드 → PF 카드 → TCard → C 슬라이더 → KPI → 차트 → 고급 설정 → 수가 산출 구조.
+        공식 박스 삭제, advanced panel 위치는 하단(formula box 위)으로 이동. */}
     {mode === "policy" && PBcard}
     {mode === "policy" && PFcard}
-    {mode === "policy" && advancedPanel}
 
     {/* ④ 일차의료수가 — 의원 모드에서는 "환자군별 공단지급 수가" 라벨, 공식·L1 개별 표시 숨김 */}
     <TCard state={state} G={G} mode={mode} />
@@ -246,196 +240,90 @@ export default memo(function TabSimulation({
     {/* ⑤ 타원이용비중 (L2) 변화율 — 0%p=L1, 음수=개선 → 성과급 (v6.10.0: 범위 -25~0%p, 5%p 간격 표기) */}
     {(() => {
       const L1avg = perfMemo.L1avg;
-      const L2delta = Math.max(-25, Math.min(0, (L2_display - L1avg) * 100));
-      const sliderBg = `linear-gradient(to right, #7c3aed ${((L2delta + 25) / 25) * 100}%, #e5e7eb 0%)`;
-      const setL2FromDelta = (dPct) => {
-        const d = Math.max(-25, Math.min(0, dPct));
-        setL2(Math.max(0, Math.min(1, L1avg + d / 100)));
+      // v6.11.0: C = 1 − L2 (포괄관리 지표). 슬라이더는 양수 방향 (포괄관리 개선).
+      // 내부 상태는 L1·L2 그대로. C는 표시 파생.
+      //   기준 C0 = 1 − L1 (환자군 구조상 기대 집중도)
+      //   현재 C  = 1 − L2_display
+      //   ΔC = C − C0 = L1 − L2_display (양수일 때만 가산 발생)
+      //   슬라이더 0 ~ +25%p (ΔC, 우측 갈수록 개선)
+      const C0 = 1 - L1avg;
+      const Cnow = 1 - L2_display;
+      const cDelta = Math.max(0, Math.min(25, (Cnow - C0) * 100));
+      const sliderBg = `linear-gradient(to right, #7c3aed ${(cDelta / 25) * 100}%, #e5e7eb 0%)`;
+      const setCdelta = (dPct) => {
+        const d = Math.max(0, Math.min(25, dPct));
+        setL2(Math.max(0, Math.min(1, L1avg - d / 100)));    // L2 = L1 − ΔC (절대값 유지)
       };
       return (
         <div className="rounded-xl border-2 shadow-sm px-4 py-3" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
           <div className="flex items-center mb-2 gap-3 flex-wrap">
-            <h2 className="font-bold text-base" style={{ color: "#6d28d9" }}>5. 포괄관리 지표 (L2) 변화율</h2>
+            <div className="flex flex-col">
+              <h2 className="font-bold text-base leading-tight" style={{ color: "#6d28d9" }}>포괄관리 지표 (C)</h2>
+              <div className="text-[11px] text-purple-700/70 leading-tight mt-0.5">등록의원의 외래 진료비 비중 (C = 1 − L2)</div>
+            </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xs text-purple-600 font-semibold">전</span>
-              <span className="text-sm font-bold text-purple-700/70">{(L1avg * 100).toFixed(1)}%</span>
+              <span className="text-xs text-purple-600 font-semibold">기존</span>
+              <span className="text-sm font-bold text-purple-700/70">{(C0 * 100).toFixed(1)}%</span>
               <span className="text-purple-400">→</span>
               <span className="text-xs text-purple-600 font-semibold">후</span>
-              <span className="text-lg font-extrabold text-purple-900">{(L2_display * 100).toFixed(1)}%</span>
-              <NumBox value={parseFloat(L2delta.toFixed(1))} onChange={setL2FromDelta} color="#7c3aed" suffix="%p" />
+              <span className="text-lg font-extrabold text-purple-900">{(Cnow * 100).toFixed(1)}%</span>
+              <NumBox value={parseFloat(cDelta.toFixed(1))} onChange={setCdelta} color="#7c3aed" suffix="%p" />
             </div>
             <button onClick={resetL2}
               className="ml-auto text-xs text-purple-700 hover:text-red-600 border border-purple-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
               ↩ 초기화
             </button>
           </div>
-          <input type="range" min={-25} max={0} step={0.5} value={L2delta}
-            onChange={e => setL2FromDelta(parseFloat(e.target.value))}
-            aria-label="포괄관리 지표 L2 변화율 슬라이더"
+          <input type="range" min={0} max={25} step={0.5} value={cDelta}
+            onChange={e => setCdelta(parseFloat(e.target.value))}
+            aria-label="포괄관리 지표 C 슬라이더 (ΔC, %p)"
             className="w-full big-thumb"
             style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: sliderBg }} />
           <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
-            <span>-25%p</span><span>-20%p</span><span>-15%p</span><span>-10%p</span><span>-5%p</span><span>0%p</span>
-          </div>
-          <div className="mt-1.5 text-[10px] text-purple-700/70 leading-relaxed space-y-0.5">
-            <div>※ 0%p = L1 수준(가산 0 기준점) · 음수로 갈수록 포괄관리 지표 개선 → 포괄관리 성과가산 발생 (no-downside)</div>
-            <div>※ 주치의의 포괄적·지속적 진료로 닥터쇼핑·중복검사가 감소한 성과를 수가에 반영</div>
+            <span>0%p</span><span>+5%p</span><span>+10%p</span><span>+15%p</span><span>+20%p</span><span>+25%p</span>
           </div>
         </div>
       );
     })()}
 
-    {/* ⑥ KPI 2카드 — L2 연동
-         · 의원 모드: Hero Before/After (단일 비교, 결론 우선)
-         · 정책 모드: ①②③ 세부 분해 (정책 협의용 진단)
-         공단 박스(우측)는 양쪽 모드 공통 */}
+    {/* ⑥ KPI 2카드 — v6.11.0: 양 모드 모두 변화액 단독 hero (분해/% 모두 삭제) */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {mode === "clinic" ? (
-        /* Hero Before/After — 의원 모드 전용 */
-        <div className="rounded-2xl border-2 shadow-md p-5" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", borderColor: "#86efac" }}>
-          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-            <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider">우리 의원 연간 수입 변화</span>
+      <div className="rounded-2xl border-2 shadow-md p-5" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", borderColor: "#86efac" }}>
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider">의원 수입 변화</span>
+          {mode === "clinic" && (
             <span className="text-[10px] text-emerald-700/70 font-semibold">
               현재 Track: <b className="text-emerald-800">{state.hccPct === 0 ? "A (FFS)" : state.hccPct === 100 ? "C (환자군)" : `B (혼합 ${state.hccPct}%)`}</b>
-              <span className="mx-1 text-emerald-400">·</span>
-              L2 {(L2_display * 100).toFixed(1)}%
             </span>
-          </div>
-
-          <div className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr auto 1fr" }}>
-            <div className="text-center">
-              <div className="text-[11px] text-gray-500 font-semibold mb-1">현재 (FFS)</div>
-              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums text-gray-700 leading-tight">
-                {fMan(perClinicBaseline)}
-              </div>
-            </div>
-            <div className="text-2xl sm:text-3xl text-emerald-600 font-bold">→</div>
-            <div className="text-center">
-              <div className="text-[11px] text-emerald-700 font-semibold mb-1">참여 후</div>
-              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums leading-tight"
-                style={{ color: decomp.netChange >= 0 ? "#047857" : "#dc2626" }}>
-                {fMan(perClinicAfter)}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 bg-white rounded-xl px-3 py-2.5 text-center shadow-sm border border-emerald-100">
-            <div className="text-2xl sm:text-3xl font-extrabold tabular-nums leading-tight"
-              style={{ color: decomp.netChange >= 0 ? "#059669" : "#dc2626" }}>
-              {diffMan(perClinicNet)}<span className="text-base text-gray-500 font-bold"> / 년</span>
-            </div>
-            <div className="text-sm font-bold mt-0.5"
-              style={{ color: decomp.netChgPct >= 0 ? "#059669" : "#dc2626" }}>
-              {pct(decomp.netChgPct)}
-              <span className="text-[11px] text-gray-500 font-normal ml-1">vs 현재 FFS</span>
-            </div>
-          </div>
-
-          <div className="mt-3 text-[11px] text-emerald-700/80 text-center leading-relaxed">
-            {perClinicPerf >= 5000 ? (
-              <>※ 위 금액에 <b className="text-emerald-800">포괄관리 성과가산 {fMan(perClinicPerf)}/년</b>이 이미 포함되어 있습니다 (L2 슬라이더로 조정).</>
-            ) : (
-              <>※ <b className="text-emerald-800">L2 슬라이더</b>를 L1보다 낮추면 포괄관리 성과가산이 추가되어 금액이 더 커집니다.</>
-            )}
-          </div>
-          <div className="mt-1.5 text-[10px] text-gray-500 text-center">
-            전체 사업 합계: <b>{diffAuto(0, decomp.netChange)}</b> ({M.toLocaleString()}개 의원)
-          </div>
+          )}
         </div>
-      ) : (
-        /* v6.9.3 A2: 의원 공단지급분 변화 — 정책 모드 전용 (modelEffect의 PB drift 제거, PF 가산 보존) */
-        <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderColor: "#86efac" }}>
-          <div className="flex items-baseline justify-between mb-2">
-            <h3 className="font-bold text-base text-green-800">의원 공단지급분 변화 <span className="text-[11px] font-normal text-green-700/70">(세부 분해)</span></h3>
-            <span className="text-xs font-semibold text-green-600">L1 {(perfMemo.L1avg * 100).toFixed(1)}% · L2 {(L2_display * 100).toFixed(1)}%</span>
+        <div className="bg-white rounded-xl px-4 py-5 text-center shadow-sm border border-emerald-100">
+          <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight"
+            style={{ color: decomp.netChange >= 0 ? "#059669" : "#dc2626" }}>
+            {diffMan(perClinicNet)}<span className="text-base text-gray-500 font-bold"> / 년</span>
           </div>
-
-          <div className="flex items-baseline justify-between mb-1">
-            <span className="text-xs text-green-700/80 font-semibold">기준 공단지급 (참여 전, 전원 FFS)</span>
-            <span className="text-sm font-bold text-green-800/80">{fMan(perClinicBaseline)}/의원·년</span>
-          </div>
-
-          <div className="mt-2 bg-white/60 rounded px-2 py-1.5">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-slate-600">① 환자군 패널 변화 효과</span>
-              <span className="text-sm font-bold" style={{ color: decomp.panelEffect >= 0 ? "#16a34a" : "#dc2626" }}>
-                {diffMan(perClinicPanel)}/의원
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-blue-700 font-semibold">② PF 가산 효과 <span className="text-[10px] font-normal text-blue-600/70">(Σ PF × 등록환자)</span></span>
-              <span className="text-sm font-bold" style={{ color: pfEffect >= 0 ? "#16a34a" : "#dc2626" }}>
-                {diffMan(perClinicPF)}/의원
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-1.5 bg-white/60 rounded px-2 py-1.5">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-amber-700 font-semibold">③ 포괄관리 성과가산 (L2 기반)</span>
-              <span className="text-sm font-bold" style={{ color: decomp.performanceEffect > 0 ? "#16a34a" : "#6b7280" }}>
-                {diffMan(perClinicPerf)}/의원
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-2 pt-2 border-t border-green-200/70">
-            <div className="flex items-baseline justify-between mb-0.5">
-              <span className="text-xs text-green-700 font-semibold">순 변화 (① + ② + ③)</span>
-              <span className="text-xs font-bold" style={{ color: govNetChgPct >= 0 ? "#16a34a" : "#dc2626" }}>
-                {pct(govNetChgPct / 100)}
-              </span>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-green-700/70">의원당</span>
-              <span className="text-2xl font-extrabold leading-tight" style={{ color: govNetChange >= 0 ? "#16a34a" : "#dc2626" }}>
-                {diffMan(perClinicGovNet)}
-              </span>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-green-700/70">전체</span>
-              <span className="text-base font-bold" style={{ color: govNetChange >= 0 ? "#16a34a" : "#dc2626" }}>
-                {diffAuto(0, govNetChange)}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-2 pt-2 border-t border-green-200/70">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-green-700 font-semibold">참여 후 의원당 공단지급</span>
-              <span className="text-lg font-extrabold text-green-900">{fMan(perClinicGovAfter)}/년</span>
-            </div>
-          </div>
-
-          <div className="mt-2 pt-2 border-t border-dashed border-green-300/70 text-[10px] text-green-700/70 leading-relaxed">
-            ⓘ 환자 본인부담은 의료행위별 본인부담률에 따라 다양하게 발생하며, 본 카드는 공단으로부터 의원에게 지급되는 금액만 표시합니다. PB(=B×(1−L1))는 L1을 흡수해 구조적으로 중립이므로, 수입 변화는 PF·L2·panel 효과로만 발생합니다.
-          </div>
+          <div className="text-[11px] text-gray-500 font-normal mt-1">참여 전 대비 의원당 수입 변화액</div>
         </div>
-      )}
+        <div className="mt-2 pt-2 border-t border-dashed border-emerald-200/70 text-[10px] text-emerald-700/70 text-center leading-relaxed">
+          ※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도.
+        </div>
+      </div>
 
-      <div className="rounded-xl border-2 shadow-md p-4" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
-        <div className="flex items-baseline justify-between mb-2">
-          <h3 className="font-bold text-base text-blue-800">공단 의원급 외래 지출 변화</h3>
+      <div className="rounded-2xl border-2 shadow-md p-5" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
+        <div className="flex items-center mb-3 gap-2">
+          <span className="text-[11px] font-extrabold text-blue-700 uppercase tracking-wider">공단 지출 변화</span>
         </div>
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-3xl sm:text-4xl font-extrabold text-blue-700 leading-tight">{diffAuto(T.nhi0, T.nhi + perfMemo.perf_blended)}</span>
-          <span className="text-base sm:text-lg font-bold text-blue-700/80 leading-tight">{pct(nhiChg, 2)}</span>
-        </div>
-        <div className="text-sm sm:text-base text-blue-700/70 font-semibold mt-1">{fE(T.nhi0)}억 → <b className="text-blue-800">{fE(T.nhi + perfMemo.perf_blended)}억</b></div>
-        <div className="mt-2 pt-2 border-t border-blue-200/70 text-xs text-blue-700/70 leading-relaxed">
-          <div>· 등록환자 공단지급 + L2 기반 타원 외래비 반영</div>
-          <div>· 포괄관리 성과가산 {fE(perfMemo.perf_blended)}억 (현재 Track 반영) 포함</div>
+        <div className="bg-white rounded-xl px-4 py-5 text-center shadow-sm border border-blue-100">
+          <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight text-blue-700">
+            {diffAuto(T.nhi0, T.nhi + perfMemo.perf_blended)}<span className="text-base text-gray-500 font-bold"> / 년</span>
+          </div>
+          <div className="text-[11px] text-gray-500 font-normal mt-1">사업 전체 공단 지출 변화액</div>
         </div>
       </div>
     </div>
 
-    {/* ⑧ 의원당 환자 규모 — 의원 모드에서는 상단에 환자군 구성 프리셋(일반/노인 집중/사용자 지정) 노출 */}
-    <RegScaleCard state={state} set={set} reg={reg}
-      scaleRegDist={scaleRegDist} setRegDistAll={setRegDistAll}
-      resetReg={resetReg} mode={mode} />
+    {/* v6.11.0: 참여 의원 수 — 정책 모드에서만 노출 (의원 모드는 의원 1개 시뮬 관점이라 불필요) */}
+    {mode === "policy" && <ClinicCountCard state={state} set={set} />}
 
     {/* ⑨ 차트 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -472,59 +360,20 @@ export default memo(function TabSimulation({
       </div>
     </div>
 
-    {/* ⑨-b Track 비교 요약 3카드 — 의원 모드 전용 (v6.8.2)
-         계산 소스: useSimulator의 tracks 메모 → Track 탭 비교 테이블과 숫자 일치 보장 */}
-    {mode === "clinic" && tracks && (
-      <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)", borderColor: "#c7d2fe" }}>
-        <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
-          <h3 className="font-bold text-base text-indigo-900">📊 Track별 2년차 이후 연간 수입 <span className="text-xs font-normal text-indigo-700">(의원당 · 단일 선택 시나리오)</span></h3>
-          <span className="text-[11px] text-indigo-600/80">→ Track을 변경하려면 Track 탭에서 선택</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {tracks.map(t => {
-            const active = state.hccPct === t.hc;
-            const baseInc = T.inc0 / Math.max(1, M);
-            const chgPct = baseInc > 0 ? ((t.ongoing - baseInc) / baseInc) * 100 : 0;
-            return (
-              <div key={t.n}
-                className="rounded-lg p-3 text-center transition relative"
-                style={{
-                  background: active ? "#ffffff" : t.bg,
-                  border: active ? `2px solid ${t.c}` : `2px solid ${t.bd}`,
-                  boxShadow: active ? "0 2px 8px rgba(79, 70, 229, 0.15)" : "none",
-                }}>
-                {active && (
-                  <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold text-white" style={{ background: t.c }}>
-                    ✓ 현재 선택
-                  </div>
-                )}
-                <div className="text-xs font-extrabold" style={{ color: t.c }}>{TRACK_LABELS[t.hc] ?? t.n}</div>
-                <div className="mt-1.5 text-lg sm:text-xl font-extrabold tabular-nums" style={{ color: active ? "#312e81" : "#374151" }}>
-                  {fMan(t.ongoing)}
-                </div>
-                <div className="text-[10px] text-gray-500">/년</div>
-                <div className="mt-1 text-xs font-bold" style={{ color: chgPct >= 0 ? "#16a34a" : "#dc2626" }}>
-                  ({chgPct >= 0 ? "+" : ""}{chgPct.toFixed(1)}%)
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-2 text-[10px] text-indigo-700/70 leading-relaxed">
-          ※ 표시 금액 = Track 선지급 + 성과배분(SS) + 포괄관리 성과가산(L2). 1년차 PT 제외 · 변화율은 참여 전 FFS 대비.
-        </div>
-      </div>
-    )}
+    {/* v7.0: 의원 모드 Track 비교 요약 박스 삭제 (Track 탭에 동일 정보, 중복 제거) */}
 
     {/* ⑩ Win-Win-Win */}
     <WinWinWin items={[
       { t: "국민 (환자)", c: "#059669", bg: "#ecfdf5", bd: "#a7f3d0",
         txt: "주치의 환자관리\n본인부담 현행 유지\n불필요한 병원 이용 감소" },
       { t: "의원 (의사)", c: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
-        txt: `환자군 기반 적절 보상\n의원당 ${diffMan(perClinicNet)}\n포괄관리 성과가산 ${fMan(perClinicPerf)}/년` },
+        txt: `환자군 기반 적절 보상\n의원당 ${diffMan(perClinicNet)}\n포괄관리성과 ${diffMan(perClinicPerf)}/년` },
       { t: "공단 (정부)", c: "#dc2626", bg: "#fef2f2", bd: "#fecaca",
-        txt: `지출 ${pct(nhiChg, 2)}\n예측 가능성 향상\n*Saving 효과 별도` },
+        txt: `지출 ${diffAuto(T.nhi0, T.nhi + perfMemo.perf_blended)}\n예측 가능성 향상\n*Shared Saving 효과 별도` },
     ]} />
+
+    {/* v6.11.0: 고급 설정 — 위치를 수가 산출 구조 위로 이동 (정책 모드 전용) */}
+    {mode === "policy" && advancedPanel}
 
     {/* ⑪ 공식 구조 — v6.8.1: 의원 모드에서는 숨김 (정책 모드 전용) */}
     {mode === "policy" && (
@@ -537,22 +386,25 @@ export default memo(function TabSimulation({
       {showFormula && (
         <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-3">
           <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-700 leading-relaxed font-mono space-y-1">
-            <div><b className="text-indigo-700">P_g = PB_g + PF_g</b>  (환자군별 선지급, v6.9.3 단순합)</div>
-            <div className="text-gray-500 pl-2">where  PB_g = B_g × (1 − L1_g) · PF_g = F_g (내부 변수)</div>
+            <div><b className="text-indigo-700">P_g = PB_g + PF_g</b>  (환자군별 선지급)</div>
+            <div className="text-gray-500 pl-2">where  PB_g = B_g × (1 − L1_g) · PF_g = F_g</div>
             <div><b className="text-indigo-700">공단지급 = P</b>  (단일화)</div>
             <div><b className="text-indigo-700">본인부담 = M1 × 30%</b>  (고정)</div>
             <div className="pt-1 mt-1 border-t border-gray-300">
-              <b className="text-amber-700">포괄관리_성과가산 = Σ max(0, L1_g − L2) × B_g × n_reg_g × TrackMul</b>
+              <b className="text-amber-700">포괄관리 지표 C = 1 − L2 · 기대 집중도 = 1 − L1</b>
             </div>
+            <div><b className="text-amber-700">포괄관리성과 = max(0, C − (1 − L1)) = max(0, L1 − L2)</b></div>
+            <div><b className="text-amber-700">지급액 = Σ 포괄관리성과 × B_g × n_reg_g × TrackMul</b></div>
             <div className="text-gray-500">n_reg_g = 의원당 환자군별 등록환자수 · TrackMul: A=0 / B=0.5 / C=1.0</div>
-            <div className="text-gray-500">no-downside: L2 &gt; L1이면 가산 0 (환수 없음) · 의원 100% 환원 (공유율 없음)</div>
+            <div className="text-gray-500">no-downside: C ≤ (1−L1)이면 가산 0 (환수 없음) · 의원 100% 환원 (공유율 없음)</div>
           </div>
         </div>
       )}
     </div>
     )}
 
-    {/* ⑫ 데이터 관리 */}
+    {/* ⑫ 데이터 관리 — v7.0: 정책 모드 전용 (의원 모드 미표시) */}
+    {mode === "policy" && (
     <div className={card + " overflow-hidden"}>
       <button onClick={() => set("showDetail", !showDetail)}
         className="w-full flex items-center justify-start gap-2 px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
@@ -713,5 +565,6 @@ export default memo(function TabSimulation({
         </div>
       )}
     </div>
+    )}
   </>);
 })

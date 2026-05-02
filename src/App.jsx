@@ -10,7 +10,7 @@ import { sliderCSS } from "./constants";
 const TABS = [
   { full: "📋 수가 시뮬레이션", short: "📋 수가" },
   { full: "📊 Track 선택", short: "📊 Track" },
-  { full: "💰 성과 배분", short: "💰 배분" },
+  { full: "💰 성과 배분 (Shared Saving)", short: "💰 SS" },
 ];
 
 const tabStyle = (active) => ({
@@ -65,8 +65,7 @@ export default function App() {
     <div className="overflow-x-hidden" style={{ fontFamily: "'Pretendard','Noto Sans KR',-apple-system,sans-serif", background: "#f8fafc", minHeight: "100vh", zoom: ZOOM_LEVELS[zoomIdx] }}>
       <style>{sliderCSS}</style>
 
-      <Header zoomIdx={zoomIdx} zoomLevels={ZOOM_LEVELS} onZoomIn={incZoom} onZoomOut={decZoom}
-        mode={mode} onModeChange={setMode} />
+      <Header zoomIdx={zoomIdx} zoomLevels={ZOOM_LEVELS} onZoomIn={incZoom} onZoomOut={decZoom} />
 
       {/* FOLDER TABS */}
       <div className="max-w-4xl mx-auto px-3 sm:px-4 pt-3" style={{ borderBottom: "2px solid #94a3b8" }}>
@@ -86,27 +85,25 @@ export default function App() {
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 space-y-3">
         <DatasetSelector currentLabel={state.dataLabel} onSelect={loadPreset} />
 
-        {/* 모드 안내 배너 (v6.8.1 — 모드별 문구 교체) */}
-        <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
-          style={mode === "policy"
-            ? { background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e3a8a" }
-            : { background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46" }}>
-          {mode === "policy" ? (
-            <>
-              <div className="font-bold mb-1">🏛️ 정책 모드 — 재정 안정과 의료계 수용성이 맞닿는 수가 조합을 탐색하세요.</div>
-              <div className="opacity-90">B·F·L1을 직접 조정하며 공단 지출 변화와 의원당 수입 변화를 동시에 확인할 수 있습니다. 좌측 상단 토글로 의원 모드로 전환할 수 있습니다.</div>
-            </>
-          ) : (
-            <>
-              <div className="font-bold mb-1">🏥 의원 모드 — 우리 의원에 이 제도가 어떻게 작용할지 확인하세요.</div>
-              <div className="opacity-90">현재 표시된 수가는 정부 협상을 통해 확정된 값입니다. Track 선택과 포괄관리 지표(L2) 관리로 수입이 어떻게 변하는지 확인할 수 있습니다.</div>
-            </>
-          )}
-        </div>
+        {/* v7.0: 탭별 안내 문구 — 양 모드 공통 */}
+        {tab === 0 && (
+          <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
+            style={{ background: "#f8fafc", border: "1px solid #cbd5e1", color: "#1e293b" }}>
+            <div className="opacity-90 mb-1">이 시뮬레이터는 환자군 기반 일차의료 지불모형의 재정·수입 영향을 추정하기 위한 목적으로 개발되었습니다.</div>
+            <div className="opacity-90">· <b>의원 모드</b>: 의료공급자의 수입 변화 추정 (기본)</div>
+            <div className="opacity-90">· <b>정책 모드</b>: 일차의료 수가 산출 구조 및 재정 검토 (심화)</div>
+          </div>
+        )}
+        {tab === 1 && (
+          <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
+            style={{ background: "#f8fafc", border: "1px solid #cbd5e1", color: "#1e293b" }}>
+            각 의원은 상황과 준비 상태에 따라 Track을 선택할 수 있습니다. 기존 행위별 수가제(Track A)를 유지할 수 있으며, 혼합형(Track B)이나 환자군 수가형(Track C)으로 단계적으로 전환할 수도 있습니다. 어떤 Track을 선택하든 의원의 자율적 진료에는 영향을 미치지 않습니다.
+          </div>
+        )}
 
         {tab === 0 && (
           <TabSimulation
-            mode={mode}
+            mode={mode} setMode={setMode}
             state={state} set={set}
             updP={sim.updP} updBase={sim.updBase}
             updF={sim.updF} setFAll={sim.setFAll} setPfRule={sim.setPfRule}
@@ -142,13 +139,14 @@ export default function App() {
             handleMacroSync={sim.handleMacroSync}
             SS={sim.SS} tracks={sim.tracks}
             resetSsCost={sim.resetSsCost}
+            resetSsPct={sim.resetSsPct}
           />
         )}
       </div>
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        일차의료 지불체계 시뮬레이터 v6.10.0 · 일차의료개발센터 · © 2026
+        일차의료 지불체계 시뮬레이터 v7.0 · 일차의료개발센터 · © 2026
       </div>
     </div>
   );
