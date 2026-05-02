@@ -192,33 +192,7 @@ export default memo(function TabTrack({
             </div>
           </div>
 
-          {/* 포괄관리성과 박스 — v7.0: 위계/공식/L2 현재 등 모두 삭제, 배수 표기 삭제 */}
-          <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)", borderColor: perfEnabled ? "#06b6d4" : "#d1d5db", opacity: perfEnabled ? 1 : 0.7 }}>
-            <div className="mb-2">
-              <h3 className="font-bold text-sm text-cyan-800">포괄관리성과 <span className="text-xs font-normal text-cyan-700">— 포괄관리지표(C) 근거 성과 가산</span></h3>
-            </div>
-            {!perfEnabled && (
-              <div className="rounded-lg bg-white/70 border border-gray-300 px-3 py-2 text-xs text-gray-600 mb-2">
-                💡 위 <b>포괄관리 지표(C) 슬라이더</b>를 우측으로 움직여 포괄관리성과 발생.
-              </div>
-            )}
-            <div className="grid grid-cols-3 gap-2">
-              {tracks.map(t => {
-                const active = hccPct === t.hc;
-                return (
-                  <div key={t.n}
-                    className="rounded-lg p-2 text-center transition"
-                    style={{ background: active ? "#cffafe" : "#ecfeff", border: `2px solid ${active ? "#06b6d4" : "#a5f3fc"}` }}>
-                    <button onClick={() => set("hccPct", t.hc)}
-                      aria-selected={active}
-                      className="block w-full text-xs font-bold cursor-pointer"
-                      style={{ color: t.c }}>{t.n}</button>
-                    <div className="text-base font-extrabold text-cyan-900 mt-0.5">{fMan(t.perfAmt)}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          {/* v7.0: 포괄관리성과 박스 삭제 — Track 비교 카드의 변화액에 이미 반영됨 */}
     </div>
 
     {/* ⑤ Track 차트 */}
