@@ -86,13 +86,15 @@ export default function App() {
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 space-y-3">
         <DatasetSelector currentLabel={state.dataLabel} onSelect={loadPreset} />
 
-        {/* v7.0: 통합 안내 배너 — 시뮬레이터 목적 + 모드별 용도 안내 */}
-        <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
-          style={{ background: "#f8fafc", border: "1px solid #cbd5e1", color: "#1e293b" }}>
-          <div className="opacity-90 mb-1">이 시뮬레이터는 환자군 기반 일차의료 지불모형의 재정·수입 영향을 추정하기 위한 목적으로 개발되었습니다.</div>
-          <div className="opacity-90">· <b>의원 모드</b>: 의료공급자의 수입 변화 추정 (기본)</div>
-          <div className="opacity-90">· <b>정책 모드</b>: 일차의료 수가 산출 구조 및 재정 검토 (심화)</div>
-        </div>
+        {/* v7.0: 통합 안내 배너 — 첫 진입(의원 모드 + 수가 시뮬레이션 탭)에서만 노출 */}
+        {mode === "clinic" && tab === 0 && (
+          <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
+            style={{ background: "#f8fafc", border: "1px solid #cbd5e1", color: "#1e293b" }}>
+            <div className="opacity-90 mb-1">이 시뮬레이터는 환자군 기반 일차의료 지불모형의 재정·수입 영향을 추정하기 위한 목적으로 개발되었습니다.</div>
+            <div className="opacity-90">· <b>의원 모드</b>: 의료공급자의 수입 변화 추정 (기본)</div>
+            <div className="opacity-90">· <b>정책 모드</b>: 일차의료 수가 산출 구조 및 재정 검토 (심화)</div>
+          </div>
+        )}
 
         {tab === 0 && (
           <TabSimulation
