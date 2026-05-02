@@ -233,8 +233,8 @@ export default memo(function TabSimulation({
         <div className="rounded-xl border-2 shadow-sm px-4 py-3" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderColor: "#c4b5fd" }}>
           <div className="flex items-center mb-2 gap-3 flex-wrap">
             <div className="flex flex-col">
-              <h2 className="font-bold text-base leading-tight" style={{ color: "#6d28d9" }}>포괄관리 지표 (C = 1 − L2)</h2>
-              <div className="text-[11px] text-purple-700/70 leading-tight mt-0.5">등록 주치의원에서 발생한 외래 의료비 비중 (M/C)</div>
+              <h2 className="font-bold text-base leading-tight" style={{ color: "#6d28d9" }}>포괄관리 지표 (C)</h2>
+              <div className="text-[11px] text-purple-700/70 leading-tight mt-0.5">등록의원의 외래 진료비 비중 (C = 1 − L2)</div>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-xs text-purple-600 font-semibold">기존</span>
@@ -256,10 +256,6 @@ export default memo(function TabSimulation({
             style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: sliderBg }} />
           <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
             <span>0%p</span><span>+5%p</span><span>+10%p</span><span>+15%p</span><span>+20%p</span><span>+25%p</span>
-          </div>
-          <div className="mt-1.5 text-[10px] text-purple-700/70 leading-relaxed space-y-0.5">
-            <div>※ <b className="font-mono">포괄관리성과 = max(0, C − (1 − L1))</b> — 환자군 구조상 기대 집중도(1−L1)를 넘어 달성한 포괄성</div>
-            <div>※ L1은 환자군 구조 특성, C는 의원의 포괄관리 성과를 다른 각도에서 보여줍니다.</div>
           </div>
         </div>
       );
@@ -301,8 +297,8 @@ export default memo(function TabSimulation({
       </div>
     </div>
 
-    {/* v6.11.0: 환자군 패널 삭제 — 참여 의원 수만 컴팩트 카드로 표시 (디폴트 = 업로드 데이터의 의원수) */}
-    <ClinicCountCard state={state} set={set} />
+    {/* v6.11.0: 참여 의원 수 — 정책 모드에서만 노출 (의원 모드는 의원 1개 시뮬 관점이라 불필요) */}
+    {mode === "policy" && <ClinicCountCard state={state} set={set} />}
 
     {/* ⑨ 차트 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -339,46 +335,7 @@ export default memo(function TabSimulation({
       </div>
     </div>
 
-    {/* ⑨-b Track 비교 요약 3카드 — 의원 모드 전용 (v6.8.2)
-         계산 소스: useSimulator의 tracks 메모 → Track 탭 비교 테이블과 숫자 일치 보장 */}
-    {mode === "clinic" && tracks && (
-      <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)", borderColor: "#c7d2fe" }}>
-        <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
-          <h3 className="font-bold text-base text-indigo-900">📊 Track별 2년차 이후 연간 수입 변화액 <span className="text-xs font-normal text-indigo-700">(의원당 · 단일 선택 시나리오)</span></h3>
-          <span className="text-[11px] text-indigo-600/80">→ Track을 변경하려면 Track 탭에서 선택</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {tracks.map(t => {
-            const active = state.hccPct === t.hc;
-            const baseInc = T.inc0 / Math.max(1, M);
-            const change = t.ongoing - baseInc;
-            return (
-              <div key={t.n}
-                className="rounded-lg p-3 text-center transition relative"
-                style={{
-                  background: active ? "#ffffff" : t.bg,
-                  border: active ? `2px solid ${t.c}` : `2px solid ${t.bd}`,
-                  boxShadow: active ? "0 2px 8px rgba(79, 70, 229, 0.15)" : "none",
-                }}>
-                {active && (
-                  <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold text-white" style={{ background: t.c }}>
-                    ✓ 현재 선택
-                  </div>
-                )}
-                <div className="text-xs font-extrabold" style={{ color: t.c }}>{TRACK_LABELS[t.hc] ?? t.n}</div>
-                <div className="mt-1.5 text-lg sm:text-xl font-extrabold tabular-nums" style={{ color: change >= 0 ? "#16a34a" : "#dc2626" }}>
-                  {diffMan(change)}
-                </div>
-                <div className="text-[10px] text-gray-500">/년 · 참여 전 대비</div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-2 text-[10px] text-indigo-700/70 leading-relaxed">
-          ※ 표시 금액 = Track 선지급 변화 + 포괄관리성과(L2). 1년차 PT 제외. Shared Saving은 Track 가산에서 분리되어 별도 검토.
-        </div>
-      </div>
-    )}
+    {/* v7.0: 의원 모드 Track 비교 요약 박스 삭제 (Track 탭에 동일 정보, 중복 제거) */}
 
     {/* ⑩ Win-Win-Win */}
     <WinWinWin items={[
@@ -421,7 +378,8 @@ export default memo(function TabSimulation({
     </div>
     )}
 
-    {/* ⑫ 데이터 관리 */}
+    {/* ⑫ 데이터 관리 — v7.0: 정책 모드 전용 (의원 모드 미표시) */}
+    {mode === "policy" && (
     <div className={card + " overflow-hidden"}>
       <button onClick={() => set("showDetail", !showDetail)}
         className="w-full flex items-center justify-start gap-2 px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
@@ -582,5 +540,6 @@ export default memo(function TabSimulation({
         </div>
       )}
     </div>
+    )}
   </>);
 })

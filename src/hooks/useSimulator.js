@@ -28,8 +28,8 @@ const initialState = {
   ssAcute: 29.9,
   ssEmergency: 3.5,
   ssLtc: 10.0,
-  ssAcutePct: 2,
-  ssEmergencyPct: 3,
+  ssAcutePct: 1,         // v7.0: 디폴트 -1% (총 의료비 영향 ≈ -0.392%)
+  ssEmergencyPct: 1,
   ssLtcPct: 1,
   ssMacroPct: 0.1,
   ssClinicShare: 50,

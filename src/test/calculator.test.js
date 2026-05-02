@@ -277,9 +277,9 @@ describe('v6.5 PT/SS Track percentages', () => {
     expect(ssPerClinicFull * 100 / 100).toBeCloseTo(4.015e9);  // 40.15억/의원
   });
 
-  it('v6.5.5 defaults: 사업대상 환자 의료비 10,000억원', () => {
-    expect(INIT_SS_COST_BASE).toBe('project');
-    expect(INIT_SS_PROJECT_COST).toBe(10000);    // 억원 (1조원 상당)
+  it('v7.0 defaults: ssCostBase=total (건강보험 전체 110.8조 기준)', () => {
+    expect(INIT_SS_COST_BASE).toBe('total');
+    expect(INIT_SS_PROJECT_COST).toBe(10000);    // 억원 (사업대상 토글 시 사용)
   });
 
   it('projectScale: 사업대상 기준 시 절감액이 사업대상/건보 비율로 축소', () => {

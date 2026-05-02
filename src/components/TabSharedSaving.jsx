@@ -20,62 +20,20 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
   const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
 
   return (<>
-    {/* v6.11.0: 참고 시나리오 배너 — Shared Saving은 Track 가산에서 분리됨 */}
+    {/* v7.0: 안내 배너 */}
     <div className="rounded-xl border-2 px-4 py-3 leading-relaxed"
       style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
-      <div className="text-sm font-bold text-amber-900 mb-1">⚠️ 참고 시나리오 — 시범사업 검증 후 도입 검토</div>
-      <div className="text-xs text-amber-800/90">
-        Shared Saving은 입원·응급·요양병원 절감 기반 분배 모델로, 시범사업 1~2년 종단 데이터로 검증한 후 도입을 별도 검토합니다.
-        <b className="text-amber-900"> 현재 의원 수입 변화(KPI)·Track 비교에는 미반영</b>됩니다. 본 탭의 슬라이더·추정 로직은 정책 시연·협의용입니다.
+      <div className="text-xs sm:text-sm text-amber-900">
+        ⚠️ <b>성과 배분(Shared Saving)</b>은 일차의료 강화 후 입원·응급·요양병원 의료비 변화에 따른 성과 배분 섹션으로 앞선 수가 시뮬레이션 및 Track 선택에는 미반영 상태입니다.
       </div>
     </div>
 
-    {/* ★ 의원 모드 Hero — 참고 시나리오 톤다운 (slate 회색조) */}
-    {mode === "clinic" && (
-      <div className="rounded-2xl border-2 shadow-sm p-5 text-center" style={{ background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)", borderColor: "#cbd5e1" }}>
-        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <span className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">🏥 우리 의원 예상 연간 성과배분 <span className="ml-1 px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 text-[9px]">참고</span></span>
-          <span className="text-[10px] text-slate-500 font-semibold">
-            현재 Track: <b className="text-slate-700">{trackName}</b>
-            <span className="mx-1 text-slate-400">·</span>
-            2년차부터 매년 (가정)
-          </span>
-        </div>
+    {/* v7.0: 의원 모드 차별 제거 — Hero 박스/readOnly 안내 모두 삭제, 정책 모드와 동일 노출 */}
 
-        <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight"
-          style={{ color: myClinicSsAmt > 0 ? "#475569" : "#9ca3af" }}>
-          {fMan(myClinicSsAmt)}<span className="text-base text-gray-500 font-bold"> / 년</span>
-        </div>
-
-        <div className="mt-4 bg-white rounded-xl px-4 py-3 text-left text-xs leading-relaxed border border-slate-200 shadow-sm">
-          <div className="text-[11px] text-gray-500 font-semibold mb-1.5">📐 산출 공식 (참고)</div>
-          <div className="space-y-1 text-gray-700">
-            <div>= 사업대상 성과배분 재원 <b className="text-slate-700">{fAuto(SS?.clinicFromItem ?? 0)}</b> <span className="text-gray-400">(성과배분 {ssClinicShare}%)</span></div>
-            <div>÷ 참여 의원 <b className="text-slate-700">{M.toLocaleString()}개</b> = 의원당 기준 <b className="text-slate-700">{fMan(ssPerClinicFull)}</b></div>
-            <div>× Track {hccPct === 0 ? "A" : hccPct === 100 ? "C" : "B"} 지급률 (가정값)</div>
-          </div>
-        </div>
-
-        <div className="mt-3 text-[11px] text-slate-600 leading-relaxed">
-          ※ 시범사업 검증 후 도입을 별도 검토합니다 — 현재 의원 수입 변화·Track 비교 KPI에는 미반영.
-        </div>
-      </div>
-    )}
-
-    {/* 의원 모드 — 변화율 슬라이더 영역 안내 */}
-    {readOnly && (
-      <div className="rounded-lg border border-gray-300 bg-gray-50 p-3 text-xs text-gray-600 leading-relaxed">
-        💡 아래 변화율·배분율 슬라이더는 <b>정책 가정값</b>입니다. 의원 모드에서는 읽기 전용으로 표시되며,
-        조정은 정책 모드에서 가능합니다.
-      </div>
-    )}
-
-    <fieldset disabled={readOnly} className={readOnly ? "opacity-70 space-y-3" : "contents"}>
     {/* ① 항목별 의료비 변화 추정 — 실제 입력 (위로) */}
     <div className={card + " p-4"}>
       <h2 className="font-bold text-gray-900 text-sm mb-1">
         항목별 의료비 변화 추정
-        {readOnly && <span className="text-[11px] font-normal text-gray-400 ml-1">(정책 가정값 · 읽기 전용)</span>}
       </h2>
       <div className="text-[11px] text-gray-500 mb-3 leading-relaxed">
         이용 감소 가정 — 양수 입력 시 음(−) 효과로 표기됩니다.
@@ -195,9 +153,9 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
       <h2 className="font-bold text-gray-900 text-sm mb-3">성과 배분 비율</h2>
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { n: "체계 지원 100%", v: 0, c: "#2563eb", bg: "#eff6ff" },
+          { n: "일차의료 체계 지원 100%", v: 0, c: "#2563eb", bg: "#eff6ff" },
           { n: "50 : 50", v: 50, c: "#7c3aed", bg: "#f5f3ff" },
-          { n: "성과 배분 100%", v: 100, c: "#16a34a", bg: "#f0fdf4" },
+          { n: "참여의원 성과 배분 100%", v: 100, c: "#16a34a", bg: "#f0fdf4" },
         ].map((b, i) => (
           <button key={i} onClick={() => set("ssClinicShare", b.v)}
             aria-selected={ssClinicShare === b.v}
@@ -215,57 +173,15 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
           aria-label="성과 배분 비율 슬라이더"
           className="flex-1 big-thumb"
           style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${100 - ssClinicShare}%, #16a34a ${100 - ssClinicShare}%, #16a34a 100%)` }} />
-        <span className="text-xs font-bold text-green-600 shrink-0">참여의원 성과배분 {ssClinicShare}%</span>
+        <span className="text-xs font-bold text-green-600 shrink-0">참여의원 성과 배분 {ssClinicShare}%</span>
       </div>
       <div className="flex rounded-md overflow-hidden h-5 text-xs font-bold text-white">
-        {ssClinicShare < 100 && <div style={{ width: `${100 - ssClinicShare}%`, background: "#3b82f6" }} className="flex items-center justify-center transition-all">{(100 - ssClinicShare) > 15 ? "체계 지원" : ""}</div>}
-        {ssClinicShare > 0 && <div style={{ width: `${ssClinicShare}%`, background: "#16a34a" }} className="flex items-center justify-center transition-all">{ssClinicShare > 15 ? "성과 배분" : ""}</div>}
+        {ssClinicShare < 100 && <div style={{ width: `${100 - ssClinicShare}%`, background: "#3b82f6" }} className="flex items-center justify-center transition-all">{(100 - ssClinicShare) > 15 ? "일차의료 체계 지원" : ""}</div>}
+        {ssClinicShare > 0 && <div style={{ width: `${ssClinicShare}%`, background: "#16a34a" }} className="flex items-center justify-center transition-all">{ssClinicShare > 15 ? "참여의원 성과 배분" : ""}</div>}
       </div>
     </div>
-    </fieldset>
 
-    {/* v6.11.0: Track 지급률 (참여의원 성과배분) — Track 탭에서 이동, 시연용 */}
-    <fieldset disabled={readOnly} className={readOnly ? "opacity-70" : ""}>
-      <div className={card + " p-4"}>
-        <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
-          <h3 className="font-bold text-sm text-green-800">참여의원 성과배분 — Track 지급률 (시연용)</h3>
-          {resetSsPct && (
-            <button onClick={resetSsPct}
-              className="text-xs text-green-700 hover:text-green-900 hover:bg-green-100 rounded px-2 py-1 transition"
-              title="성과배분 Track 지급률 10/50/100%로 복귀">↩ 초기화</button>
-          )}
-        </div>
-        <div className="text-[11px] text-gray-500 mb-2 leading-relaxed">
-          재원 = 위 항목별 절감 합 × 성과배분 비율 = <b className="text-slate-700">{fAuto(SS?.clinicFromItem ?? 0)}</b>
-          <span className="text-gray-400"> ÷ {M.toLocaleString()}개 의원 = 의원당 기준 <b className="text-slate-700">{fMan(ssPerClinicFull)}</b></span>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { n: "Track A", key: "ssPctA", pctVal: ssPctA, hc: 0, c: "#22c55e" },
-            { n: "Track B", key: "ssPctB", pctVal: ssPctB, hc: 50, c: "#3b82f6" },
-            { n: "Track C", key: "ssPctC", pctVal: ssPctC, hc: 100, c: "#f97316" },
-          ].map(t => {
-            const amt = ssPerClinicFull * t.pctVal / 100;
-            return (
-              <div key={t.n}
-                className="rounded-lg p-2 text-center transition"
-                style={{ background: "#f8fafc", border: "2px solid #e2e8f0" }}>
-                <div className="text-xs font-bold" style={{ color: t.c }}>{t.n}</div>
-                <div className="flex items-center justify-center gap-1 mt-1">
-                  <NumBox value={t.pctVal}
-                    onChange={v => set(t.key, Math.max(0, Math.min(500, v)))}
-                    color="#15803d" suffix="%" />
-                </div>
-                <div className="text-base font-extrabold text-slate-700 mt-0.5">{fMan(amt)}</div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-2 text-[10px] text-gray-500 leading-relaxed">
-          ※ 본 시연은 의원 수입 변화·Track 비교 KPI에는 미반영됩니다 (시범사업 검증 후 도입 검토).
-        </div>
-      </div>
-    </fieldset>
+    {/* v7.0: Track 지급률 박스 삭제 (시연용 → 노출 제거) */}
 
     {/* 배분 결과 파이 차트 */}
     <div className={card + " p-3"}>
@@ -312,15 +228,12 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
           <div>
             <div className="font-bold text-blue-700 mb-0.5">🔵 일차의료 체계 지원</div>
             <div className="text-gray-700 leading-relaxed pl-4">
-              다음해 사업 유지·확장을 위한 재투자 재원.<br />
+              일차의료 체계 강화를 위한 지원.<br />
               ① 신규 참여 의원 전환지원금(PT, Primary care Transformation grant)<br />
               ② 일차의료지원센터 구축·운영비<br />
               ③ IT 인프라·교육·질 관리 시스템 투자
             </div>
           </div>
-        </div>
-        <div className="mt-2 text-[10px] text-gray-500 leading-relaxed">
-          ※ 보고서·논문에서는 「일차의료 확산기금」과 동의어 (통합참조 v6.0 Part 3D.3)
         </div>
       </div>
     </div>

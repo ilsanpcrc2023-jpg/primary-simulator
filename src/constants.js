@@ -73,11 +73,9 @@ export const INIT_SS_PCT_A = 10;
 export const INIT_SS_PCT_B = 50;
 export const INIT_SS_PCT_C = 100;
 // Shared Saving 기준 — "total"=건강보험 전체(ssTotalCost, 조원) · "project"=사업대상 환자 의료비(ssProjectCost, 억원)
-// v6.5.3: 사업대상 단위 조원→억원 (수천~수만억 규모라 조원은 소수점 입력 필요)
-// v6.5.4: 디폴트를 사업대상 환자 의료비로 전환. 참여의원 성과배분 재원은 이 기준으로 산정.
-// v6.5.5: 디폴트 1,000 → 10,000억원 (1조원 상당 · 실측 규모 반영)
-export const INIT_SS_COST_BASE = "project";
-export const INIT_SS_PROJECT_COST = 10000;  // 억원 (사업 참여 의원 환자군 총진료비 추정 디폴트)
+// v7.0: 디폴트를 건강보험 전체(110.8조)로 복귀 (사용자 결정 — SS는 일차의료 후속 의료비 변화 추정).
+export const INIT_SS_COST_BASE = "total";
+export const INIT_SS_PROJECT_COST = 10000;  // 억원 (사업대상 토글 시 사용)
 // 이전 명칭 유지 (하위 호환)
 export const INIT_P = INIT_B;
 export const ON = INIT_BASE.reduce((s, g) => s + g.N, 0);

@@ -86,14 +86,13 @@ export default function App() {
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 space-y-3">
         <DatasetSelector currentLabel={state.dataLabel} onSelect={loadPreset} />
 
-        {/* v6.11.0: 정책 모드 안내 배너 삭제. 의원 모드만 유지. */}
-        {mode === "clinic" && (
-          <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
-            style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46" }}>
-            <div className="font-bold mb-1">🏥 의원 모드 — 우리 의원에 이 제도가 어떻게 작용할지 확인하세요.</div>
-            <div className="opacity-90">현재 표시된 수가는 정부 협상을 통해 확정된 값입니다. Track 선택과 포괄관리 지표(C) 관리로 수입이 어떻게 변하는지 확인할 수 있습니다.</div>
-          </div>
-        )}
+        {/* v7.0: 통합 안내 배너 — 시뮬레이터 목적 + 모드별 용도 안내 */}
+        <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
+          style={{ background: "#f8fafc", border: "1px solid #cbd5e1", color: "#1e293b" }}>
+          <div className="opacity-90 mb-1">이 시뮬레이터는 환자군 기반 일차의료 지불모형의 재정·수입 영향을 추정하기 위한 목적으로 개발되었습니다.</div>
+          <div className="opacity-90">· <b>의원 모드</b>: 의료공급자의 수입 변화 추정 (기본)</div>
+          <div className="opacity-90">· <b>정책 모드</b>: 일차의료 수가 산출 구조 및 재정 검토 (심화)</div>
+        </div>
 
         {tab === 0 && (
           <TabSimulation
@@ -140,7 +139,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div className="text-center py-3 px-3 text-xs text-gray-400 border-t border-gray-200 bg-white mt-4">
-        일차의료 지불체계 시뮬레이터 v6.11.0 · 일차의료개발센터 · © 2026
+        일차의료 지불체계 시뮬레이터 v7.0 · 일차의료개발센터 · © 2026
       </div>
     </div>
   );
