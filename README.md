@@ -2,6 +2,9 @@
 
 국민건강보험 일산병원 일차의료개발센터
 
+- **공식 도메인**: https://primarysimulator.kr
+- 백업/개발 URL: https://primary-simulator.vercel.app
+
 ## 기술 스택
 - React 18 + Vite
 - Tailwind CSS

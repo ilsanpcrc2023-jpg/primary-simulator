@@ -55,5 +55,5 @@
 
   <!-- Footer bar -->
   <rect x="0" y="570" width="1200" height="60" fill="#1a6fa8"/>
-  <text x="600" y="608" text-anchor="middle" font-size="22" font-weight="600" fill="#ffffff" font-family="Pretendard, -apple-system, sans-serif" letter-spacing="0.5">primary-simulator.vercel.app</text>
+  <text x="600" y="608" text-anchor="middle" font-size="22" font-weight="600" fill="#ffffff" font-family="Pretendard, -apple-system, sans-serif" letter-spacing="0.5">primarysimulator.kr</text>
 </svg>
