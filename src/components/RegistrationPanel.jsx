@@ -8,10 +8,10 @@ const H2 = "font-bold text-base text-gray-900";
 const F_MAX = 600000;
 const PF_PCT_MAX = 20;       // v6.10.0: 통합 슬라이더 상한 (PB ≈ PF 동수선이 자연스러운 한계)
 
+// v6.11.0: 역비례 옵션 삭제 (정책 근거 약함)
 const PF_RULES = [
   { id: "hcc",     label: "📊 HCC 비례", desc: "위험도 높을수록 두텁게 (디폴트)" },
   { id: "equal",   label: "⚖️ 균등",     desc: "등록환자 1인당 동일 PF" },
-  { id: "inverse", label: "🌱 역비례",   desc: "경증 등록 진입 인센티브" },
 ];
 
 /* FCard (일차의료 기능보정 PF) — v6.10.0: 통합 슬라이더 (B의 X%) + 분배 규칙 + 환자군별 4 슬라이더 + mini display */
@@ -58,15 +58,10 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
         </div>
       )}
 
-      {/* ① 통합 슬라이더 — PF = B의 X% (0~20%, 디폴트 10%, 음수 불허) + mini display */}
+      {/* ① 통합 슬라이더 (B의 X%, 0~20%, 디폴트 10%) — v6.11.0: PF=X%×B 라벨 삭제, 공단지출 % 삭제 */}
       <div className="rounded-lg border bg-white px-3 py-2.5"
         style={{ borderColor: "#bfdbfe", background: "linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)" }}>
-        <div className="flex items-baseline justify-between gap-2 flex-wrap mb-1">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xs font-semibold text-slate-700">PF =</span>
-            <span className="text-base font-extrabold text-blue-700 tabular-nums">{pfPctImplied.toFixed(1)}%</span>
-            <span className="text-xs text-slate-500">× B</span>
-          </div>
+        <div className="flex items-baseline justify-end gap-2 flex-wrap mb-1">
           <div className="text-xs font-semibold tabular-nums" style={{ color: pfExpenditure >= 0 ? "#0369a1" : "#dc2626" }}>
             공단지출 {pfExpenditure >= 0 ? "+" : "−"}{fE(Math.abs(pfExpenditure))}억
           </div>
@@ -81,13 +76,13 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
           <span>0%</span><span>5%</span><span>10%</span><span>15%</span><span>20%</span>
         </div>
         <div className="mt-1 text-[10px] text-slate-500 leading-relaxed">
-          ※ 분모 anchor = 등록환자 의원급 외래 FFS = Σ regDist × M1 × M = <b className="font-mono">{fE(pfBaseline)}억</b> (동적)
+          ※ 환자군 기준의료비(B) 기준
         </div>
       </div>
 
-      {/* ② 분배 규칙 토글 — HCC비례 (디폴트) / 균등 / 역비례 */}
+      {/* ② 분배 규칙 토글 — v6.11.0: 라벨 "환자군별", 역비례 삭제, 우측 초기화 버튼 */}
       <div className="mt-2 flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-semibold text-slate-700 shrink-0">분배 규칙</span>
+        <span className="text-xs font-semibold text-slate-700 shrink-0">환자군별</span>
         <div className="flex flex-wrap gap-1">
           {PF_RULES.map(r => {
             const active = pfRule === r.id;
@@ -102,19 +97,22 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
             );
           })}
         </div>
+        {resetF && (
+          <button onClick={resetF}
+            className="ml-auto text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
+            ↩ 초기화
+          </button>
+        )}
       </div>
 
-      {/* ③ 환자군별 슬라이더 4개 — 자동 연계 (통합 슬라이더 onChange로 갱신), 수동 미세 조정 가능 */}
+      {/* ③ 환자군별 슬라이더 4개 — v6.11.0: "B의 X%" 라벨 삭제 */}
       <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
         {SH.map((g, i) => {
-          // v6.9.6: PF 음수 금지. min=0.
           const F_clamped = Math.max(0, Math.min(F_g[i], F_MAX));
-          const pctOfB = B_g[i] > 0 ? (F_g[i] / B_g[i]) * 100 : 0;
           return (
             <div key={i} className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-bold" style={{ color: CL[i] }}>{g}</span>
-                <span className="text-[10px] text-slate-500 tabular-nums">B의 {pctOfB.toFixed(1)}%</span>
                 <NumBox value={F_g[i]} onChange={v => updF(i, v)} color={CL[i]} suffix="원" />
               </div>
               <input type="range" min={0} max={F_MAX} step={1000} value={F_clamped}
@@ -130,29 +128,21 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
   );
 });
 
-/* TCard — 일차의료수가 (v6.7: P = B(1−L1) + F, 공단지급 = P 단일화)
-   v6.8.1: mode="clinic"이면 공식 라벨·L1 개별 표시·P=공단지급 부제 숨김 (금액만) */
+/* TCard — v6.11.0: 새 헤더 (일차의료수가(P) 크게, 부제 작게) · P=공단지급/L1_g% 삭제 */
 export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
-  const { base, L1 } = state;
-  const totalN = base.reduce((s, b) => s + b.N, 0);
-  const L1avg = totalN > 0
-    ? base.reduce((s, b, i) => s + (b.N / totalN) * (L1?.[i] ?? 0.7), 0)
-    : 0.7;
   const simple = mode === "clinic";
 
   return (
     <div className="rounded-xl border-2 shadow-md overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#4f46e5" }}>
-      <div className="px-4 pt-3 pb-1 flex items-baseline gap-2 flex-wrap">
-        <h2 className="font-extrabold text-lg tracking-tight" style={{ color: "#3730a3" }}>
-          {simple ? "일차의료수가" : "일차의료수가 (P = PB + PF)"}
+      <div className="px-4 pt-3 pb-1">
+        <h2 className="font-extrabold text-lg tracking-tight leading-tight" style={{ color: "#3730a3" }}>
+          일차의료수가(P)
         </h2>
-        {!simple && (
-          <span className="text-sm font-bold text-indigo-700">
-            L1 평균 {(L1avg * 100).toFixed(1)}% · 공단지급 = P (단일화)
-          </span>
-        )}
+        <div className="text-xs font-semibold text-indigo-700/80 mt-0.5">
+          일차의료 기본수가(PB) + 일차의료 기능보정(PF)
+        </div>
       </div>
-      <div className="px-4 pb-3 pt-1">
+      <div className="px-4 pb-3 pt-2">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {SH.map((g, i) => {
             const pay_gov = G[i].pay_gov;
@@ -160,24 +150,12 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
               <div key={i} className="rounded-lg px-2 py-2 bg-white/90 shadow-sm min-w-0" style={{ borderLeft: `5px solid ${CL[i]}` }}>
                 <div className="text-[11px] font-bold text-center" style={{ color: CL[i] }}>{g}</div>
                 <div className="mt-1">
-                  {!simple && (
-                    <div className="text-[10px] font-semibold text-indigo-700/80 text-center">P = 공단지급</div>
-                  )}
                   <div className="text-sm sm:text-base font-extrabold text-indigo-900 tabular-nums text-center whitespace-nowrap">{f(Math.round(pay_gov))}<span className="text-[10px] font-bold ml-0.5">원</span></div>
                 </div>
-                {!simple && (
-                  <div className="mt-1 pt-1 border-t border-dashed border-indigo-300/60">
-                    <div className="text-[10px] font-semibold text-slate-600 text-center">L1_{i + 1}</div>
-                    <div className="text-xs font-bold text-slate-700 tabular-nums text-center">
-                      {((L1?.[i] ?? 0.7) * 100).toFixed(1)}%
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
         </div>
-        {/* v6.8.3: 의원 모드 — 일차의료수가만으로는 의원 수입이 아님을 명시 */}
         {simple && (
           <div className="mt-2 text-[11px] sm:text-xs font-semibold text-indigo-800/80 leading-relaxed">
             💡 의원 수입 = <span className="text-indigo-900 font-bold">일차의료수가</span>(공단지급) + <span className="text-indigo-900 font-bold">환자 본인부담</span>(현행 외래비의 30%)
@@ -188,7 +166,56 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
   );
 });
 
-/* RegScaleCard — 항상 펼침, 박스 처리.
+/* v6.11.0: ClinicCountCard — 환자군 패널 대체 컴팩트 카드.
+   참여 의원 수만 노출. 디폴트 = 업로드 데이터 의원수 (state.datasetM, state.M_clinics 동기화).
+   프리셋 [100, 1000, 3000]. perClinic 보존하며 totalN 자동 동기화. */
+export const ClinicCountCard = memo(function ClinicCountCard({ state, set }) {
+  const { M_clinics, totalN, datasetM, datasetLabel } = state;
+  const perClinic = Math.max(1, Math.round(totalN / Math.max(1, M_clinics)));
+  const presets = [100, 1000, 3000];
+
+  const setM = (m) => {
+    const newM = Math.max(1, Math.round(m));
+    set("M_clinics", newM);
+  };
+  const resetToDataset = () => {
+    if (datasetM) setM(datasetM);
+  };
+  return (
+    <div className={card + " p-3"}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm font-bold text-gray-900 shrink-0">사업 참여 의원 수</span>
+        <NumBox value={M_clinics} onChange={setM} color="#1f2937" suffix="개" />
+        <div className="flex flex-wrap gap-1">
+          {presets.map(p => {
+            const active = M_clinics === p;
+            return (
+              <button key={p} onClick={() => setM(p)}
+                className="text-xs px-2 py-0.5 rounded border font-medium transition"
+                style={active
+                  ? { background: "#dbeafe", borderColor: "#60a5fa", color: "#1d4ed8" }
+                  : { background: "#fff", borderColor: "#e5e7eb", color: "#374151" }}>
+                {p.toLocaleString()}
+              </button>
+            );
+          })}
+        </div>
+        {datasetM && datasetM !== M_clinics && (
+          <button onClick={resetToDataset}
+            className="ml-auto text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white"
+            title={`업로드된 데이터 (${datasetLabel || ""})의 의원 수로 복귀`}>
+            ↩ {datasetM.toLocaleString()}개로
+          </button>
+        )}
+      </div>
+      <div className="mt-1.5 text-[10px] text-gray-500 leading-relaxed">
+        의원당 등록환자수 {perClinic.toLocaleString()}명 · 사업 전체 등록환자 {(M_clinics * perClinic).toLocaleString()}명
+      </div>
+    </div>
+  );
+});
+
+/* RegScaleCard — v6.11.0: 사용 안 함 (legacy, 추후 제거 예정).
    v6.8.2: 의원 모드(mode="clinic")일 때 상단에 환자군 구성 프리셋 3버튼 노출 (CLINIC_PRESETS). */
 export const RegScaleCard = memo(function RegScaleCard({ state, set, reg, scaleRegDist, setRegDistAll, resetReg, mode = "policy" }) {
   const { totalN, M_clinics, regDist, baseN_per_clinic } = state;

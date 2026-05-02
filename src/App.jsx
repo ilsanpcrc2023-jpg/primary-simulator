@@ -86,23 +86,14 @@ export default function App() {
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 space-y-3">
         <DatasetSelector currentLabel={state.dataLabel} onSelect={loadPreset} />
 
-        {/* 모드 안내 배너 (v6.8.1 — 모드별 문구 교체) */}
-        <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
-          style={mode === "policy"
-            ? { background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e3a8a" }
-            : { background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46" }}>
-          {mode === "policy" ? (
-            <>
-              <div className="font-bold mb-1">🏛️ 정책 모드 — 재정 안정과 의료계 수용성이 맞닿는 수가 조합을 탐색하세요.</div>
-              <div className="opacity-90">B·F·L1을 직접 조정하며 공단 지출 변화와 의원당 수입 변화를 동시에 확인할 수 있습니다. 좌측 상단 토글로 의원 모드로 전환할 수 있습니다.</div>
-            </>
-          ) : (
-            <>
-              <div className="font-bold mb-1">🏥 의원 모드 — 우리 의원에 이 제도가 어떻게 작용할지 확인하세요.</div>
-              <div className="opacity-90">현재 표시된 수가는 정부 협상을 통해 확정된 값입니다. Track 선택과 포괄관리 지표(L2) 관리로 수입이 어떻게 변하는지 확인할 수 있습니다.</div>
-            </>
-          )}
-        </div>
+        {/* v6.11.0: 정책 모드 안내 배너 삭제. 의원 모드만 유지. */}
+        {mode === "clinic" && (
+          <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
+            style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46" }}>
+            <div className="font-bold mb-1">🏥 의원 모드 — 우리 의원에 이 제도가 어떻게 작용할지 확인하세요.</div>
+            <div className="opacity-90">현재 표시된 수가는 정부 협상을 통해 확정된 값입니다. Track 선택과 포괄관리 지표(C) 관리로 수입이 어떻게 변하는지 확인할 수 있습니다.</div>
+          </div>
+        )}
 
         {tab === 0 && (
           <TabSimulation
