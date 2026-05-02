@@ -65,8 +65,7 @@ export default function App() {
     <div className="overflow-x-hidden" style={{ fontFamily: "'Pretendard','Noto Sans KR',-apple-system,sans-serif", background: "#f8fafc", minHeight: "100vh", zoom: ZOOM_LEVELS[zoomIdx] }}>
       <style>{sliderCSS}</style>
 
-      <Header zoomIdx={zoomIdx} zoomLevels={ZOOM_LEVELS} onZoomIn={incZoom} onZoomOut={decZoom}
-        mode={mode} onModeChange={setMode} />
+      <Header zoomIdx={zoomIdx} zoomLevels={ZOOM_LEVELS} onZoomIn={incZoom} onZoomOut={decZoom} />
 
       {/* FOLDER TABS */}
       <div className="max-w-4xl mx-auto px-3 sm:px-4 pt-3" style={{ borderBottom: "2px solid #94a3b8" }}>
@@ -86,8 +85,8 @@ export default function App() {
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 space-y-3">
         <DatasetSelector currentLabel={state.dataLabel} onSelect={loadPreset} />
 
-        {/* v7.0: 통합 안내 배너 — 첫 진입(의원 모드 + 수가 시뮬레이션 탭)에서만 노출 */}
-        {mode === "clinic" && tab === 0 && (
+        {/* v7.0: 탭별 안내 문구 — 양 모드 공통 */}
+        {tab === 0 && (
           <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
             style={{ background: "#f8fafc", border: "1px solid #cbd5e1", color: "#1e293b" }}>
             <div className="opacity-90 mb-1">이 시뮬레이터는 환자군 기반 일차의료 지불모형의 재정·수입 영향을 추정하기 위한 목적으로 개발되었습니다.</div>
@@ -95,10 +94,16 @@ export default function App() {
             <div className="opacity-90">· <b>정책 모드</b>: 일차의료 수가 산출 구조 및 재정 검토 (심화)</div>
           </div>
         )}
+        {tab === 1 && (
+          <div className="rounded-lg px-3 py-2.5 text-xs sm:text-[13px] leading-relaxed"
+            style={{ background: "#f8fafc", border: "1px solid #cbd5e1", color: "#1e293b" }}>
+            각 의원은 상황과 준비 상태에 따라 Track을 선택할 수 있습니다. 기존 행위별 수가제(Track A)를 유지할 수 있으며, 혼합형(Track B)이나 환자군 수가형(Track C)으로 단계적으로 전환할 수도 있습니다. 어떤 Track을 선택하든 의원의 자율적 진료에는 영향을 미치지 않습니다.
+          </div>
+        )}
 
         {tab === 0 && (
           <TabSimulation
-            mode={mode}
+            mode={mode} setMode={setMode}
             state={state} set={set}
             updP={sim.updP} updBase={sim.updBase}
             updF={sim.updF} setFAll={sim.setFAll} setPfRule={sim.setPfRule}

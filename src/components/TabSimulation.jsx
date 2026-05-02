@@ -12,7 +12,7 @@ const TRACK_LABELS = { 0: "Track A 유지", 50: "Track B 혼합", 100: "Track C 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 export default memo(function TabSimulation({
-  mode = "policy",
+  mode = "policy", setMode,
   state, set, updP, updBase, updF, setFAll, setPfRule, resetF, resetP, resetReg,
   updL1, setL1All, resetL1, setL2, resetL2,
   updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset,
@@ -204,6 +204,31 @@ export default memo(function TabSimulation({
   );
 
   return (<>
+    {/* v7.0: 관점 선택 — 헤더에서 이동, 수가 시뮬레이션 탭 전용 */}
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-xs font-semibold text-gray-700 shrink-0">관점 선택</span>
+      <div className="inline-flex items-center gap-0.5 rounded-lg p-0.5 border border-gray-200 bg-white">
+        {[
+          { id: "policy", label: "🏛 정책 모드", activeBg: "#1E3A8A" },
+          { id: "clinic", label: "🏥 의원 모드", activeBg: "#10B981" },
+        ].map(o => {
+          const active = mode === o.id;
+          return (
+            <button key={o.id} type="button" onClick={() => setMode?.(o.id)}
+              aria-pressed={active}
+              className="text-xs sm:text-sm font-semibold px-3 py-1 rounded-md transition"
+              style={{
+                background: active ? o.activeBg : "transparent",
+                color: active ? "#fff" : "#475569",
+                fontWeight: active ? 700 : 600,
+              }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+
     {/* v6.11.0: 정책 모드 — PB 카드 → PF 카드 → TCard → C 슬라이더 → KPI → 차트 → 고급 설정 → 수가 산출 구조.
         공식 박스 삭제, advanced panel 위치는 하단(formula box 위)으로 이동. */}
     {mode === "policy" && PBcard}
