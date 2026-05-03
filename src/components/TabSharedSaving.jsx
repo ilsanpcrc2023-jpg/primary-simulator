@@ -24,7 +24,7 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
     <div className="rounded-xl border-2 px-4 py-3 leading-relaxed"
       style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
       <div className="text-xs sm:text-sm text-amber-900">
-        ⚠️ <b>성과 공유(Shared Saving)</b>은 일차의료 강화 후 입원·응급·요양병원 의료비 변화에 따른 성과 공유 섹션으로 앞선 수가 시뮬레이션 및 Track 선택에는 미반영 상태입니다.
+        ⚠️ <b>성과 공유(Shared Saving)</b>는 일차의료 강화 후 입원·응급·요양병원 의료비 변화에 따른 성과 공유 섹션으로 앞선 수가 시뮬레이션 및 Track 선택에는 미반영 상태입니다.
       </div>
     </div>
 
