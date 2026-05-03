@@ -13,7 +13,7 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
   const readOnly = mode === "clinic";
   const M = Math.max(1, M_clinics);
 
-  // 의원 모드 Hero 박스용 — 현재 Track 기준 의원당 성과배분 (참고 시나리오)
+  // 의원 모드 Hero 박스용 — 현재 Track 기준 의원당 성과공유 (참고 시나리오)
   const activeTrack = tracks?.find(t => t.hc === hccPct) || tracks?.[2] || null;
   const trackName = hccPct === 0 ? "A (FFS)" : hccPct === 100 ? "C (환자군)" : `B (혼합 ${hccPct}%)`;
   const myClinicSsAmt = activeTrack?.ssAmt ?? 0;
@@ -24,7 +24,7 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
     <div className="rounded-xl border-2 px-4 py-3 leading-relaxed"
       style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
       <div className="text-xs sm:text-sm text-amber-900">
-        ⚠️ <b>성과 배분(Shared Saving)</b>은 일차의료 강화 후 입원·응급·요양병원 의료비 변화에 따른 성과 배분 섹션으로 앞선 수가 시뮬레이션 및 Track 선택에는 미반영 상태입니다.
+        ⚠️ <b>성과 공유(Shared Saving)</b>은 일차의료 강화 후 입원·응급·요양병원 의료비 변화에 따른 성과 공유 섹션으로 앞선 수가 시뮬레이션 및 Track 선택에는 미반영 상태입니다.
       </div>
     </div>
 
@@ -148,14 +148,14 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
       </div>
     </div>
 
-    {/* 성과 배분 비율 */}
+    {/* 성과 공유 비율 */}
     <div className={card + " p-4"}>
-      <h2 className="font-bold text-gray-900 text-sm mb-3">성과 배분 비율</h2>
+      <h2 className="font-bold text-gray-900 text-sm mb-3">성과 공유 비율</h2>
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
           { n: "일차의료 체계 지원 100%", v: 0, c: "#2563eb", bg: "#eff6ff" },
           { n: "50 : 50", v: 50, c: "#7c3aed", bg: "#f5f3ff" },
-          { n: "참여의원 성과 배분 100%", v: 100, c: "#16a34a", bg: "#f0fdf4" },
+          { n: "참여의원 성과 공유 100%", v: 100, c: "#16a34a", bg: "#f0fdf4" },
         ].map((b, i) => (
           <button key={i} onClick={() => set("ssClinicShare", b.v)}
             aria-selected={ssClinicShare === b.v}
@@ -170,14 +170,14 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
         <span className="text-xs font-bold text-blue-600 shrink-0">일차의료 체계 지원 {100 - ssClinicShare}%</span>
         <input type="range" min={0} max={100} step={5} value={ssClinicShare}
           onChange={e => set("ssClinicShare", parseInt(e.target.value))}
-          aria-label="성과 배분 비율 슬라이더"
+          aria-label="성과 공유 비율 슬라이더"
           className="flex-1 big-thumb"
           style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${100 - ssClinicShare}%, #16a34a ${100 - ssClinicShare}%, #16a34a 100%)` }} />
-        <span className="text-xs font-bold text-green-600 shrink-0">참여의원 성과 배분 {ssClinicShare}%</span>
+        <span className="text-xs font-bold text-green-600 shrink-0">참여의원 성과 공유 {ssClinicShare}%</span>
       </div>
       <div className="flex rounded-md overflow-hidden h-5 text-xs font-bold text-white">
         {ssClinicShare < 100 && <div style={{ width: `${100 - ssClinicShare}%`, background: "#3b82f6" }} className="flex items-center justify-center transition-all">{(100 - ssClinicShare) > 15 ? "일차의료 체계 지원" : ""}</div>}
-        {ssClinicShare > 0 && <div style={{ width: `${ssClinicShare}%`, background: "#16a34a" }} className="flex items-center justify-center transition-all">{ssClinicShare > 15 ? "참여의원 성과 배분" : ""}</div>}
+        {ssClinicShare > 0 && <div style={{ width: `${ssClinicShare}%`, background: "#16a34a" }} className="flex items-center justify-center transition-all">{ssClinicShare > 15 ? "참여의원 성과 공유" : ""}</div>}
       </div>
     </div>
 
@@ -185,13 +185,13 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
 
     {/* 배분 결과 파이 차트 */}
     <div className={card + " p-3"}>
-      <h3 className="text-xs font-bold text-gray-700 mb-1 text-center">성과 배분</h3>
+      <h3 className="text-xs font-bold text-gray-700 mb-1 text-center">성과 공유</h3>
       <ResponsiveContainer width="100%" height={220}>
         <PieChart>
           <Pie
             data={[
               { name: "일차의료 체계 지원", value: SS.nhisFromItem, color: "#3b82f6" },
-              { name: "참여의원 성과배분", value: SS.clinicFromItem, color: "#22c55e" },
+              { name: "참여의원 성과공유", value: SS.clinicFromItem, color: "#22c55e" },
             ].filter(d => d.value > 0)}
             cx="50%" cy="50%" innerRadius={48} outerRadius={88}
             startAngle={90} endAngle={450}
@@ -209,20 +209,20 @@ export default memo(function TabSharedSaving({ mode = "policy", state, set, hand
       </ResponsiveContainer>
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs mt-1">
         <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#3b82f6" }}></span>일차의료 체계 지원 <b className="text-blue-600">{fAuto(SS.nhisFromItem)}</b></span>
-        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#22c55e" }}></span>참여의원 성과배분 <b className="text-green-600">{fAuto(SS.clinicFromItem)}</b></span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#22c55e" }}></span>참여의원 성과공유 <b className="text-green-600">{fAuto(SS.clinicFromItem)}</b></span>
       </div>
     </div>
 
-    {/* 성과 배분 구성 — 파이 차트 뒤 */}
+    {/* 성과 공유 구성 — 파이 차트 뒤 */}
     <div className={card + " p-4"}>
       <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3">
-        <div className="text-xs font-bold text-amber-900 mb-2">💡 성과 배분 구성</div>
+        <div className="text-xs font-bold text-amber-900 mb-2">💡 성과 공유 구성</div>
         <div className="space-y-2 text-xs">
           <div>
-            <div className="font-bold text-green-700 mb-0.5">🟢 참여의원 성과배분</div>
+            <div className="font-bold text-green-700 mb-0.5">🟢 참여의원 성과공유</div>
             <div className="text-gray-700 leading-relaxed pl-4">
               사업 참여 의원에게 직접 지급되는 성과보상금.<br />
-              환자군 관리 성과(입원·응급·요양병원 이용 감소)에 대한 성과 배분.
+              환자군 관리 성과(입원·응급·요양병원 이용 감소)에 대한 성과 공유.
             </div>
           </div>
           <div>

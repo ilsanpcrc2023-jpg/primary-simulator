@@ -65,7 +65,7 @@ export const INIT_DATA_LABEL = validDataLabel
   ? officialBaseline.dataLabel
   : `데이터 baseline (${INIT_M_CLINICS}기관 · ${INIT_TOTAL_N.toLocaleString("ko-KR")}명)`;
 export const INIT_PT_BASE = 10_000_000;   // 일차의료 전환지원금 기준 금액 (의원당 · 1회)
-// PT · 성과배분 Track 지급률 (A/B/C, %) — 편집 가능, 초기화 시 복귀
+// PT · 성과공유 Track 지급률 (A/B/C, %) — 편집 가능, 초기화 시 복귀
 export const INIT_PT_PCT_A = 10;
 export const INIT_PT_PCT_B = 50;
 export const INIT_PT_PCT_C = 100;
