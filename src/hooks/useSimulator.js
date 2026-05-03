@@ -49,7 +49,7 @@ const initialState = {
   ptPctA: INIT_PT_PCT_A,
   ptPctB: INIT_PT_PCT_B,
   ptPctC: INIT_PT_PCT_C,
-  // 성과배분 Track 지급률 (A/B/C, %) — 편집 가능
+  // 성과공유 Track 지급률 (A/B/C, %) — 편집 가능
   ssPctA: INIT_SS_PCT_A,
   ssPctB: INIT_SS_PCT_B,
   ssPctC: INIT_SS_PCT_C,
