@@ -58,10 +58,14 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
         </div>
       )}
 
-      {/* ① 통합 슬라이더 (B의 X%, 0~20%, 디폴트 10%) — v6.11.0: PF=X%×B 라벨 삭제, 공단지출 % 삭제 */}
+      {/* ① 통합 슬라이더 (B의 X%, 0~20%, 디폴트 10%) — v7.2.1: 현재 슬라이더 % 표기 추가 (B 기준 N.N%) */}
       <div className="rounded-lg border bg-white px-3 py-2.5"
         style={{ borderColor: "#bfdbfe", background: "linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)" }}>
-        <div className="flex items-baseline justify-end gap-2 flex-wrap mb-1">
+        <div className="flex items-baseline justify-between gap-2 flex-wrap mb-1">
+          <div className="text-xs text-slate-600 tabular-nums">
+            <span className="font-semibold text-slate-700">B 기준</span>
+            <span className="ml-1 text-base font-extrabold text-blue-700">{Math.max(0, Math.min(PF_PCT_MAX, pfPctImplied)).toFixed(1)}%</span>
+          </div>
           <div className="text-xs font-semibold tabular-nums" style={{ color: pfExpenditure >= 0 ? "#0369a1" : "#dc2626" }}>
             공단지출 {pfExpenditure >= 0 ? "+" : "−"}{fE(Math.abs(pfExpenditure))}억
           </div>
