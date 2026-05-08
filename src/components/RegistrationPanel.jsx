@@ -160,11 +160,9 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
             );
           })}
         </div>
-        {simple && (
-          <div className="mt-2 text-[11px] sm:text-xs font-semibold text-indigo-800/80 leading-relaxed">
-            💡 의원 수입 = <span className="text-indigo-900 font-bold">일차의료수가</span>(공단지급) + <span className="text-indigo-900 font-bold">환자 본인부담</span>(현행 외래비의 30%)
-          </div>
-        )}
+        {/* v7.2.3: TCard 안내 문구 삭제 — "의원 수입 = 일차의료수가(공단지급) + 본인부담" 표기가
+           시뮬 산식과 정책 시멘틱(본인부담 변화 없음 + 의원 수입 변화 = PF만) 사이에서
+           해석 혼동을 일으킴. v7.3.0에서 산식 정정 후 별도 안내 문구 재검토 (사용자 결정). */}
       </div>
     </div>
   );
