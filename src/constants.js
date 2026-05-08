@@ -88,14 +88,9 @@ export const CLINIC_COUNT_PRESETS = [
 //   regDist 합을 비례 스케일 (scaleRegDist).
 export const REG_PER_CLINIC_PRESETS = [1000, 1500, 2000, 3000, 4000];
 
-// 일만시 전체 등록 모드: 의원당 4,379명 모두 등록 (환자군별 N 비율로 분배)
-//   regDist[i] = round(INIT_PER_CLINIC × N_g / Σ N) — 합은 약 INIT_PER_CLINIC ± 라운딩.
-const _ratioReg = (() => {
-  const total = INIT_BASE.reduce((s, g) => s + (g?.N || 0), 0);
-  if (total <= 0) return [...INIT_REG_DIST];
-  return INIT_BASE.map(b => Math.max(0, Math.round(INIT_PER_CLINIC * (b?.N || 0) / total)));
-})();
-export const FULL_REG_REG_DIST = _ratioReg;
+// v7.1.4: 일만시 모드는 시범사업안 디폴트 등록환자수(1,000명, INIT_REG_DIST [100,600,200,100])를 사용.
+//   이전 v7.1.1의 FULL_REG_REG_DIST(N비례 분배 ≈ 4,379명 전체 등록)는 폐기.
+//   일만시 모드 = 데이터 anchor 의원 수(2,923) + 시범사업안 등록 분포.
 export const INIT_PT_BASE = 10_000_000;   // 일차의료 전환지원금 기준 금액 (의원당 · 1회)
 // PT · 성과공유 Track 지급률 (A/B/C, %) — 편집 가능, 초기화 시 복귀
 export const INIT_PT_PCT_A = 10;

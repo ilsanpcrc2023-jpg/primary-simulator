@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, FULL_REG_REG_DIST, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
@@ -147,23 +147,19 @@ function reducer(state, action) {
       };
     }
     case "LOAD_FULL_REG": {
-      // v7.1.1: 일만시 전체 등록 모드 — 만성질환관리 시범사업 참여의원 2,923개,
-      //   의원당 환자수 4,379명 모두 등록 (regDist 합 = 의원당 환자수, 환자군별 N 비율로 분배).
-      //   데이터 anchor(datasetM/datasetTotalN)와 동기화. baseN_per_clinic도 anchor로.
+      // v7.1.4: 일만시 모드 — 데이터 anchor 의원 수(2,923개)로 전환.
+      //   regDist는 시범사업안 디폴트 [100, 600, 200, 100] 합 1,000명 (사용자 결정).
+      //   이전 v7.1.1 시멘틱(전체 등록 4,379명)은 폐기.
+      //   액션 이름 LOAD_FULL_REG는 하위 호환 유지 (의미: 데이터 anchor 전체 의원 수).
       const baseSum = state.base.reduce((s, g) => s + (g?.N || 0), 0);
       const anchorM = Math.max(1, state.datasetM || INIT_M_CLINICS);
       const perClinicAnchor = baseSum > 0 ? Math.max(1, Math.round(baseSum / anchorM)) : INIT_PER_CLINIC;
-      // 환자군별 N 비율로 의원당 등록환자수 분배 (라운딩으로 합이 perClinicAnchor ± 1 수준)
-      const ratioReg = (() => {
-        if (baseSum <= 0) return [...FULL_REG_REG_DIST];
-        return state.base.map(b => Math.max(0, Math.round(perClinicAnchor * (b?.N || 0) / baseSum)));
-      })();
       return {
         ...state,
         M_clinics: anchorM,
         totalN: baseSum > 0 ? baseSum : (state.datasetTotalN || INIT_TOTAL_N),
         baseN_per_clinic: perClinicAnchor,
-        regDist: ratioReg,
+        regDist: [...INIT_REG_DIST],
         dataLabel: state.datasetLabel || INIT_DATA_LABEL,
       };
     }

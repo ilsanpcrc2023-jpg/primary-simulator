@@ -401,11 +401,13 @@ export default memo(function TabSimulation({
                 const anchorM = Math.max(1, state.datasetM || 1);
                 const perClinicAnchor = baseSum > 0 ? Math.round(baseSum / anchorM) : 0;
                 const fmt = v => v.toLocaleString("ko-KR");
-                const msg = `일만시 전체 등록 모드로 전환합니다.\n\n· 의원 수: ${fmt(anchorM)}개 (만성질환관리 시범사업 참여의원 전체)\n· 의원당 환자수: ${fmt(perClinicAnchor)}명 (모두 등록)\n· 사업 전체: ${fmt(baseSum)}명\n\n진행할까요?`;
+                const regSum = 1000;
+                const totalReg = anchorM * regSum;
+                const msg = `일만시 모드로 전환합니다.\n\n· 의원 수: ${fmt(anchorM)}개 (만성질환관리 시범사업 참여의원 전체)\n· 의원당 환자수: ${fmt(perClinicAnchor)}명\n· 의원당 등록환자수: ${fmt(regSum)}명 (시범사업안)\n· 사업 전체 등록: ${fmt(totalReg)}명\n\n진행할까요?`;
                 if (confirm(msg)) loadFullReg?.();
               }}>
               <div className="text-amber-500 text-xl mb-0.5">🏥</div>
-              <div className="text-xs font-semibold text-amber-700">일만시 전체 등록 모드</div>
+              <div className="text-xs font-semibold text-amber-700">일만시 모드</div>
             </div>
           </div>
 

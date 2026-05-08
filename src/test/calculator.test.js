@@ -8,7 +8,7 @@ import { INIT_BASE, INIT_P, INIT_F, INIT_R, INIT_PF_PCT, INIT_PF_RULE,
   INIT_L1,
   INIT_M_CLINICS, INIT_TOTAL_N, INIT_PER_CLINIC, INIT_BASE_PER_CLINIC,
   INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N,
-  CLINIC_COUNT_PRESETS, REG_PER_CLINIC_PRESETS, FULL_REG_REG_DIST,
+  CLINIC_COUNT_PRESETS, REG_PER_CLINIC_PRESETS,
   B_MIN, B_MAX, OFFICIAL_BASELINE_META } from '../constants';
 import { distribute, calcPFfromPct, inferPFpct } from '../utils';
 
@@ -568,12 +568,16 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     expect(REG_PER_CLINIC_PRESETS).toEqual([1000, 1500, 2000, 3000, 4000]);
   });
 
-  it('FULL_REG_REG_DIST 합 ≈ INIT_PER_CLINIC (4,379명, 라운딩 ±2)', () => {
-    expect(FULL_REG_REG_DIST).toHaveLength(4);
-    const sum = FULL_REG_REG_DIST.reduce((s, v) => s + v, 0);
-    expect(Math.abs(sum - INIT_PER_CLINIC)).toBeLessThanOrEqual(2);
-    // N 비율 분배 — 4군이 가장 많고 1군이 가장 적어야 함 (HCC v3.0 분포)
-    expect(FULL_REG_REG_DIST[3]).toBeGreaterThan(FULL_REG_REG_DIST[0]);
+  it('일만시 모드 (v7.1.4): M=2,923 + regDist 시범사업안 [100,600,200,100] 합 1,000명', () => {
+    // v7.1.4: 일만시 모드는 데이터 anchor 의원 수(2,923) + 시범사업안 등록 분포.
+    //   이전 v7.1.1의 N비례 4,379명 전체 등록 시멘틱은 폐기.
+    const ilmansiM = INIT_M_CLINICS;        // 2,923
+    const ilmansiRegDist = [100, 600, 200, 100];  // INIT_REG_DIST와 동일
+    const ilmansiRegSum = ilmansiRegDist.reduce((s, v) => s + v, 0);
+    const ilmansiTotalReg = ilmansiM * ilmansiRegSum;
+    expect(ilmansiM).toBe(2923);
+    expect(ilmansiRegSum).toBe(1000);
+    expect(ilmansiTotalReg).toBe(2923000);   // 사업 전체 등록환자
   });
 
   it('100개 의원 디폴트: 437,900명 = 등록 100,000명 + 비등록 337,900명 (regDist 합 1,000)', () => {
