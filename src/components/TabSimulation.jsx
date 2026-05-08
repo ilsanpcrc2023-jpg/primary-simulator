@@ -15,7 +15,7 @@ export default memo(function TabSimulation({
   mode = "policy", setMode,
   state, set, updP, updBase, updF, setFAll, setPfRule, resetF, resetP, resetReg,
   updL1, setL1All, resetL1, setL2, resetL2,
-  updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset, loadFullReg,
+  updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset,
   G, T, decomp, performance: perfMemo, tracks,
   incChg, nhiChg,
   fileRef, handleFile, handleExport, handleCommitBaseline,
@@ -397,17 +397,11 @@ export default memo(function TabSimulation({
             </div>
             <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
               onClick={() => {
-                const baseSum = state.base.reduce((s, g) => s + (g?.N || 0), 0);
-                const anchorM = Math.max(1, state.datasetM || 1);
-                const perClinicAnchor = baseSum > 0 ? Math.round(baseSum / anchorM) : 0;
-                const fmt = v => v.toLocaleString("ko-KR");
-                const regSum = 1000;
-                const totalReg = anchorM * regSum;
-                const msg = `일만시 모드로 전환합니다.\n\n· 의원 수: ${fmt(anchorM)}개 (만성질환관리 시범사업 참여의원 전체)\n· 의원당 환자수: ${fmt(perClinicAnchor)}명\n· 의원당 등록환자수: ${fmt(regSum)}명 (시범사업안)\n· 사업 전체 등록: ${fmt(totalReg)}명\n\n진행할까요?`;
-                if (confirm(msg)) loadFullReg?.();
+                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,379명\n· 의원당 등록환자수: 1,000명 (시범사업안 [100, 600, 200, 100])\n· 사업 전체 등록: 100,000명\n\n환자군별 N · M1 · L · regDist만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
+                if (confirm(msg)) resetReg?.();
               }}>
-              <div className="text-amber-500 text-xl mb-0.5">🏥</div>
-              <div className="text-xs font-semibold text-amber-700">일만시 모드</div>
+              <div className="text-amber-500 text-xl mb-0.5">↩</div>
+              <div className="text-xs font-semibold text-amber-700">초기화</div>
             </div>
           </div>
 

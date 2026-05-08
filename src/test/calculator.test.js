@@ -568,16 +568,17 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     expect(REG_PER_CLINIC_PRESETS).toEqual([1000, 1500, 2000, 3000, 4000]);
   });
 
-  it('일만시 모드 (v7.1.4): M=2,923 + regDist 시범사업안 [100,600,200,100] 합 1,000명', () => {
-    // v7.1.4: 일만시 모드는 데이터 anchor 의원 수(2,923) + 시범사업안 등록 분포.
-    //   이전 v7.1.1의 N비례 4,379명 전체 등록 시멘틱은 폐기.
-    const ilmansiM = INIT_M_CLINICS;        // 2,923
-    const ilmansiRegDist = [100, 600, 200, 100];  // INIT_REG_DIST와 동일
-    const ilmansiRegSum = ilmansiRegDist.reduce((s, v) => s + v, 0);
-    const ilmansiTotalReg = ilmansiM * ilmansiRegSum;
-    expect(ilmansiM).toBe(2923);
-    expect(ilmansiRegSum).toBe(1000);
-    expect(ilmansiTotalReg).toBe(2923000);   // 사업 전체 등록환자
+  it('초기화 (v7.1.5): RESET_REG는 1차년도 시범사업 디폴트(M=100, regDist 합 1,000) 복귀', () => {
+    // v7.1.5: 일만시 모드 버튼 → 초기화 버튼으로 교체. resetReg 호출 → RESET_REG 액션.
+    //   복귀 값: M=INIT_DEFAULT_M(100), regDist=INIT_REG_DIST([100,600,200,100], 합 1,000),
+    //          baseN_per_clinic=데이터 anchor 의원당 환자수(4,379).
+    const resetM = INIT_DEFAULT_M;             // 100
+    const resetRegDist = [100, 600, 200, 100]; // INIT_REG_DIST
+    const resetRegSum = resetRegDist.reduce((s, v) => s + v, 0);
+    const resetTotalReg = resetM * resetRegSum;
+    expect(resetM).toBe(100);
+    expect(resetRegSum).toBe(1000);
+    expect(resetTotalReg).toBe(100000);        // 1차년도 사업 전체 등록환자
   });
 
   it('100개 의원 디폴트: 437,900명 = 등록 100,000명 + 비등록 337,900명 (regDist 합 1,000)', () => {

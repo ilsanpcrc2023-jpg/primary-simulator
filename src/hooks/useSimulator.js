@@ -146,23 +146,8 @@ function reducer(state, action) {
         dataLabel: state.datasetLabel || INIT_DATA_LABEL,
       };
     }
-    case "LOAD_FULL_REG": {
-      // v7.1.4: 일만시 모드 — 데이터 anchor 의원 수(2,923개)로 전환.
-      //   regDist는 시범사업안 디폴트 [100, 600, 200, 100] 합 1,000명 (사용자 결정).
-      //   이전 v7.1.1 시멘틱(전체 등록 4,379명)은 폐기.
-      //   액션 이름 LOAD_FULL_REG는 하위 호환 유지 (의미: 데이터 anchor 전체 의원 수).
-      const baseSum = state.base.reduce((s, g) => s + (g?.N || 0), 0);
-      const anchorM = Math.max(1, state.datasetM || INIT_M_CLINICS);
-      const perClinicAnchor = baseSum > 0 ? Math.max(1, Math.round(baseSum / anchorM)) : INIT_PER_CLINIC;
-      return {
-        ...state,
-        M_clinics: anchorM,
-        totalN: baseSum > 0 ? baseSum : (state.datasetTotalN || INIT_TOTAL_N),
-        baseN_per_clinic: perClinicAnchor,
-        regDist: [...INIT_REG_DIST],
-        dataLabel: state.datasetLabel || INIT_DATA_LABEL,
-      };
-    }
+    // v7.1.5: LOAD_FULL_REG 액션 폐기 (일만시 모드 버튼 → 초기화 버튼으로 교체).
+    //   초기화는 RESET_REG로 처리 (M=100 시범사업 디폴트 복귀).
     case "RESET_PT_PCT":
       return { ...state, ptPctA: INIT_PT_PCT_A, ptPctB: INIT_PT_PCT_B, ptPctC: INIT_PT_PCT_C };
     case "RESET_SS_PCT":
@@ -527,8 +512,6 @@ export default function useSimulator() {
   const setL2 = useCallback((value) => dispatch({ type: "SET_L2", value }), []);
   const resetL2 = useCallback(() => dispatch({ type: "RESET_L2" }), []);
   const resetReg = useCallback(() => dispatch({ type: "RESET_REG" }), []);
-  // v7.1.1: 일만시 전체 등록 모드
-  const loadFullReg = useCallback(() => dispatch({ type: "LOAD_FULL_REG" }), []);
   const resetPtPct = useCallback(() => dispatch({ type: "RESET_PT_PCT" }), []);
   const resetSsPct = useCallback(() => dispatch({ type: "RESET_SS_PCT" }), []);
   const resetSsCost = useCallback(() => dispatch({ type: "RESET_SS_COST" }), []);
@@ -711,7 +694,7 @@ export default function useSimulator() {
 
   return {
     state, set, updP, updBase, updF, setFAll, setPfRule,
-    resetF, resetP, resetReg, loadFullReg,
+    resetF, resetP, resetReg,
     // v6.7 L1·L2 (α 제거)
     updL1, setL1All, resetL1,
     setL2, resetL2,
