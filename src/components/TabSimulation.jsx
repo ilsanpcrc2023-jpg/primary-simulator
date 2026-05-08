@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
-import { FCard, TCard, ClinicCountCard } from "./RegistrationPanel";
+import { FCard, TCard, ClinicSummaryStrip, ClinicCountControls } from "./RegistrationPanel";
 import { SH, CL, INIT_REG_DIST, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB } from "../utils";
@@ -23,9 +23,9 @@ export default memo(function TabSimulation({
 }) {
   const { base, P, L1, L2, showDetail, uploadBanner, F_g, M_clinics } = state;
   const M = Math.max(1, M_clinics);
-  const [showFormula, setShowFormula] = useState(false);
   const [policyExpanded, setPolicyExpanded] = useState(mode === "policy");
   // v6.10.0: 균형추 controlled accordion 제거. 고급 패널만 유지.
+  // v7.1.3: 수가 산출 구조 박스 삭제 (formula 컬럼 헤더와 중복 · showFormula state 제거).
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // v6.9.3: PB = B × (1 − L1) — UI 표시값. 슬라이더 onChange는 PBtoB로 B 역산.
@@ -137,7 +137,9 @@ export default memo(function TabSimulation({
     </div>
   );
 
-  // 고급 패널 — v6.11.0: 부제·B 안내문·amber 박스 삭제 · L1 헤더 "평균 타원이용비중(L1)" · 버튼 통합 (RESET_L1이 base.L 복귀)
+  // v7.1.2: 고급 설정 — B·L1 박스 삭제 (환자군별 상세 편집 테이블과 중복).
+  //   대신 의원 수·의원당 등록환자수 선택 컨트롤 배치.
+  //   B/L1 직접 편집은 데이터 관리 카드의 환자군별 상세 편집 테이블에서 수행.
   const advancedPanel = (
     <div className="rounded-xl border border-dashed shadow-sm overflow-hidden"
       style={{ background: "#fafafa", borderColor: "#cbd5e1" }}>
@@ -145,58 +147,14 @@ export default memo(function TabSimulation({
         className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-slate-100 transition text-left">
         <span className="text-slate-400 text-xs">{showAdvanced ? "▲" : "▼"}</span>
         <span className="text-sm font-semibold text-slate-700">⚙️ 고급 설정</span>
+        <span className="text-[10px] text-slate-400">의원 수 · 의원당 등록환자수</span>
       </button>
       {showAdvanced && (
-        <div className="px-4 pb-4 pt-1 border-t border-dashed border-slate-300 space-y-4">
-          {/* B 직접 조정 */}
-          <div>
-            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-              <div className="text-sm font-semibold text-slate-700 flex items-baseline gap-2 flex-wrap">
-                환자군 기준의료비 (B)
-                <span className="text-[11px] font-normal text-slate-400">B = 환자군 평균 의료비(A) × 의원급 외래 비중(CR)</span>
-              </div>
-              <button onClick={resetP}
-                className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
-                ↩ 초기화
-              </button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {SH.map((g, i) => (
-                <div key={i} className="flex items-center gap-1.5 bg-white rounded-lg px-2 py-1.5 border border-slate-200">
-                  <span className="text-[11px] font-bold shrink-0" style={{ color: CL[i] }}>{g}</span>
-                  <NumBox value={P[i]} onChange={v => updP(i, Math.max(0, Math.round(v)))} color={CL[i]} suffix="원" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* L1 환자군별 차등 — v6.11.0: 헤더 "평균 타원이용비중(L1)", 단일 초기화 버튼 (base.L 복귀) */}
-          <div className="rounded-lg border-2 px-3 py-2.5"
-            style={{ background: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)", borderColor: "#5eead4" }}>
-            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-              <h3 className="text-sm font-bold" style={{ color: "#0f766e" }}>
-                평균 타원이용비중 (L1)
-              </h3>
-              <button onClick={resetL1}
-                className="text-xs text-teal-700 hover:text-red-600 border border-teal-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
-                ↩ 초기화
-              </button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {SH.map((g, i) => (
-                <div key={i} className="flex items-center gap-1.5 bg-white/70 rounded-lg px-2 py-1.5 border border-teal-200">
-                  <span className="text-[11px] font-bold shrink-0" style={{ color: CL[i] }}>{g}</span>
-                  <input type="number" min={0} max={1} step={0.01}
-                    value={(L1?.[i] ?? 0.7).toFixed(2)}
-                    onChange={e => {
-                      const v = parseFloat(e.target.value);
-                      if (!isNaN(v)) updL1(i, v);
-                    }}
-                    className="w-full text-sm text-center border border-teal-300 rounded px-1 py-0.5 tabular-nums"
-                    style={{ color: "#0f766e" }} />
-                </div>
-              ))}
-            </div>
+        <div className="px-4 pb-4 pt-2 border-t border-dashed border-slate-300">
+          <ClinicCountControls state={state} set={set} scaleRegDist={scaleRegDist} />
+          <div className="mt-3 text-[10px] text-slate-400 leading-relaxed">
+            ※ 환자군 기준의료비(B) · 평균 타원이용비중(L1)은 데이터 관리 카드의
+            <b className="text-slate-500"> 환자군별 상세 편집 테이블</b>에서 직접 편집.
           </div>
         </div>
       )}
@@ -322,8 +280,9 @@ export default memo(function TabSimulation({
       </div>
     </div>
 
-    {/* v6.11.0: 참여 의원 수 — 정책 모드에서만 노출 (의원 모드는 의원 1개 시뮬 관점이라 불필요) */}
-    {mode === "policy" && <ClinicCountCard state={state} set={set} />}
+    {/* v7.1.2: 참여 의원 수 + 의원당 등록환자수 — 슬림 1줄 요약만 (변경 컨트롤은 고급 설정으로 이동).
+        정책 모드에서만 노출 (의원 모드는 의원 1개 시뮬 관점이라 불필요). */}
+    {mode === "policy" && <ClinicSummaryStrip state={state} />}
 
     {/* ⑨ 차트 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -375,33 +334,7 @@ export default memo(function TabSimulation({
     {/* v6.11.0: 고급 설정 — 위치를 수가 산출 구조 위로 이동 (정책 모드 전용) */}
     {mode === "policy" && advancedPanel}
 
-    {/* ⑪ 공식 구조 — v6.8.1: 의원 모드에서는 숨김 (정책 모드 전용) */}
-    {mode === "policy" && (
-    <div className={card + " overflow-hidden"}>
-      <button onClick={() => setShowFormula(v => !v)}
-        className="w-full flex items-center justify-start gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
-        <span className="text-gray-400 text-xs">{showFormula ? "▲" : "▼"}</span>
-        <span>📐 수가 산출 구조 (v6.9.3 PB·PF 단순합)</span>
-      </button>
-      {showFormula && (
-        <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-3">
-          <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-700 leading-relaxed font-mono space-y-1">
-            <div><b className="text-indigo-700">P_g = PB_g + PF_g</b>  (환자군별 선지급)</div>
-            <div className="text-gray-500 pl-2">where  PB_g = B_g × (1 − L1_g) · PF_g = F_g</div>
-            <div><b className="text-indigo-700">공단지급 = P</b>  (단일화)</div>
-            <div><b className="text-indigo-700">본인부담 = M1 × 30%</b>  (고정)</div>
-            <div className="pt-1 mt-1 border-t border-gray-300">
-              <b className="text-amber-700">포괄관리 지표 C = 1 − L2 · 기대 집중도 = 1 − L1</b>
-            </div>
-            <div><b className="text-amber-700">포괄관리성과 = max(0, C − (1 − L1)) = max(0, L1 − L2)</b></div>
-            <div><b className="text-amber-700">지급액 = Σ 포괄관리성과 × B_g × n_reg_g × TrackMul</b></div>
-            <div className="text-gray-500">n_reg_g = 의원당 환자군별 등록환자수 · TrackMul: A=0 / B=0.5 / C=1.0</div>
-            <div className="text-gray-500">no-downside: C ≤ (1−L1)이면 가산 0 (환수 없음) · 의원 100% 환원 (공유율 없음)</div>
-          </div>
-        </div>
-      )}
-    </div>
-    )}
+    {/* v7.1.3: 수가 산출 구조 박스 삭제 — formula는 환자군별 상세 편집 테이블 컬럼 헤더(B=A×CR, PB=B×C1, P=PB+PF)에 이미 노출. */}
 
     {/* ⑫ 데이터 관리 — v7.0: 정책 모드 전용 (의원 모드 미표시) */}
     {mode === "policy" && (
@@ -413,6 +346,27 @@ export default memo(function TabSimulation({
       </button>
       {showDetail && (
         <div className="px-3 pb-3 border-t border-gray-100">
+          {/* v7.1.3: 자료 분석 절차 (NHIS-HCC v3.0 2025 baseline 출처·방법론) — 엑셀 시트 텍스트 정합 */}
+          <div className="mt-3 mb-3 rounded-lg border bg-slate-50 px-3 py-2.5"
+            style={{ borderColor: "#cbd5e1" }}>
+            <div className="text-xs font-bold text-slate-700 mb-1.5">📊 자료 분석 절차</div>
+            <div className="text-[11px] text-slate-700 leading-relaxed space-y-1">
+              <div><b className="text-slate-800">1단계 (건보공단 전수자료 HCC 분석)</b></div>
+              <div className="pl-3">1) 2025년 건보공단 전수자료 <b>53,247,650명</b>으로 NHIS-HCC v3.0 구축</div>
+              <div className="pl-3">2) HCC 4분위(quartile)로 환자군 1~4군 분류</div>
+              <div className="pt-1"><b className="text-slate-800">2단계 (일만시 참여의원 환자 중심 분석)</b></div>
+              <div className="pl-3 text-[10px] text-slate-500 leading-tight">
+                주분석 대상: 일차의료 만성질환관리 시범사업 참여의원 <b className="text-slate-700">2,923개 의원</b>
+                · 환자 <b className="text-slate-700">12,801,143명</b> (의원당 <b className="text-slate-700">4,379명</b>)
+              </div>
+              <div className="pl-3">1) 환자군 평균 의료비 <b>A</b></div>
+              <div className="pl-3">2) 환자군 기준의료비(의원급외래) <b>B = A × CR</b></div>
+              <div className="pl-3">3) 일차의료 기본수가 <b>PB = B × C1</b> (C1 = 1 − L1)</div>
+              <div className="pt-1 text-slate-500"><i>cf. 일차의료 정책 보정 후 수가</i></div>
+              <div className="pl-3 text-slate-600">· 일차의료 기능보정 <b>PF</b> · 일차의료수가 <b>P = PB + PF</b></div>
+            </div>
+          </div>
+
           {uploadBanner && (
             <div className={`mt-2 mb-3 rounded-lg px-3 py-2.5 text-xs ${uploadBanner.success ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
               <div className="flex items-center justify-between">
@@ -442,9 +396,12 @@ export default memo(function TabSimulation({
               <div className="text-xs font-semibold text-blue-600">내보내기</div>
             </div>
             <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
-              onClick={() => { if (confirm(`파일럿 데이터(10개 의원, 69,604명, 2023)로 전환합니다. 진행할까요?`)) loadPreset(presets[0]); }}>
+              onClick={() => {
+                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,379명\n· 의원당 등록환자수: 1,000명 (시범사업안 [100, 600, 200, 100])\n· 사업 전체 등록: 100,000명\n\n환자군별 N · M1 · L · regDist만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
+                if (confirm(msg)) resetReg?.();
+              }}>
               <div className="text-amber-500 text-xl mb-0.5">↩</div>
-              <div className="text-xs font-semibold text-amber-700">파일럿 로드</div>
+              <div className="text-xs font-semibold text-amber-700">초기화</div>
             </div>
           </div>
 
@@ -489,7 +446,7 @@ export default memo(function TabSimulation({
             <div className="flex items-center justify-between gap-2 py-1.5 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-600">📋 환자군별 상세 편집 테이블</span>
-                <span className="text-[10px] font-normal text-gray-400">입력 셀: N · M1 · L · 등록 (B·F·L1은 정책 슬라이더)</span>
+                <span className="text-[10px] font-normal text-gray-400">엑셀 정합 (HCC v3.0 2025) · 입력: NC · M1 · L1 · A · CR · 등록 (B는 A×CR로 자동 산출, PB·PF는 정책 슬라이더)</span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-[10px] text-gray-500">등록 분포 프리셋:</span>
@@ -511,45 +468,85 @@ export default memo(function TabSimulation({
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs" style={{ minWidth: 780 }}>
+              {/* v7.1.1: 엑셀 정합 컬럼 — HCC 4분위 환자군 / NT(전체) / NC(참여의원) / A(평균의료비) / CR(외래비중) / B / L1 / C1 / PF / PB / P=PB+PF / 등록.
+                  편집: NC, M1, L1, A, CR, 등록. 산출: B=A×CR (A·CR 모두 있을 때 표시), C1=1−L1, PB=B(1−L1), P=PB+PF. */}
+              <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1080 }}>
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
-                    <th className="text-left px-2 py-1.5">환자군</th>
-                    <th className="text-center px-1">N</th>
-                    <th className="text-center px-1">M1</th>
-                    <th className="text-center px-1">L (실측)</th>
-                    <th className="text-center px-1">B</th>
-                    <th className="text-center px-1">L1</th>
-                    <th className="text-center px-1">PF</th>
-                    <th className="text-center px-1 text-indigo-700">P = PB + PF</th>
-                    <th className="text-center px-1 text-blue-700">등록</th>
+                    <th className="text-left px-2 py-1.5" title="HCC 4분위 환자군">환자군</th>
+                    <th className="text-center px-1" title="환자군별 전체 환자수 NT (참고)">NT<br /><span className="font-normal text-[9px]">전체</span></th>
+                    <th className="text-center px-1" title="환자군별 참여의원 환자수 NC (편집 가능)">NC<br /><span className="font-normal text-[9px]">참여의원</span></th>
+                    <th className="text-center px-1" title="1인당 등록의원 외래의료비 M1 (= RC ÷ NC)">M1<br /><span className="font-normal text-[9px]">1인당 RC</span></th>
+                    <th className="text-center px-1" title="환자군 평균 의료비 A (편집 가능)">A<br /><span className="font-normal text-[9px]">평균 의료비</span></th>
+                    <th className="text-center px-1" title="의원급 외래비중 CR (편집 가능)">CR<br /><span className="font-normal text-[9px]">외래비중</span></th>
+                    <th className="text-center px-1" title="환자군 기준의료비 B = A × CR (산출)">B<br /><span className="font-normal text-[9px]">A×CR</span></th>
+                    <th className="text-center px-1" title="cf. 타원이용비중 L1 (편집 가능)">L1<br /><span className="font-normal text-[9px]">타원</span></th>
+                    <th className="text-center px-1" title="포괄관리 비중 C1 = 1 − L1 (산출)">C1<br /><span className="font-normal text-[9px]">1−L1</span></th>
+                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF (정책 슬라이더)">PF</th>
+                    <th className="text-center px-1 text-slate-700" title="일차의료 기본수가 PB = B × C1 (산출)">PB<br /><span className="font-normal text-[9px]">B×C1</span></th>
+                    <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF">P<br /><span className="font-normal text-[9px]">PB+PF</span></th>
+                    <th className="text-center px-1 text-blue-700" title="의원당 환자군별 등록환자수">등록</th>
                   </tr>
                 </thead>
                 <tbody>
                   {G.map((r, i) => {
                     const Fi = F_g[i] ?? 0;
                     const L1_i = L1?.[i] ?? 0.7;
+                    const C1_i = 1 - L1_i;
+                    const A_i = base[i].A;
+                    const CR_i = base[i].CR;
+                    const NT_i = base[i].NT;
+                    // B 표시: A·CR 모두 있을 때 A×CR 산출 (참고용), 그 외 P[i] (slider 값)
+                    const B_calc = (typeof A_i === "number" && typeof CR_i === "number" && A_i > 0 && CR_i > 0)
+                      ? Math.round(A_i * CR_i)
+                      : null;
+                    const B_display = B_calc ?? P[i];
+                    const PB_display = Math.round(B_display * C1_i);
                     return (
                       <tr key={i} className="border-t border-gray-100">
                         <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
+                        <td className="text-center px-1 text-gray-500">
+                          {typeof NT_i === "number" ? f(NT_i) : <span className="text-gray-300">—</span>}
+                        </td>
                         <td className="text-center px-1">
-                          <input type="text" value={f(base[i].N)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                          <input type="text" value={f(base[i].N)} className="w-20 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
                             onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
                         </td>
                         <td className="text-center px-1">
-                          <input type="text" value={f(base[i].M1)} className="w-20 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
+                          <input type="text" value={f(base[i].M1)} className="w-20 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
                             onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updBase(i, "M1", v); }} />
                         </td>
                         <td className="text-center px-1">
-                          <input type="text" value={base[i].L.toFixed(4)} className="w-16 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updBase(i, "L", v); }} />
+                          <input type="text"
+                            value={typeof A_i === "number" ? f(A_i) : ""}
+                            placeholder="—"
+                            className="w-20 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updBase(i, "A", v); }} />
                         </td>
-                        <td className="text-center px-1 text-gray-700">{f(P[i])}</td>
-                        <td className="text-center px-1 text-teal-700 tabular-nums">{L1_i.toFixed(2)}</td>
-                        <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
-                        <td className="text-center px-1 font-bold text-indigo-700 tabular-nums">{f(Math.round(P[i] * (1 - L1_i) + Fi))}</td>
                         <td className="text-center px-1">
-                          <input type="text" value={f(state.regDist[i])} className="w-14 text-center text-xs border border-blue-200 rounded bg-blue-50 py-0.5 text-blue-700"
+                          <input type="text"
+                            value={typeof CR_i === "number" ? CR_i.toFixed(3) : ""}
+                            placeholder="—"
+                            className="w-14 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updBase(i, "CR", v); }} />
+                        </td>
+                        <td className="text-center px-1 text-gray-700">
+                          {f(B_display)}
+                          {B_calc !== null && Math.abs(B_calc - P[i]) > 1 && (
+                            <span className="block text-[9px] text-amber-600" title={`현재 정책 슬라이더 B = ${f(P[i])}`}>⚠ 슬라이더 {f(P[i])}</span>
+                          )}
+                        </td>
+                        <td className="text-center px-1">
+                          <input type="text" value={base[i].L.toFixed(4)} className="w-16 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updBase(i, "L", v); }} />
+                          <span className="block text-[9px] text-teal-700">L1 {L1_i.toFixed(2)}</span>
+                        </td>
+                        <td className="text-center px-1 text-emerald-700">{(C1_i * 100).toFixed(1)}%</td>
+                        <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
+                        <td className="text-center px-1 text-slate-700">{f(PB_display)}</td>
+                        <td className="text-center px-1 font-bold text-indigo-700">{f(PB_display + Fi)}</td>
+                        <td className="text-center px-1">
+                          <input type="text" value={f(state.regDist[i])} className="w-14 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5 text-blue-700"
                             onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updRegDist(i, v); }} />
                         </td>
                       </tr>
@@ -557,8 +554,11 @@ export default memo(function TabSimulation({
                   })}
                 </tbody>
               </table>
-              <div className="mt-2 text-xs text-gray-500 leading-relaxed">
-                ※ N·M1·L·등록만 직접 편집. PB(=B(1−L1))·PF·B·L1은 위쪽 정책 슬라이더 또는 고급 패널에서 설정. L1 시드는 &quot;엑셀 L → L1 복사&quot; 버튼.
+              <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
+                ※ 직접 편집: NC · M1 · L (= L1 시드) · A · CR · 등록.
+                B는 A × CR 산출값 (정책 슬라이더 B와 다르면 노란색 ⚠ 안내).
+                PF · L1 · 정책 B는 상단 슬라이더 또는 고급 패널에서 설정.
+                NT(전체 환자수)는 데이터 anchor의 reference (편집 불가).
               </div>
             </div>
           </div>
