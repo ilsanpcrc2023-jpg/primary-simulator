@@ -397,7 +397,7 @@ export default memo(function TabSimulation({
             </div>
             <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
               onClick={() => {
-                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,379명\n· 의원당 등록환자수: 1,000명 (시범사업안 [100, 600, 200, 100])\n· 사업 전체 등록: 100,000명\n\n환자군별 N · M1 · L · regDist만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
+                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,379명\n· 의원당 등록환자수: 1,000명 (데이터 비례 [160, 224, 298, 318])\n· 사업 전체 등록: 100,000명\n\n환자군별 RN · M1 · L · RR(등록 분포)만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
                 if (confirm(msg)) resetReg?.();
               }}>
               <div className="text-amber-500 text-xl mb-0.5">↩</div>
@@ -446,12 +446,12 @@ export default memo(function TabSimulation({
             <div className="flex items-center justify-between gap-2 py-1.5 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-600">📋 환자군별 상세 편집 테이블</span>
-                <span className="text-[10px] font-normal text-gray-400">엑셀 정합 (HCC v3.0 2025) · 입력: NC · M1 · L1 · A · CR · 등록 (B는 A×CR로 자동 산출, PB·PF는 정책 슬라이더)</span>
+                <span className="text-[10px] font-normal text-gray-400">엑셀 정합 (HCC v3.0 2025) · 입력: RN · M1 · L1 · A · CR · RR (B는 A×CR로 자동 산출, PB·PF는 정책 슬라이더)</span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-[10px] text-gray-500">등록 분포 프리셋:</span>
                 {[
-                  { label: "부록", v: INIT_REG_DIST },
+                  { label: "데이터 비례", v: INIT_REG_DIST },
                   { label: "균등", v: [250, 250, 250, 250] },
                   { label: "건강편중", v: [400, 400, 150, 50] },
                   { label: "고위험편중", v: [50, 350, 300, 300] },
@@ -468,15 +468,15 @@ export default memo(function TabSimulation({
               </div>
             </div>
             <div className="overflow-x-auto">
-              {/* v7.1.1: 엑셀 정합 컬럼 — HCC 4분위 환자군 / NT(전체) / NC(참여의원) / A(평균의료비) / CR(외래비중) / B / L1 / C1 / PF / PB / P=PB+PF / 등록.
-                  편집: NC, M1, L1, A, CR, 등록. 산출: B=A×CR (A·CR 모두 있을 때 표시), C1=1−L1, PB=B(1−L1), P=PB+PF. */}
+              {/* v7.2.0: 엑셀 정합 약어 갱신 — NT / RN(이전 NC) / A / CR / B / L1 / C1 / PF / PB / P / RR(이전 등록).
+                  편집: RN, M1, L1, A, CR, RR. 산출: B=A×CR (A·CR 모두 있을 때 표시), C1=1−L1, PB=B(1−L1), P=PB+PF. */}
               <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1080 }}>
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
                     <th className="text-left px-2 py-1.5" title="HCC 4분위 환자군">환자군</th>
                     <th className="text-center px-1" title="환자군별 전체 환자수 NT (참고)">NT<br /><span className="font-normal text-[9px]">전체</span></th>
-                    <th className="text-center px-1" title="환자군별 참여의원 환자수 NC (편집 가능)">NC<br /><span className="font-normal text-[9px]">참여의원</span></th>
-                    <th className="text-center px-1" title="1인당 등록의원 외래의료비 M1 (= RC ÷ NC)">M1<br /><span className="font-normal text-[9px]">1인당 RC</span></th>
+                    <th className="text-center px-1" title="참여의원 전체 환자수 RN (이전 NC, 편집 가능)">RN<br /><span className="font-normal text-[9px]">참여의원</span></th>
+                    <th className="text-center px-1" title="1인당 등록의원 외래의료비 M1 (= RO ÷ RN)">M1<br /><span className="font-normal text-[9px]">RO ÷ RN</span></th>
                     <th className="text-center px-1" title="환자군 평균 의료비 A (편집 가능)">A<br /><span className="font-normal text-[9px]">평균 의료비</span></th>
                     <th className="text-center px-1" title="의원급 외래비중 CR (편집 가능)">CR<br /><span className="font-normal text-[9px]">외래비중</span></th>
                     <th className="text-center px-1" title="환자군 기준의료비 B = A × CR (산출)">B<br /><span className="font-normal text-[9px]">A×CR</span></th>
@@ -485,7 +485,7 @@ export default memo(function TabSimulation({
                     <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF (정책 슬라이더)">PF</th>
                     <th className="text-center px-1 text-slate-700" title="일차의료 기본수가 PB = B × C1 (산출)">PB<br /><span className="font-normal text-[9px]">B×C1</span></th>
                     <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF">P<br /><span className="font-normal text-[9px]">PB+PF</span></th>
-                    <th className="text-center px-1 text-blue-700" title="의원당 환자군별 등록환자수">등록</th>
+                    <th className="text-center px-1 text-blue-700" title="참여의원당 등록환자수 RR (이전 '등록')">RR<br /><span className="font-normal text-[9px]">등록</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -555,10 +555,11 @@ export default memo(function TabSimulation({
                 </tbody>
               </table>
               <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
-                ※ 직접 편집: NC · M1 · L (= L1 시드) · A · CR · 등록.
+                ※ 직접 편집: RN · M1 · L (= L1 시드) · A · CR · RR.
                 B는 A × CR 산출값 (정책 슬라이더 B와 다르면 노란색 ⚠ 안내).
                 PF · L1 · 정책 B는 상단 슬라이더 또는 고급 패널에서 설정.
                 NT(전체 환자수)는 데이터 anchor의 reference (편집 불가).
+                약어: RN(참여의원 전체 환자수, 이전 NC) · RR(참여의원당 등록환자수, 이전 등록).
               </div>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { INIT_BASE, INIT_P, INIT_F, INIT_R, INIT_PF_PCT, INIT_PF_RULE,
-  POLICY_SCENARIOS,
+  INIT_REG_DIST,
+  POLICY_SCENARIOS, CLINIC_PRESETS,
   ON, COL_ALIASES,
   INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C,
   INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C,
@@ -101,9 +102,25 @@ describe('calculation engine', () => {
   });
 });
 
-describe('v6.6 upload schema', () => {
-  it('COL_ALIASES includes 5 fields: N, M1, L, HCC, CR', () => {
-    expect(Object.keys(COL_ALIASES).sort()).toEqual(['CR', 'HCC', 'L', 'M1', 'N']);
+describe('v6.6 / v7.2.0 upload schema', () => {
+  it('COL_ALIASES includes 7 fields: N, M1, L, HCC, CR, RR, RO (v7.2.0)', () => {
+    expect(Object.keys(COL_ALIASES).sort()).toEqual(['CR', 'HCC', 'L', 'M1', 'N', 'RO', 'RR']);
+  });
+
+  it('v7.2.0: COL_ALIASES.N includes RN (이전 NC 명칭 변경)', () => {
+    expect(COL_ALIASES.N).toContain('RN');
+    // NHIS-HCC v3.0 엑셀 풀네임도 매칭
+    expect(COL_ALIASES.N.some(a => a.includes('참여의원 전체 환자수'))).toBe(true);
+  });
+
+  it('v7.2.0: COL_ALIASES.RR (참여의원당 등록환자수, regDist 자동 주입 재료)', () => {
+    expect(COL_ALIASES.RR).toContain('RR');
+    expect(COL_ALIASES.RR.some(a => a.includes('참여의원당 등록환자수'))).toBe(true);
+  });
+
+  it('v7.2.0: COL_ALIASES.RO (등록의원외래비, M1 fallback 재료)', () => {
+    expect(COL_ALIASES.RO).toContain('RO');
+    expect(COL_ALIASES.RO.some(a => a.includes('등록의원외래비'))).toBe(true);
   });
 
   it('INIT_F has 4 entries (per-group F)', () => {
@@ -568,15 +585,17 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     expect(REG_PER_CLINIC_PRESETS).toEqual([1000, 1500, 2000, 3000, 4000]);
   });
 
-  it('초기화 (v7.1.5): RESET_REG는 1차년도 시범사업 디폴트(M=100, regDist 합 1,000) 복귀', () => {
+  it('초기화 (v7.1.5 / v7.2.0): RESET_REG는 1차년도 시범사업 디폴트(M=100, regDist 합 1,000) 복귀', () => {
     // v7.1.5: 일만시 모드 버튼 → 초기화 버튼으로 교체. resetReg 호출 → RESET_REG 액션.
-    //   복귀 값: M=INIT_DEFAULT_M(100), regDist=INIT_REG_DIST([100,600,200,100], 합 1,000),
+    // v7.2.0: regDist 디폴트 = [160,224,298,318] (참여의원 환자분포 RD × 1,000명).
+    //   복귀 값: M=INIT_DEFAULT_M(100), regDist=INIT_REG_DIST([160,224,298,318], 합 1,000),
     //          baseN_per_clinic=데이터 anchor 의원당 환자수(4,379).
     const resetM = INIT_DEFAULT_M;             // 100
-    const resetRegDist = [100, 600, 200, 100]; // INIT_REG_DIST
+    const resetRegDist = INIT_REG_DIST;        // [160, 224, 298, 318]
     const resetRegSum = resetRegDist.reduce((s, v) => s + v, 0);
     const resetTotalReg = resetM * resetRegSum;
     expect(resetM).toBe(100);
+    expect(resetRegDist).toEqual([160, 224, 298, 318]);
     expect(resetRegSum).toBe(1000);
     expect(resetTotalReg).toBe(100000);        // 1차년도 사업 전체 등록환자
   });
@@ -586,11 +605,88 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     const totalN = INIT_DEFAULT_TOTAL_N;
     const perClinic = totalN / M;
     expect(perClinic).toBe(4379);
-    const regDistSum = 1000;   // INIT_REG_DIST [100,600,200,100] 합
+    const regDistSum = INIT_REG_DIST.reduce((s, v) => s + v, 0);   // v7.2.0 [160,224,298,318]
+    expect(regDistSum).toBe(1000);
     const totalReg = M * regDistSum;
     const totalUnreg = totalN - totalReg;
     expect(totalReg).toBe(100000);
     expect(totalUnreg).toBe(337900);
+  });
+});
+
+// v7.2.0: 엑셀 약어 체계 정비 + regDist 디폴트 데이터 비례 전환
+describe('v7.2.0 · regDist 디폴트 = 데이터 비례 [160, 224, 298, 318]', () => {
+  it('INIT_REG_DIST = [160, 224, 298, 318] (참여의원 환자분포 RD × 1,000명)', () => {
+    expect(INIT_REG_DIST).toEqual([160, 224, 298, 318]);
+    expect(INIT_REG_DIST.reduce((s, v) => s + v, 0)).toBe(1000);
+  });
+
+  it('이전 임의값 [100, 600, 200, 100] 폐기 — 회귀 방지', () => {
+    expect(INIT_REG_DIST).not.toEqual([100, 600, 200, 100]);
+  });
+
+  it('NHIS-HCC v3.0 NC 비례 검증: round(NC[i] / sum(NC) × 1000) = INIT_REG_DIST[i]', () => {
+    // INIT_BASE의 N (= NC = RN) 값에서 비례 배분이 INIT_REG_DIST와 정합
+    const NC = INIT_BASE.map(b => b.N);
+    const totalNC = NC.reduce((s, v) => s + v, 0);
+    const RR = NC.map(n => Math.round((n / totalNC) * 1000));
+    // 라운딩 오차로 합이 999 또는 1001일 수 있어 ±1 이내
+    expect(Math.abs(RR.reduce((s, v) => s + v, 0) - 1000)).toBeLessThanOrEqual(1);
+    // 환자군별로 INIT_REG_DIST와 ±1 이내 정합
+    RR.forEach((v, i) => {
+      expect(Math.abs(v - INIT_REG_DIST[i])).toBeLessThanOrEqual(1);
+    });
+  });
+
+  it('CLINIC_PRESETS.general 라벨 "데이터 비례" + regDist [160,224,298,318]', () => {
+    const general = CLINIC_PRESETS.find(p => p.key === 'general');
+    expect(general.label).toBe('데이터 비례');
+    expect(general.regDist).toEqual([160, 224, 298, 318]);
+  });
+
+  it('CLINIC_PRESETS.elderly·custom은 v7.2.0 영향 없음 (보존)', () => {
+    const elderly = CLINIC_PRESETS.find(p => p.key === 'elderly');
+    expect(elderly.label).toBe('노인 집중');
+    expect(elderly.regDist).toEqual([30, 200, 400, 370]);
+    const custom = CLINIC_PRESETS.find(p => p.key === 'custom');
+    expect(custom.regDist).toBeNull();
+  });
+});
+
+describe('v7.2.0 · 엑셀 파서 호환 (M1 fallback + RR auto-inject)', () => {
+  it('M1 fallback: M1=0, RO>0, N>0이면 round(RO/N) 산출', () => {
+    // 시뮬 handleFile 내부 로직 명세 검증
+    // 실제 코드: if (!M1 && RO > 0 && N > 0) M1 = Math.round(RO / N);
+    const fallback = (M1, RO, N) => {
+      if (!M1 && RO > 0 && N > 0) return Math.round(RO / N);
+      return M1;
+    };
+    // NHIS-HCC v3.0 1군: RO=204,787,598,620, N=2,050,360 → M1=99,879
+    expect(fallback(0, 204787598620, 2050360)).toBe(99879);
+    // M1 이미 있으면 RO/N 무시
+    expect(fallback(50000, 204787598620, 2050360)).toBe(50000);
+    // RO=0이면 M1=0 그대로
+    expect(fallback(0, 0, 2050360)).toBe(0);
+    // N=0이면 M1=0 그대로 (0 나누기 방지)
+    expect(fallback(0, 100000, 0)).toBe(0);
+  });
+
+  it('RR 자동 주입: 4군 모두 양수일 때 state.regDist로 갱신', () => {
+    // 시뮬 LOAD_DATA reducer 명세: action.regDist 4군 모두 양수면 자동 주입
+    const inject = (RR, currentRegDist) => {
+      if (Array.isArray(RR) && RR.length === 4 && RR.every(v => v > 0)) {
+        return RR.map(v => Math.max(0, Math.round(v)));
+      }
+      return currentRegDist;
+    };
+    // 정상: 모두 양수
+    expect(inject([160, 224, 298, 318], [100, 600, 200, 100])).toEqual([160, 224, 298, 318]);
+    // 하나라도 0: 기존 보존
+    expect(inject([160, 0, 298, 318], [100, 600, 200, 100])).toEqual([100, 600, 200, 100]);
+    // 길이 부족: 기존 보존
+    expect(inject([160, 224], [100, 600, 200, 100])).toEqual([100, 600, 200, 100]);
+    // null: 기존 보존
+    expect(inject(null, [100, 600, 200, 100])).toEqual([100, 600, 200, 100]);
   });
 });
 

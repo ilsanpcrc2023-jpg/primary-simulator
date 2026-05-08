@@ -184,12 +184,18 @@ function reducer(state, action) {
       //   L1은 협상 변수가 아니라 "과거 평균 타원이용비중" 데이터 실측 그 자체.
       //   사용자가 임의 조정한 L1은 새 데이터 LOAD 시 덮어써짐.
       const newL1 = action.base.map(b => (typeof b?.L === "number" ? b.L : 0.7));
+      // v7.2.0: action.regDist (엑셀 RR 컬럼)가 4군 모두 양수면 자동 주입.
+      //   없으면 기존 state.regDist 보존 (사용자 슬라이더 조정값 보호).
+      const newRegDist = (Array.isArray(action.regDist) && action.regDist.length === 4 && action.regDist.every(v => v > 0))
+        ? action.regDist.map(v => Math.max(0, Math.round(v)))
+        : state.regDist;
       return {
         ...state,
         base: action.base,
         P: action.P,
         F_g: action.F_g ?? state.F_g,
         L1: newL1,
+        regDist: newRegDist,
         totalN: newTotalN,
         dataLabel: action.dataLabel,
         uploadBanner: action.uploadBanner,
@@ -536,12 +542,14 @@ export default function useSimulator() {
         set("uploadBanner", { success: false, msg: "데이터 부족: 4개 환자군 행이 필요합니다.", details: `시트 "${sheetName}"에서 ${data.length}행만 발견` });
         return;
       }
-      // v6.6: N·M1·L·HCC·CR 5 필드 인식.
+      // v6.6 / v7.2.0: N·M1·L·HCC·CR + RR·RO 7 필드 인식.
       //   - base 갱신: N·M1·L
-      //   - HCC(=환자군 평균 의료비 A) × CR → B_suggested 자동 유도 (슬라이더 초기값으로 주입, clamp [5만, 200만])
+      //   - M1 fallback: M1 컬럼 누락 시 RO ÷ N 자동 산출 (NHIS-HCC v3.0 엑셀 호환).
+      //   - HCC(=환자군 평균 의료비 A) × CR → B_suggested 자동 유도 (슬라이더 초기값, clamp [5만, 200만])
       //     ※ v3.0(2025)부터 입력 A는 'HCC 4분위 평균'이 아닌 환자군의 실제 평균 의료비.
       //       시뮬레이터 로직은 동일 (B = A × CR), 명칭만 'HCC 평균' → '환자군 평균 의료비 A'.
       //   - A 또는 CR이 0/누락이면 해당 군의 B는 기존 slider값(state.P[i]) 유지
+      //   - RR (참여의원당 등록환자수) → state.regDist 자동 주입 (4군 모두 양수일 때).
       //   - F(state.F_g) 정책 슬라이더는 보존 — 엑셀 비반영 일관성 유지
       const rows = data.slice(0, 4).map((row, i) => {
         let N = findCol(row, COL_ALIASES.N, 0);
@@ -549,16 +557,21 @@ export default function useSimulator() {
         let L = findCol(row, COL_ALIASES.L, 0);
         const HCC = findCol(row, COL_ALIASES.HCC, 0);
         let CR = findCol(row, COL_ALIASES.CR, 0);
+        const RR = findCol(row, COL_ALIASES.RR, 0);
+        const RO = findCol(row, COL_ALIASES.RO, 0);
         if (L > 1) L = L / 100;
         if (L < 0 || L > 1) L = INIT_BASE[i].L;
         if (CR > 1) CR = CR / 100;   // 퍼센트 입력 방어
         if (CR < 0 || CR > 1) CR = 0;
+        // M1 fallback: M1 누락 시 RO ÷ N (= R1 = RO/RN, NHIS-HCC v3.0 정의)
+        if (!M1 && RO > 0 && N > 0) M1 = Math.round(RO / N);
         return {
           N: Math.round(N) || INIT_BASE[i].N,
           M1: M1 || INIT_BASE[i].M1,
           L: L || INIT_BASE[i].L,
           HCC,
           CR,
+          RR: Math.round(RR) || 0,
         };
       });
       const newBase = rows.map(r => ({ N: r.N, M1: r.M1, L: r.L }));
@@ -572,24 +585,34 @@ export default function useSimulator() {
         }
         return state.P[i];
       });
+      // v7.2.0: RR (참여의원당 등록환자수) 4군 모두 양수면 state.regDist 자동 주입.
+      //   엑셀 NHIS-HCC v3.0 RR 컬럼 = RD × 1,000명 (NC 비례 배분).
+      //   하나라도 0이면 기존 regDist 보존 (사용자 슬라이더 조정값 보호).
+      const RR_arr = rows.map(r => r.RR);
+      const hasRR = RR_arr.every(v => v > 0);
+      const newRegDist = hasRR ? RR_arr : null;
       const label = file.name.replace(/\.(xlsx|xls|csv)$/i, "");
       const SHL = ["1군", "2군", "3군", "4군"];
       const fmt = v => Math.round(v).toLocaleString("ko-KR");
       const det = rows.map((r, i) => {
         const base = `${SHL[i]}: N=${fmt(r.N)}, M1=${fmt(r.M1)}, L=${r.L.toFixed(4)}`;
-        if (r.HCC > 0 && r.CR > 0) {
-          return `${base}, A=${fmt(r.HCC)}, CR=${r.CR.toFixed(3)} → B=${fmt(newB[i])}`;
-        }
-        return `${base}  (B 유지: ${fmt(newB[i])})`;
+        const bDet = (r.HCC > 0 && r.CR > 0)
+          ? `, A=${fmt(r.HCC)}, CR=${r.CR.toFixed(3)} → B=${fmt(newB[i])}`
+          : `  (B 유지: ${fmt(newB[i])})`;
+        const rrDet = hasRR ? `, RR=${fmt(r.RR)}` : "";
+        return base + bDet + rrDet;
       }).join("\n");
-      const bannerMsg = derivedCount > 0
-        ? `"${sheetName}" 시트에서 4군 데이터 로딩 완료 — B 권장값 ${derivedCount}/4군 자동 유도 (환자군 평균 의료비 A × 의원급 외래비중 CR)`
-        : `"${sheetName}" 시트에서 4군 데이터 로딩 완료 (환자군 평균 의료비 A·의원급 외래비중 CR 없음 → B 슬라이더 보존)`;
+      const bMsg = derivedCount > 0
+        ? `B 권장값 ${derivedCount}/4군 자동 유도 (A × CR)`
+        : `B 슬라이더 보존 (A·CR 없음)`;
+      const rrMsg = hasRR ? ` · RR 컬럼 → 의원당 등록환자수 자동 주입` : ``;
+      const bannerMsg = `"${sheetName}" 시트에서 4군 데이터 로딩 완료 — ${bMsg}${rrMsg}`;
       dispatch({
         type: "LOAD_DATA",
         base: newBase,
         P: newB,
         F_g: state.F_g,
+        regDist: newRegDist,
         dataLabel: label,
         uploadBanner: { success: true, msg: bannerMsg, details: det },
       });
