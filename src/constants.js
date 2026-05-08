@@ -6,6 +6,7 @@ export const CL = ["#22c55e", "#6366f1", "#2563eb", "#f97316"];
 // v6.6: 공식 baseline은 official_baseline.json에서 우선 로드.
 // 관리자가 "공식 baseline 등록" 버튼을 누르면 api/commit-baseline이 이 파일을 갱신 → Vercel 재배포.
 // JSON 파일이 없거나 불완전하면 아래 FALLBACK으로 복귀.
+// v7.1.1: FALLBACK도 A·CR·NT 추가 (옵션 — official_baseline.json 누락 시 fallback)
 const FALLBACK_BASE = [
   { N: 11956, M1: 62801, L: 0.7975 },
   { N: 13778, M1: 84083, L: 0.7934 },
@@ -64,6 +65,37 @@ export const INIT_BASE_PER_CLINIC = INIT_PER_CLINIC;
 export const INIT_DATA_LABEL = validDataLabel
   ? officialBaseline.dataLabel
   : `데이터 baseline (${INIT_M_CLINICS}기관 · ${INIT_TOTAL_N.toLocaleString("ko-KR")}명)`;
+
+// v7.1.1: 1차년도 시범사업 디폴트 — 초기 화면은 100개 의원 (1차년도 시범사업 scope).
+//   데이터 anchor (INIT_M_CLINICS = 2,923, official_baseline.json)는 만성질환관리 시범사업 전체 코호트.
+//   초기 디스플레이는 100개 의원 × 의원당 4,379명 = 437,900명. 의원당 등록 1,000명 (regDist 합).
+//   "일만시 전체 등록 모드" 버튼으로 데이터 anchor (M=2,923, 의원당 4,379명 전체 등록) 전환 가능.
+export const INIT_DEFAULT_M = 100;
+export const INIT_DEFAULT_TOTAL_N = Math.max(1, INIT_DEFAULT_M * INIT_PER_CLINIC);
+
+// 의원 수 프리셋 (ClinicCountCard) — 100/1,000/3,000/2,923
+//   - 100: 1차년도 시범사업
+//   - 1,000·3,000: 확장 단계
+//   - 2,923 = INIT_M_CLINICS: 일만시 (만성질환관리 시범사업 참여의원 전체)
+export const CLINIC_COUNT_PRESETS = [
+  { value: 100,             label: "100",                    title: "1차년도 시범사업" },
+  { value: 1000,            label: "1,000",                  title: "확장" },
+  { value: 3000,            label: "3,000",                  title: "확장" },
+  { value: INIT_M_CLINICS,  label: `일만시 ${INIT_M_CLINICS.toLocaleString("ko-KR")}`, title: "만성질환관리 시범사업 참여의원 전체 (2,923개)" },
+];
+
+// 의원당 등록환자수 프리셋 (고급설정) — 1,000/1,500/2,000/3,000/4,000명
+//   regDist 합을 비례 스케일 (scaleRegDist).
+export const REG_PER_CLINIC_PRESETS = [1000, 1500, 2000, 3000, 4000];
+
+// 일만시 전체 등록 모드: 의원당 4,379명 모두 등록 (환자군별 N 비율로 분배)
+//   regDist[i] = round(INIT_PER_CLINIC × N_g / Σ N) — 합은 약 INIT_PER_CLINIC ± 라운딩.
+const _ratioReg = (() => {
+  const total = INIT_BASE.reduce((s, g) => s + (g?.N || 0), 0);
+  if (total <= 0) return [...INIT_REG_DIST];
+  return INIT_BASE.map(b => Math.max(0, Math.round(INIT_PER_CLINIC * (b?.N || 0) / total)));
+})();
+export const FULL_REG_REG_DIST = _ratioReg;
 export const INIT_PT_BASE = 10_000_000;   // 일차의료 전환지원금 기준 금액 (의원당 · 1회)
 // PT · 성과공유 Track 지급률 (A/B/C, %) — 편집 가능, 초기화 시 복귀
 export const INIT_PT_PCT_A = 10;

@@ -111,7 +111,7 @@ export default function App() {
             updL1={sim.updL1} setL1All={sim.setL1All} resetL1={sim.resetL1}
             setL2={sim.setL2} resetL2={sim.resetL2}
             updRegDist={sim.updRegDist} setRegDistAll={sim.setRegDistAll} scaleRegDist={sim.scaleRegDist}
-            reset={sim.reset} loadPreset={loadPreset}
+            reset={sim.reset} loadPreset={loadPreset} loadFullReg={sim.loadFullReg}
             G={sim.G} T={sim.T} decomp={sim.decomp} performance={sim.performance} tracks={sim.tracks}
             reg={sim.reg} regRatios={sim.regRatios}
             incChg={sim.incChg} nhiChg={sim.nhiChg}

@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, FULL_REG_REG_DIST, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
@@ -12,13 +12,16 @@ const initialState = {
   L1: [...INIT_L1],
   L2: null,
   // v6.9.4: 데이터 anchor — 환자군 패널 "↩ 초기화"가 복귀할 기준값.
-  //   초기엔 official_baseline.json (파일럿: 10기관 / 69,604명).
+  //   초기엔 official_baseline.json (HCC v3.0: 2,923기관 / 12,801,143명).
   //   엑셀 업로드·프리셋 로드 시 그 데이터의 M_clinics·sum(N)·라벨로 갱신됨.
   //   이후 사용자가 의원 수·환자수를 수동 변경해도, 초기화 버튼은 가장 최근 로딩한 데이터로 복귀.
   datasetM: INIT_M_CLINICS,
   datasetTotalN: INIT_TOTAL_N,
   datasetLabel: INIT_DATA_LABEL,
-  totalN: INIT_TOTAL_N,
+  // v7.1.1: 초기 디스플레이는 1차년도 시범사업 scope (100개 의원 × 의원당 4,379명 = 437,900명).
+  //   데이터 anchor (2,923개) ≠ 초기 디스플레이 (100개) — 두 anchor 분리.
+  //   "일만시 전체 등록 모드" 버튼 클릭 시에만 데이터 anchor 전체로 전환.
+  totalN: INIT_DEFAULT_TOTAL_N,
   dataLabel: INIT_DATA_LABEL,
   tab: 0,
   showDetail: false,
@@ -38,7 +41,8 @@ const initialState = {
   F_g: [...INIT_F],
   // v6.10.0: PF 분배 규칙 (hcc|equal|inverse) — PF 카드 분배 토글에서 사용.
   pfRule: INIT_PF_RULE,
-  M_clinics: INIT_M_CLINICS,
+  // v7.1.1: 초기 디폴트 = 100개 의원 (1차년도 시범사업).
+  M_clinics: INIT_DEFAULT_M,
   // 의원당 환자군별 등록환자수 (부록 추정치 100/600/200/100)
   regDist: [...INIT_REG_DIST],
   // 참여 전 의원당 실인원 (FFS 기준선 계산용). 패널 변화 효과 분리를 위한 독립 변수.
@@ -124,22 +128,42 @@ function reducer(state, action) {
     case "RESET_L2":
       return { ...state, L2: null };
     case "RESET_REG": {
-      // v6.9.4: 초기화는 "현재 데이터 anchor"로 복귀 (INIT_* 고정값이 아님).
-      //   anchor는 가장 최근 로딩한 데이터의 M_clinics·sum(base.N)·dataLabel.
-      //   파일럿 로딩 후 = 10기관 / 69,604명 / "10개 의원 파일럿 (2023, 69,604명)"
-      //   3,000개 의원 데이터 로딩 후 = 3,000기관 / sum(N) / 그 라벨
-      //   현재 base.N 합과 anchor의 totalN이 다르면 base.N 합을 우선 (사용자 인라인 편집 반영).
+      // v7.1.1: 초기화는 "1차년도 시범사업 scope"로 복귀 (100개 의원 × 의원당 4,379명).
+      //   datasetM·datasetTotalN(2,923 anchor)이 아닌 v1 디폴트(INIT_DEFAULT_M=100)로 reset.
+      //   data anchor 전체로 가려면 "일만시 전체 등록 모드" 버튼을 사용.
+      //   의원당 환자수는 데이터 anchor에서 산출 (현재 base.N 합 / datasetM ≈ 4,379).
       const baseSum = state.base.reduce((s, g) => s + (g?.N || 0), 0);
-      const anchorTotalN = state.datasetTotalN > 0 ? state.datasetTotalN : INIT_TOTAL_N;
-      const newTotalN = baseSum > 0 ? baseSum : anchorTotalN;
-      const newM = Math.max(1, state.datasetM || INIT_M_CLINICS);
-      const newPerClinic = Math.max(1, Math.round(newTotalN / newM));
+      const anchorM = Math.max(1, state.datasetM || INIT_M_CLINICS);
+      const perClinicAnchor = baseSum > 0 ? Math.max(1, Math.round(baseSum / anchorM)) : INIT_PER_CLINIC;
+      const newM = INIT_DEFAULT_M;
+      const newTotalN = Math.max(1, perClinicAnchor * newM);
       return {
         ...state,
-        baseN_per_clinic: newPerClinic,
+        baseN_per_clinic: perClinicAnchor,
         M_clinics: newM,
         totalN: newTotalN,
         regDist: [...INIT_REG_DIST],
+        dataLabel: state.datasetLabel || INIT_DATA_LABEL,
+      };
+    }
+    case "LOAD_FULL_REG": {
+      // v7.1.1: 일만시 전체 등록 모드 — 만성질환관리 시범사업 참여의원 2,923개,
+      //   의원당 환자수 4,379명 모두 등록 (regDist 합 = 의원당 환자수, 환자군별 N 비율로 분배).
+      //   데이터 anchor(datasetM/datasetTotalN)와 동기화. baseN_per_clinic도 anchor로.
+      const baseSum = state.base.reduce((s, g) => s + (g?.N || 0), 0);
+      const anchorM = Math.max(1, state.datasetM || INIT_M_CLINICS);
+      const perClinicAnchor = baseSum > 0 ? Math.max(1, Math.round(baseSum / anchorM)) : INIT_PER_CLINIC;
+      // 환자군별 N 비율로 의원당 등록환자수 분배 (라운딩으로 합이 perClinicAnchor ± 1 수준)
+      const ratioReg = (() => {
+        if (baseSum <= 0) return [...FULL_REG_REG_DIST];
+        return state.base.map(b => Math.max(0, Math.round(perClinicAnchor * (b?.N || 0) / baseSum)));
+      })();
+      return {
+        ...state,
+        M_clinics: anchorM,
+        totalN: baseSum > 0 ? baseSum : (state.datasetTotalN || INIT_TOTAL_N),
+        baseN_per_clinic: perClinicAnchor,
+        regDist: ratioReg,
         dataLabel: state.datasetLabel || INIT_DATA_LABEL,
       };
     }
@@ -507,6 +531,8 @@ export default function useSimulator() {
   const setL2 = useCallback((value) => dispatch({ type: "SET_L2", value }), []);
   const resetL2 = useCallback(() => dispatch({ type: "RESET_L2" }), []);
   const resetReg = useCallback(() => dispatch({ type: "RESET_REG" }), []);
+  // v7.1.1: 일만시 전체 등록 모드
+  const loadFullReg = useCallback(() => dispatch({ type: "LOAD_FULL_REG" }), []);
   const resetPtPct = useCallback(() => dispatch({ type: "RESET_PT_PCT" }), []);
   const resetSsPct = useCallback(() => dispatch({ type: "RESET_SS_PCT" }), []);
   const resetSsCost = useCallback(() => dispatch({ type: "RESET_SS_COST" }), []);
@@ -689,7 +715,7 @@ export default function useSimulator() {
 
   return {
     state, set, updP, updBase, updF, setFAll, setPfRule,
-    resetF, resetP, resetReg,
+    resetF, resetP, resetReg, loadFullReg,
     // v6.7 L1·L2 (α 제거)
     updL1, setL1All, resetL1,
     setL2, resetL2,

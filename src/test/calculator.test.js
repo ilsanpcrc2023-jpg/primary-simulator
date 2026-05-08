@@ -7,6 +7,8 @@ import { INIT_BASE, INIT_P, INIT_F, INIT_R, INIT_PF_PCT, INIT_PF_RULE,
   INIT_SS_COST_BASE, INIT_SS_PROJECT_COST,
   INIT_L1,
   INIT_M_CLINICS, INIT_TOTAL_N, INIT_PER_CLINIC, INIT_BASE_PER_CLINIC,
+  INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N,
+  CLINIC_COUNT_PRESETS, REG_PER_CLINIC_PRESETS, FULL_REG_REG_DIST,
   B_MIN, B_MAX, OFFICIAL_BASELINE_META } from '../constants';
 import { distribute, calcPFfromPct, inferPFpct } from '../utils';
 
@@ -23,11 +25,19 @@ describe('calculation engine', () => {
     expect(INIT_BASE).toHaveLength(4);
   });
 
-  it('INIT_BASE rows have only N, M1, L (v6.4 simplified)', () => {
+  it('INIT_BASE rows have core fields N·M1·L (v6.4) + optional A·CR·NT reference (v7.1.1)', () => {
     INIT_BASE.forEach(b => {
-      expect(Object.keys(b).sort()).toEqual(['L', 'M1', 'N']);
+      // 핵심 필드 — 시뮬레이션 엔진이 사용
+      expect(typeof b.N).toBe('number');
+      expect(typeof b.M1).toBe('number');
+      expect(typeof b.L).toBe('number');
+      // v6.3 자가오염 사고 방지 — 구 필드 ref/cr 절대 금지
       expect(b).not.toHaveProperty('ref');
       expect(b).not.toHaveProperty('cr');
+      // v7.1.1: A/CR/NT는 엑셀 정합용 reference 필드 (선택). 있으면 숫자.
+      if ('A' in b) expect(typeof b.A).toBe('number');
+      if ('CR' in b) expect(typeof b.CR).toBe('number');
+      if ('NT' in b) expect(typeof b.NT).toBe('number');
     });
   });
 
@@ -524,5 +534,72 @@ describe('v6.10.0 · 정책 시나리오 프리셋 (환자군 패널)', () => {
     // INIT_PER_CLINIC과 더 이상 동기화되지 않음 (별도 시나리오 비교용 anchor).
     const pilot = POLICY_SCENARIOS.find(p => p.key === 'pilot');
     expect(pilot.perClinic).toBe(6960);
+  });
+});
+
+// v7.1.1: 1차년도 시범사업 디폴트 (100개 의원) + 일만시 전체 등록 + 프리셋
+describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 모드', () => {
+  it('INIT_DEFAULT_M = 100 (1차년도 시범사업 의원 수)', () => {
+    expect(INIT_DEFAULT_M).toBe(100);
+  });
+
+  it('INIT_DEFAULT_TOTAL_N = 100 × INIT_PER_CLINIC = 437,900', () => {
+    expect(INIT_DEFAULT_TOTAL_N).toBe(INIT_DEFAULT_M * INIT_PER_CLINIC);
+    expect(INIT_DEFAULT_TOTAL_N).toBe(437900);
+  });
+
+  it('데이터 anchor (INIT_M_CLINICS = 2,923)는 보존', () => {
+    // v7.1.1에서 초기 디폴트는 100개로 변경됐지만, 데이터 anchor는 official_baseline 그대로.
+    expect(INIT_M_CLINICS).toBe(2923);
+    expect(INIT_TOTAL_N).toBe(12801143);
+    expect(INIT_PER_CLINIC).toBe(4379);
+  });
+
+  it('CLINIC_COUNT_PRESETS는 4개 (100/1000/3000/2923 일만시)', () => {
+    expect(CLINIC_COUNT_PRESETS).toHaveLength(4);
+    const values = CLINIC_COUNT_PRESETS.map(p => p.value);
+    expect(values).toEqual([100, 1000, 3000, 2923]);
+    // 일만시 라벨에 "일만시" 단어 포함
+    const ilmansi = CLINIC_COUNT_PRESETS.find(p => p.value === 2923);
+    expect(ilmansi.label).toMatch(/일만시/);
+  });
+
+  it('REG_PER_CLINIC_PRESETS는 5개 (1000/1500/2000/3000/4000)', () => {
+    expect(REG_PER_CLINIC_PRESETS).toEqual([1000, 1500, 2000, 3000, 4000]);
+  });
+
+  it('FULL_REG_REG_DIST 합 ≈ INIT_PER_CLINIC (4,379명, 라운딩 ±2)', () => {
+    expect(FULL_REG_REG_DIST).toHaveLength(4);
+    const sum = FULL_REG_REG_DIST.reduce((s, v) => s + v, 0);
+    expect(Math.abs(sum - INIT_PER_CLINIC)).toBeLessThanOrEqual(2);
+    // N 비율 분배 — 4군이 가장 많고 1군이 가장 적어야 함 (HCC v3.0 분포)
+    expect(FULL_REG_REG_DIST[3]).toBeGreaterThan(FULL_REG_REG_DIST[0]);
+  });
+
+  it('100개 의원 디폴트: 437,900명 = 등록 100,000명 + 비등록 337,900명 (regDist 합 1,000)', () => {
+    const M = INIT_DEFAULT_M;
+    const totalN = INIT_DEFAULT_TOTAL_N;
+    const perClinic = totalN / M;
+    expect(perClinic).toBe(4379);
+    const regDistSum = 1000;   // INIT_REG_DIST [100,600,200,100] 합
+    const totalReg = M * regDistSum;
+    const totalUnreg = totalN - totalReg;
+    expect(totalReg).toBe(100000);
+    expect(totalUnreg).toBe(337900);
+  });
+});
+
+// v7.1.1: official_baseline.json의 A·CR·NT reference 필드
+describe('v7.1.1 · 엑셀 정합 reference 필드 (A·CR·NT)', () => {
+  it('INIT_BASE에 A·CR·NT가 있을 때 B = round(A × CR) ≈ INIT_P', () => {
+    INIT_BASE.forEach((b, i) => {
+      // A·CR이 있으면 (HCC v3.0 baseline)
+      if (typeof b.A === 'number' && typeof b.CR === 'number') {
+        const computedB = Math.round(b.A * b.CR);
+        // INIT_P[i]와 ±1% 이내 (라운딩 오차)
+        const tolerance = INIT_P[i] * 0.01;
+        expect(Math.abs(computedB - INIT_P[i])).toBeLessThanOrEqual(tolerance + 1);
+      }
+    });
   });
 });

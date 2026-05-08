@@ -1,6 +1,6 @@
 import { memo } from "react";
 import NumBox from "./shared/NumBox";
-import { SH, CL, ON, INIT_F, CLINIC_PRESETS, POLICY_SCENARIOS } from "../constants";
+import { SH, CL, ON, INIT_F, CLINIC_PRESETS, POLICY_SCENARIOS, CLINIC_COUNT_PRESETS, REG_PER_CLINIC_PRESETS } from "../constants";
 import { f, fE, calcPFfromPct, inferPFpct } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
@@ -166,13 +166,18 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
   );
 });
 
-/* v6.11.0: ClinicCountCard — 환자군 패널 대체 컴팩트 카드.
-   참여 의원 수만 노출. 디폴트 = 업로드 데이터 의원수 (state.datasetM, state.M_clinics 동기화).
-   프리셋 [100, 1000, 3000]. perClinic 보존하며 totalN 자동 동기화. */
-export const ClinicCountCard = memo(function ClinicCountCard({ state, set }) {
-  const { M_clinics, totalN, datasetM, datasetLabel } = state;
+/* v7.1.1: ClinicCountCard — 의원 수 + 의원당 등록 환자수 통합 카드.
+   기본 프리셋 [100, 1000, 3000, 2923(일만시)]. 등록환자수 프리셋 [1000, 1500, 2000, 3000, 4000].
+   footer: 의원당 환자수 = 등록 + 비등록, 사업 전체 = 등록 + 비등록 breakdown. */
+export const ClinicCountCard = memo(function ClinicCountCard({ state, set, scaleRegDist }) {
+  const { M_clinics, totalN, datasetM, datasetLabel, regDist } = state;
   const perClinic = Math.max(1, Math.round(totalN / Math.max(1, M_clinics)));
-  const presets = [100, 1000, 3000];
+  // 등록/비등록 분해
+  const regSum = regDist.reduce((s, v) => s + v, 0);
+  const regPerClinic = Math.min(regSum, perClinic);
+  const unregPerClinic = Math.max(0, perClinic - regPerClinic);
+  const totalReg = M_clinics * regPerClinic;
+  const totalUnreg = M_clinics * unregPerClinic;
 
   const setM = (m) => {
     const newM = Math.max(1, Math.round(m));
@@ -182,20 +187,22 @@ export const ClinicCountCard = memo(function ClinicCountCard({ state, set }) {
     if (datasetM) setM(datasetM);
   };
   return (
-    <div className={card + " p-3"}>
+    <div className={card + " p-3 space-y-2"}>
+      {/* 의원 수 */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-sm font-bold text-gray-900 shrink-0">사업 참여 의원 수</span>
         <NumBox value={M_clinics} onChange={setM} color="#1f2937" suffix="개" />
         <div className="flex flex-wrap gap-1">
-          {presets.map(p => {
-            const active = M_clinics === p;
+          {CLINIC_COUNT_PRESETS.map(p => {
+            const active = M_clinics === p.value;
             return (
-              <button key={p} onClick={() => setM(p)}
+              <button key={p.value} onClick={() => setM(p.value)}
+                title={p.title}
                 className="text-xs px-2 py-0.5 rounded border font-medium transition"
                 style={active
                   ? { background: "#dbeafe", borderColor: "#60a5fa", color: "#1d4ed8" }
                   : { background: "#fff", borderColor: "#e5e7eb", color: "#374151" }}>
-                {p.toLocaleString()}
+                {p.label}
               </button>
             );
           })}
@@ -208,8 +215,38 @@ export const ClinicCountCard = memo(function ClinicCountCard({ state, set }) {
           </button>
         )}
       </div>
-      <div className="mt-1.5 text-[10px] text-gray-500 leading-relaxed">
-        의원당 등록환자수 {perClinic.toLocaleString()}명 · 사업 전체 등록환자 {(M_clinics * perClinic).toLocaleString()}명
+
+      {/* 의원당 등록환자수 (regDist 합 비례 스케일) — v7.1.1 */}
+      {scaleRegDist && (
+        <div className="flex items-center gap-2 flex-wrap pt-1.5 border-t border-dashed border-gray-200">
+          <span className="text-xs font-semibold text-gray-700 shrink-0">의원당 등록환자수</span>
+          <NumBox value={regSum} onChange={v => scaleRegDist(Math.max(0, Math.round(v)))} color="#2563eb" suffix="명" />
+          <div className="flex flex-wrap gap-1">
+            {REG_PER_CLINIC_PRESETS.map(v => {
+              const active = regSum === v;
+              return (
+                <button key={v} onClick={() => scaleRegDist(v)}
+                  className="text-xs px-2 py-0.5 rounded border font-medium transition"
+                  style={active
+                    ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" }
+                    : { background: "#fff", borderColor: "#e5e7eb", color: "#374151" }}>
+                  {v.toLocaleString()}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* footer: 의원당 환자수 + 등록/비등록 breakdown · 사업 전체 breakdown */}
+      <div className="text-[11px] text-gray-600 leading-relaxed pt-1.5 border-t border-dashed border-gray-200">
+        의원당 환자수 <b className="text-gray-900">{perClinic.toLocaleString()}명</b>
+        {" "}= 등록 <b className="text-blue-700">{regPerClinic.toLocaleString()}명</b>
+        {" + "}비등록 <b className="text-slate-700">{unregPerClinic.toLocaleString()}명</b>
+        <br />
+        사업 전체 <b className="text-gray-900">{(M_clinics * perClinic).toLocaleString()}명</b>
+        {" "}= 등록 <b className="text-blue-700">{totalReg.toLocaleString()}명</b>
+        {" + "}비등록 <b className="text-slate-700">{totalUnreg.toLocaleString()}명</b>
       </div>
     </div>
   );
