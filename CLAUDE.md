@@ -4,8 +4,13 @@
 시범사업 지불체계 최종 채택에 따라 "지불모형" → "지불체계"로 명칭 변경 (v6.8).
 
 **정책 기준**: 노션 「일차의료 시범사업 지불체계 보완 방안」 후속 보완 (2026-04-22)
-**시뮬레이터 버전**: **v7.0.3** (성과 배분 → 성과 공유 UI 라벨 일괄 치환)
-  · **"성과 배분" → "성과 공유" 일괄 치환** — 사용자 결정에 따라 SS(Shared Saving) 한국어 명칭 정비. 탭 라벨 `"💰 성과 배분 (Shared Saving)"` / `"💰 성과배분"` → `"💰 성과 공유 (Shared Saving)"` / `"💰 성과공유"` (full·short 둘 다). TabSharedSaving 안내 배너 "성과 배분(Shared Saving)은 ... 성과 배분 섹션" → "성과 공유(Shared Saving)은 ... 성과 공유 섹션", 박스 헤더 "성과 배분 비율"·"참여의원 성과 배분 100%"·"성과 배분"(파이 차트)·"💡 성과 배분 구성"·"환자군 관리 성과... 성과 배분" 안내문 모두 치환. 슬라이더 aria-label "성과 배분 비율 슬라이더" → "성과 공유 비율 슬라이더". 코드 주석 "성과배분" → "성과공유" 정합 (constants.js:68 PT/SS Track 지급률 주석, useSimulator.js:52, TabSharedSaving.jsx:16 의원 모드 Hero 주석). 변수명·함수명·DOM key 등 영문 식별자(SS, ssClinicShare, sharedSaving 등)는 모두 보존. 단위 테스트 65/65 통과.
+**시뮬레이터 버전**: **v7.1** (HCC v3.0 2025 데이터 탑재 — 환자군 평균 의료비 A 기반 산출)
+  · **HCC v3.0(2025) baseline 갱신** — 만성질환관리 시범사업 참여의원 **2,923개** 기준 실측 데이터로 official_baseline 전면 갱신. `M_clinics: 10 → 2923`, `dataLabel: HCC_2024_71_simple → HCC_v3.0_2025`, base.N(NC=참여의원 환자수)·M1(K/NC=등록환자의 등록의원 외래의료비/인)·L(L1=타원이용비중)·P(B=환자군 기준의료비) 4군 모두 신규 값. 이전 'HCC 4분위 평균 기반' 산출 → 'HCC 환자군의 실제 평균 의료비 A 기반' 산출로 정밀화 (시뮬레이터 로직은 동일, B = A × CR 식 그대로). 부수적으로 INIT_F(B의 10%)·INIT_PER_CLINIC·L1 가중평균 등 데이터 파생값이 새 baseline 따라 자동 갱신.
+  · **명칭/문구 변경 (로직 동일)** — TabSimulation.jsx:156 환자군 기준의료비(B) 안내문 "B = HCC 평균 × 의원급 외래 비중" → "B = 환자군 평균 의료비(A) × 의원급 외래 비중(CR)". useSimulator.js 업로드 배너·detail 메시지 "HCC × 의원비중" → "환자군 평균 의료비 A × 의원급 외래비중 CR". constants.js COL_ALIASES.HCC에 신규 헤더 별칭 추가 (`환자군 평균\n의료비 A`, `환자군 평균 의료비 A`, `환자군 평균의료비` 등) — 엑셀 업로드 호환. 내부 키 `HCC` 자체는 하위호환 유지.
+  · **테스트 갱신** — 기존 FALLBACK 파일럿(2023, 10기관/69,604명) hardcoded 기댓값 8개를 HCC v3.0 baseline에 맞춰 갱신. 65/65 통과. POLICY_SCENARIOS.pilot.perClinic은 2023 reference로 6,960 고정 유지 (시뮬레이터 디폴트 INIT_PER_CLINIC=4,379과 별도 anchor).
+
+**시뮬레이터 버전 (v7.0.3 누적)**: 성과 배분 → 성과 공유 UI 라벨 일괄 치환
+  · **"성과 배분" → "성과 공유" 일괄 치환**  — 사용자 결정에 따라 SS(Shared Saving) 한국어 명칭 정비. 탭 라벨 `"💰 성과 배분 (Shared Saving)"` / `"💰 성과배분"` → `"💰 성과 공유 (Shared Saving)"` / `"💰 성과공유"` (full·short 둘 다). TabSharedSaving 안내 배너 "성과 배분(Shared Saving)은 ... 성과 배분 섹션" → "성과 공유(Shared Saving)은 ... 성과 공유 섹션", 박스 헤더 "성과 배분 비율"·"참여의원 성과 배분 100%"·"성과 배분"(파이 차트)·"💡 성과 배분 구성"·"환자군 관리 성과... 성과 배분" 안내문 모두 치환. 슬라이더 aria-label "성과 배분 비율 슬라이더" → "성과 공유 비율 슬라이더". 코드 주석 "성과배분" → "성과공유" 정합 (constants.js:68 PT/SS Track 지급률 주석, useSimulator.js:52, TabSharedSaving.jsx:16 의원 모드 Hero 주석). 변수명·함수명·DOM key 등 영문 식별자(SS, ssClinicShare, sharedSaving 등)는 모두 보존. 단위 테스트 65/65 통과.
 
 **시뮬레이터 버전 (v7.0.2 누적)**: 모바일 탭 라벨 SS → 성과배분
   · **모바일 탭 라벨 한국어화** — `src/App.jsx` TABS 배열 세 번째 항목 `short: "💰 SS"` → `short: "💰 성과배분"`. 영문 약어 대신 한국어로 표시하여 모바일 사용자 직관성 개선. full 라벨("💰 성과 배분 (Shared Saving)")은 유지. (v7.0.3에서 short도 "💰 성과공유"로 후속 치환됨.)

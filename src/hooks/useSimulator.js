@@ -533,8 +533,10 @@ export default function useSimulator() {
       }
       // v6.6: N·M1·L·HCC·CR 5 필드 인식.
       //   - base 갱신: N·M1·L
-      //   - HCC × CR → B_suggested 자동 유도 (슬라이더 초기값으로 주입, clamp [5만, 200만])
-      //   - HCC 또는 CR이 0/누락이면 해당 군의 B는 기존 slider값(state.P[i]) 유지
+      //   - HCC(=환자군 평균 의료비 A) × CR → B_suggested 자동 유도 (슬라이더 초기값으로 주입, clamp [5만, 200만])
+      //     ※ v3.0(2025)부터 입력 A는 'HCC 4분위 평균'이 아닌 환자군의 실제 평균 의료비.
+      //       시뮬레이터 로직은 동일 (B = A × CR), 명칭만 'HCC 평균' → '환자군 평균 의료비 A'.
+      //   - A 또는 CR이 0/누락이면 해당 군의 B는 기존 slider값(state.P[i]) 유지
       //   - F(state.F_g) 정책 슬라이더는 보존 — 엑셀 비반영 일관성 유지
       const rows = data.slice(0, 4).map((row, i) => {
         let N = findCol(row, COL_ALIASES.N, 0);
@@ -555,7 +557,8 @@ export default function useSimulator() {
         };
       });
       const newBase = rows.map(r => ({ N: r.N, M1: r.M1, L: r.L }));
-      // B 자동 유도: HCC × CR, [B_MIN, B_MAX] clamp. 둘 중 하나라도 0이면 기존 slider값 유지.
+      // B 자동 유도: 환자군 평균 의료비(A) × 의원급 외래비중(CR), [B_MIN, B_MAX] clamp.
+      // 둘 중 하나라도 0이면 기존 slider값 유지.
       const derivedCount = rows.reduce((s, r) => s + ((r.HCC > 0 && r.CR > 0) ? 1 : 0), 0);
       const newB = rows.map((r, i) => {
         if (r.HCC > 0 && r.CR > 0) {
@@ -570,13 +573,13 @@ export default function useSimulator() {
       const det = rows.map((r, i) => {
         const base = `${SHL[i]}: N=${fmt(r.N)}, M1=${fmt(r.M1)}, L=${r.L.toFixed(4)}`;
         if (r.HCC > 0 && r.CR > 0) {
-          return `${base}, HCC=${fmt(r.HCC)}, CR=${r.CR.toFixed(3)} → B=${fmt(newB[i])}`;
+          return `${base}, A=${fmt(r.HCC)}, CR=${r.CR.toFixed(3)} → B=${fmt(newB[i])}`;
         }
         return `${base}  (B 유지: ${fmt(newB[i])})`;
       }).join("\n");
       const bannerMsg = derivedCount > 0
-        ? `"${sheetName}" 시트에서 4군 데이터 로딩 완료 — B 권장값 ${derivedCount}/4군 자동 유도 (HCC × 의원비중)`
-        : `"${sheetName}" 시트에서 4군 데이터 로딩 완료 (HCC·의원비중 없음 → B 슬라이더 보존)`;
+        ? `"${sheetName}" 시트에서 4군 데이터 로딩 완료 — B 권장값 ${derivedCount}/4군 자동 유도 (환자군 평균 의료비 A × 의원급 외래비중 CR)`
+        : `"${sheetName}" 시트에서 4군 데이터 로딩 완료 (환자군 평균 의료비 A·의원급 외래비중 CR 없음 → B 슬라이더 보존)`;
       dispatch({
         type: "LOAD_DATA",
         base: newBase,

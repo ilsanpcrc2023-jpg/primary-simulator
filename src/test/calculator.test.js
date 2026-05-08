@@ -14,7 +14,9 @@ describe('calculation engine', () => {
   it('ON: total patient count from INIT_BASE', () => {
     const total = INIT_BASE.reduce((s, g) => s + g.N, 0);
     expect(total).toBe(ON);
-    expect(ON).toBe(69604);
+    // v3.0(2025): HCC v3.0 baseline — 만성질환관리 시범사업 참여의원 2,923개
+    //   ΣNC = 2,050,360 + 2,869,115 + 3,808,633 + 4,073,035 = 12,801,143
+    expect(ON).toBe(12801143);
   });
 
   it('INIT_BASE has 4 patient groups', () => {
@@ -221,9 +223,9 @@ describe('v6.7 L1·L2 분리 (선지급 vs 사후 성과급)', () => {
     const baseLavg = INIT_BASE.reduce((s, g) => s + g.L * g.N, 0) / t;
     // INIT_L1 = INIT_BASE.L → 두 가중평균이 동일
     expect(L1avg).toBeCloseTo(baseLavg, 6);
-    // 파일럿(2023) 가중평균은 약 78.6% (대략 0.78~0.80)
-    expect(L1avg).toBeGreaterThan(0.75);
-    expect(L1avg).toBeLessThan(0.82);
+    // HCC v3.0(2025) 가중평균은 약 74.0% (L=[0.7189, 0.7444, 0.7529, 0.7357])
+    expect(L1avg).toBeGreaterThan(0.70);
+    expect(L1avg).toBeLessThan(0.78);
   });
 
   it('Track A에서는 L1 미적용 (FFS 1인당 수가 = M1 + F)', () => {
@@ -313,23 +315,23 @@ describe('v6.5 PT/SS Track percentages', () => {
     expect(f2 / f1).toBeCloseTo(2, 5);
   });
 
-  // v6.9.4: 데이터 기반 디폴트 (파일럿 anchor)
-  describe('v6.9.4 · 파일럿 anchor 디폴트', () => {
-    it('INIT_TOTAL_N = sum(INIT_BASE.N) = ON (= 69,604)', () => {
+  // v6.9.4 · v3.0(2025): 데이터 기반 디폴트 (HCC v3.0 anchor)
+  describe('v3.0(2025) · HCC v3.0 anchor 디폴트', () => {
+    it('INIT_TOTAL_N = sum(INIT_BASE.N) = ON (HCC v3.0: 12,801,143)', () => {
       expect(INIT_TOTAL_N).toBe(ON);
-      expect(INIT_TOTAL_N).toBe(69604);
+      expect(INIT_TOTAL_N).toBe(12801143);
     });
 
-    it('INIT_M_CLINICS는 official_baseline.json의 M_clinics (파일럿: 10)', () => {
-      expect(INIT_M_CLINICS).toBe(10);
+    it('INIT_M_CLINICS는 official_baseline.json의 M_clinics (HCC v3.0: 2,923)', () => {
+      expect(INIT_M_CLINICS).toBe(2923);
     });
 
-    it('INIT_PER_CLINIC = round(INIT_TOTAL_N / INIT_M_CLINICS) (파일럿: 6,960)', () => {
-      expect(INIT_PER_CLINIC).toBe(6960);
+    it('INIT_PER_CLINIC = round(INIT_TOTAL_N / INIT_M_CLINICS) (HCC v3.0: 4,379)', () => {
+      expect(INIT_PER_CLINIC).toBe(4379);
       expect(INIT_BASE_PER_CLINIC).toBe(INIT_PER_CLINIC);
     });
 
-    it('파일럿 디폴트 의원당 환자수가 임의 3,000명이 아님 (사용자 피드백 반영)', () => {
+    it('HCC v3.0 디폴트 의원당 환자수가 임의 3,000명이 아님 (사용자 피드백 반영)', () => {
       expect(INIT_PER_CLINIC).not.toBe(3000);
       expect(INIT_M_CLINICS).not.toBe(100);
       expect(INIT_TOTAL_N).not.toBe(300000);
@@ -380,11 +382,12 @@ describe('v6.10.0 · PF 디폴트 (B의 10%, HCC 비례 자동)', () => {
       const expected = Math.round(INIT_P[i] * 0.10);
       expect(v).toBe(expected);
     });
-    // "1군 28,083원 = B 280,832원의 10%"가 가장 강한 답변 (사용자 결정)
-    expect(INIT_F[0]).toBe(28083);
-    expect(INIT_F[1]).toBe(30020);
-    expect(INIT_F[2]).toBe(52358);
-    expect(INIT_F[3]).toBe(74532);
+    // HCC v3.0(2025): B = [208318, 316212, 567999, 884553] (환자군 평균 의료비 A × CR)
+    //   → INIT_F[i] = round(B[i] × 10%)
+    expect(INIT_F[0]).toBe(20832);
+    expect(INIT_F[1]).toBe(31621);
+    expect(INIT_F[2]).toBe(56800);
+    expect(INIT_F[3]).toBe(88455);
   });
 
   it('INIT_R는 INIT_F alias (하위 호환)', () => {
@@ -475,13 +478,13 @@ describe('v6.10.0 · 통합 슬라이더 (PF = B의 X%)', () => {
 });
 
 describe('v6.10.0 · pfBaseline 동적 산출 (Σ regDist × M1 × M_clinics)', () => {
-  it('파일럿 디폴트 baseline = Σ regDist × M1 × M = 약 10.77억', () => {
+  it('HCC v3.0 디폴트 baseline = Σ regDist × M1 × M = 약 4,182억 (2,923개 의원 기준)', () => {
     const regDist = [100, 600, 200, 100];
-    const M = INIT_M_CLINICS;   // 10
+    const M = INIT_M_CLINICS;   // HCC v3.0: 2923
     const baseline = INIT_BASE.reduce((s, b, i) => s + regDist[i] * b.M1 * M, 0);
-    // 등록환자 의원급 외래 FFS 기준선
-    expect(baseline).toBeGreaterThan(1e9);
-    expect(baseline).toBeLessThan(2e9);   // 대략 10.77억
+    // 등록환자 의원급 외래 FFS 기준선 (M1 = 등록의원 외래 1인당 의료비)
+    expect(baseline).toBeGreaterThan(3e11);
+    expect(baseline).toBeLessThan(5e11);   // 대략 4,182억 ≈ 4.18e11
   });
 
   it('의원 수 M 변경 시 baseline 비례 (선형)', () => {
@@ -515,8 +518,11 @@ describe('v6.10.0 · 정책 시나리오 프리셋 (환자군 패널)', () => {
     expect(map.nl).toBe(2200);       // 네덜란드: GP 평균
   });
 
-  it('파일럿 시나리오 perClinic = INIT_PER_CLINIC (디폴트 정합)', () => {
+  it('파일럿 시나리오 perClinic은 2023 파일럿 reference (6,960명 고정)', () => {
+    // HCC v3.0(2025)부터 시뮬레이터 디폴트 = 2,923개 의원 (INIT_PER_CLINIC = 4,379).
+    // POLICY_SCENARIOS의 pilot 시나리오는 2023 파일럿 reference(10기관/69,604명)를 유지 →
+    // INIT_PER_CLINIC과 더 이상 동기화되지 않음 (별도 시나리오 비교용 anchor).
     const pilot = POLICY_SCENARIOS.find(p => p.key === 'pilot');
-    expect(pilot.perClinic).toBe(INIT_PER_CLINIC);
+    expect(pilot.perClinic).toBe(6960);
   });
 });

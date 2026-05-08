@@ -153,7 +153,7 @@ export default memo(function TabSimulation({
             <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
               <div className="text-sm font-semibold text-slate-700 flex items-baseline gap-2 flex-wrap">
                 환자군 기준의료비 (B)
-                <span className="text-[11px] font-normal text-slate-400">B = HCC 평균 × 의원급 외래 비중</span>
+                <span className="text-[11px] font-normal text-slate-400">B = 환자군 평균 의료비(A) × 의원급 외래 비중(CR)</span>
               </div>
               <button onClick={resetP}
                 className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
