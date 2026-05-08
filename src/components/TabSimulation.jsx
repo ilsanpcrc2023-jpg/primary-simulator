@@ -225,7 +225,7 @@ export default memo(function TabSimulation({
               <span className="text-purple-400">→</span>
               <span className="text-xs text-purple-600 font-semibold">후</span>
               <span className="text-lg font-extrabold text-purple-900">{(Cnow * 100).toFixed(1)}%</span>
-              <NumBox value={parseFloat(cDelta.toFixed(1))} onChange={setCdelta} color="#7c3aed" suffix="%p" />
+              <NumBox value={parseFloat(cDelta.toFixed(1))} onChange={setCdelta} color="#7c3aed" suffix="%p" decimals={1} />
             </div>
             <button onClick={resetL2}
               className="ml-auto text-xs text-purple-700 hover:text-red-600 border border-purple-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
