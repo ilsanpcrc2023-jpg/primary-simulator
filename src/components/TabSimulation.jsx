@@ -23,9 +23,9 @@ export default memo(function TabSimulation({
 }) {
   const { base, P, L1, L2, showDetail, uploadBanner, F_g, M_clinics } = state;
   const M = Math.max(1, M_clinics);
-  const [showFormula, setShowFormula] = useState(false);
   const [policyExpanded, setPolicyExpanded] = useState(mode === "policy");
   // v6.10.0: 균형추 controlled accordion 제거. 고급 패널만 유지.
+  // v7.1.3: 수가 산출 구조 박스 삭제 (formula 컬럼 헤더와 중복 · showFormula state 제거).
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // v6.9.3: PB = B × (1 − L1) — UI 표시값. 슬라이더 onChange는 PBtoB로 B 역산.
@@ -334,33 +334,7 @@ export default memo(function TabSimulation({
     {/* v6.11.0: 고급 설정 — 위치를 수가 산출 구조 위로 이동 (정책 모드 전용) */}
     {mode === "policy" && advancedPanel}
 
-    {/* ⑪ 공식 구조 — v6.8.1: 의원 모드에서는 숨김 (정책 모드 전용) */}
-    {mode === "policy" && (
-    <div className={card + " overflow-hidden"}>
-      <button onClick={() => setShowFormula(v => !v)}
-        className="w-full flex items-center justify-start gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
-        <span className="text-gray-400 text-xs">{showFormula ? "▲" : "▼"}</span>
-        <span>📐 수가 산출 구조 (v6.9.3 PB·PF 단순합)</span>
-      </button>
-      {showFormula && (
-        <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-3">
-          <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-700 leading-relaxed font-mono space-y-1">
-            <div><b className="text-indigo-700">P_g = PB_g + PF_g</b>  (환자군별 선지급)</div>
-            <div className="text-gray-500 pl-2">where  PB_g = B_g × (1 − L1_g) · PF_g = F_g</div>
-            <div><b className="text-indigo-700">공단지급 = P</b>  (단일화)</div>
-            <div><b className="text-indigo-700">본인부담 = M1 × 30%</b>  (고정)</div>
-            <div className="pt-1 mt-1 border-t border-gray-300">
-              <b className="text-amber-700">포괄관리 지표 C = 1 − L2 · 기대 집중도 = 1 − L1</b>
-            </div>
-            <div><b className="text-amber-700">포괄관리성과 = max(0, C − (1 − L1)) = max(0, L1 − L2)</b></div>
-            <div><b className="text-amber-700">지급액 = Σ 포괄관리성과 × B_g × n_reg_g × TrackMul</b></div>
-            <div className="text-gray-500">n_reg_g = 의원당 환자군별 등록환자수 · TrackMul: A=0 / B=0.5 / C=1.0</div>
-            <div className="text-gray-500">no-downside: C ≤ (1−L1)이면 가산 0 (환수 없음) · 의원 100% 환원 (공유율 없음)</div>
-          </div>
-        </div>
-      )}
-    </div>
-    )}
+    {/* v7.1.3: 수가 산출 구조 박스 삭제 — formula는 환자군별 상세 편집 테이블 컬럼 헤더(B=A×CR, PB=B×C1, P=PB+PF)에 이미 노출. */}
 
     {/* ⑫ 데이터 관리 — v7.0: 정책 모드 전용 (의원 모드 미표시) */}
     {mode === "policy" && (
@@ -372,6 +346,27 @@ export default memo(function TabSimulation({
       </button>
       {showDetail && (
         <div className="px-3 pb-3 border-t border-gray-100">
+          {/* v7.1.3: 자료 분석 절차 (NHIS-HCC v3.0 2025 baseline 출처·방법론) — 엑셀 시트 텍스트 정합 */}
+          <div className="mt-3 mb-3 rounded-lg border bg-slate-50 px-3 py-2.5"
+            style={{ borderColor: "#cbd5e1" }}>
+            <div className="text-xs font-bold text-slate-700 mb-1.5">📊 자료 분석 절차</div>
+            <div className="text-[11px] text-slate-700 leading-relaxed space-y-1">
+              <div><b className="text-slate-800">1단계 (건보공단 전수자료 HCC 분석)</b></div>
+              <div className="pl-3">1) 2025년 건보공단 전수자료 <b>53,247,650명</b>으로 NHIS-HCC v3.0 구축</div>
+              <div className="pl-3">2) HCC 4분위(quartile)로 환자군 1~4군 분류</div>
+              <div className="pt-1"><b className="text-slate-800">2단계 (일만시 참여의원 환자 중심 분석)</b></div>
+              <div className="pl-3 text-[10px] text-slate-500 leading-tight">
+                주분석 대상: 일차의료 만성질환관리 시범사업 참여의원 <b className="text-slate-700">2,923개 의원</b>
+                · 환자 <b className="text-slate-700">12,801,143명</b> (의원당 <b className="text-slate-700">4,379명</b>)
+              </div>
+              <div className="pl-3">1) 환자군 평균 의료비 <b>A</b></div>
+              <div className="pl-3">2) 환자군 기준의료비(의원급외래) <b>B = A × CR</b></div>
+              <div className="pl-3">3) 일차의료 기본수가 <b>PB = B × C1</b> (C1 = 1 − L1)</div>
+              <div className="pt-1 text-slate-500"><i>cf. 일차의료 정책 보정 후 수가</i></div>
+              <div className="pl-3 text-slate-600">· 일차의료 기능보정 <b>PF</b> · 일차의료수가 <b>P = PB + PF</b></div>
+            </div>
+          </div>
+
           {uploadBanner && (
             <div className={`mt-2 mb-3 rounded-lg px-3 py-2.5 text-xs ${uploadBanner.success ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
               <div className="flex items-center justify-between">
