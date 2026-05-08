@@ -397,24 +397,24 @@ describe('v6.5 PT/SS Track percentages', () => {
 });
 
 // v6.10.0: PF 디폴트 = B의 10% (HCC 비례 자동) + 통합 슬라이더 + 분배 함수
-describe('v6.10.0 · PF 디폴트 (B의 10%, HCC 비례 자동)', () => {
-  it('INIT_PF_PCT = 10 · INIT_PF_RULE = "hcc"', () => {
-    expect(INIT_PF_PCT).toBe(10);
+describe('v6.10.0 / v7.2.2 · PF 디폴트 (B의 5%, HCC 비례 자동)', () => {
+  it('INIT_PF_PCT = 5 · INIT_PF_RULE = "hcc" (v7.2.2: 10% → 5% 변경)', () => {
+    expect(INIT_PF_PCT).toBe(5);
     expect(INIT_PF_RULE).toBe('hcc');
   });
 
-  it('INIT_F = INIT_P × 10% (각 환자군별)', () => {
+  it('INIT_F = INIT_P × 5% (각 환자군별)', () => {
     expect(INIT_F).toHaveLength(4);
     INIT_F.forEach((v, i) => {
-      const expected = Math.round(INIT_P[i] * 0.10);
+      const expected = Math.round(INIT_P[i] * 0.05);
       expect(v).toBe(expected);
     });
     // HCC v3.0(2025): B = [208318, 316212, 567999, 884553] (환자군 평균 의료비 A × CR)
-    //   → INIT_F[i] = round(B[i] × 10%)
-    expect(INIT_F[0]).toBe(20832);
-    expect(INIT_F[1]).toBe(31621);
-    expect(INIT_F[2]).toBe(56800);
-    expect(INIT_F[3]).toBe(88455);
+    //   → INIT_F[i] = round(B[i] × 5%) (v7.2.2)
+    expect(INIT_F[0]).toBe(10416);
+    expect(INIT_F[1]).toBe(15811);
+    expect(INIT_F[2]).toBe(28400);
+    expect(INIT_F[3]).toBe(44228);
   });
 
   it('INIT_R는 INIT_F alias (하위 호환)', () => {
@@ -423,6 +423,11 @@ describe('v6.10.0 · PF 디폴트 (B의 10%, HCC 비례 자동)', () => {
 
   it('이전 임의값 [10000, 20000, 30000, 40000] 폐기 — 회귀 방지', () => {
     expect(INIT_F).not.toEqual([10000, 20000, 30000, 40000]);
+  });
+
+  it('이전 10% 디폴트 회귀 방지 — INIT_F는 더 이상 B × 10%가 아님', () => {
+    const tenPct = INIT_P.map(b => Math.round(b * 0.10));
+    expect(INIT_F).not.toEqual(tenPct);
   });
 });
 

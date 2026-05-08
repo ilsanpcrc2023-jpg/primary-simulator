@@ -39,11 +39,11 @@ export const OFFICIAL_BASELINE_META = {
 // B = 환자군 기본수가 — 정책 슬라이더 (엑셀 업로드 시 환자군 평균 의료비 A × 의원급 외래비중 CR 자동 유도)
 // P = B + F (일차의료수가, 명목 청구수가)
 //
-// v6.10.0: PF 디폴트 = B의 10% (HCC 비례 자동, 데이터 기반).
-//   기존 [1·2·3·4만원] 임의값은 폐기 — "1군 28,083원 = B 280,832원의 10%"가 가장 강한 답변.
-//   파일럿 baseline(B=[280832, 300199, 523581, 745317]) 적용 시: [28083, 30020, 52358, 74532].
-//   PF 통합 슬라이더의 디폴트 위치(10%)와 정합.
-export const INIT_PF_PCT = 10;               // PF 통합 슬라이더 디폴트 (B의 X%, 0~20)
+// v6.10.0: PF 디폴트 = B의 X% (HCC 비례 자동, 데이터 기반).
+// v7.2.2: 디폴트 10% → 5% (사용자 결정).
+//   HCC v3.0(2025) baseline(B=[208318, 316212, 567999, 884553]) 적용 시: [10416, 15811, 28400, 44228].
+//   PF 통합 슬라이더의 디폴트 위치(5%)와 정합.
+export const INIT_PF_PCT = 5;                // PF 통합 슬라이더 디폴트 (B의 X%, 0~20)
 export const INIT_PF_RULE = "hcc";           // 분배 규칙 디폴트 (hcc|equal|inverse)
 export const INIT_F = INIT_B.map(b => Math.round(b * INIT_PF_PCT / 100));
 export const INIT_R = INIT_F;                // 하위 호환 alias (v6.9.x까지의 명칭)
