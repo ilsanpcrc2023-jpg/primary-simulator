@@ -166,18 +166,42 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
   );
 });
 
-/* v7.1.1: ClinicCountCard — 의원 수 + 의원당 등록 환자수 통합 카드.
-   기본 프리셋 [100, 1000, 3000, 2923(일만시)]. 등록환자수 프리셋 [1000, 1500, 2000, 3000, 4000].
-   footer: 의원당 환자수 = 등록 + 비등록, 사업 전체 = 등록 + 비등록 breakdown. */
-export const ClinicCountCard = memo(function ClinicCountCard({ state, set, scaleRegDist }) {
-  const { M_clinics, totalN, datasetM, datasetLabel, regDist } = state;
+/* v7.1.2: ClinicSummaryStrip — 슬림 1줄 요약 카드 (탭 상단 노출).
+   의원 수 · 의원당 환자수 · 등록/비등록 breakdown · 사업 전체 breakdown.
+   변경 컨트롤은 고급설정의 ClinicCountControls에 별도 배치. */
+export const ClinicSummaryStrip = memo(function ClinicSummaryStrip({ state }) {
+  const { M_clinics, totalN, regDist } = state;
   const perClinic = Math.max(1, Math.round(totalN / Math.max(1, M_clinics)));
-  // 등록/비등록 분해
   const regSum = regDist.reduce((s, v) => s + v, 0);
   const regPerClinic = Math.min(regSum, perClinic);
   const unregPerClinic = Math.max(0, perClinic - regPerClinic);
   const totalReg = M_clinics * regPerClinic;
   const totalUnreg = M_clinics * unregPerClinic;
+  return (
+    <div className={card + " px-3 py-2"}>
+      <div className="text-[12px] sm:text-[13px] text-gray-700 leading-relaxed">
+        <span className="font-bold text-gray-900">🏥 {M_clinics.toLocaleString()}개 의원</span>
+        <span className="text-gray-300 mx-2">|</span>
+        의원당 <b className="text-gray-900">{perClinic.toLocaleString()}명</b>
+        {" = 등록 "}<b className="text-blue-700">{regPerClinic.toLocaleString()}명</b>
+        {" + 비등록 "}<b className="text-slate-700">{unregPerClinic.toLocaleString()}명</b>
+        <span className="text-gray-300 mx-2">|</span>
+        사업 전체 <b className="text-gray-900">{(M_clinics * perClinic).toLocaleString()}명</b>
+        {" = 등록 "}<b className="text-blue-700">{totalReg.toLocaleString()}명</b>
+        {" + 비등록 "}<b className="text-slate-700">{totalUnreg.toLocaleString()}명</b>
+      </div>
+      <div className="text-[10px] text-gray-400 mt-0.5">
+        ⚙️ 고급 설정 → 의원 수 · 의원당 등록환자수 변경
+      </div>
+    </div>
+  );
+});
+
+/* v7.1.2: ClinicCountControls — 고급설정 안에 들어가는 의원 수 + 의원당 등록환자수 컨트롤.
+   기본 프리셋 [100, 1000, 3000, 2923(일만시)]. 등록환자수 프리셋 [1000, 1500, 2000, 3000, 4000]. */
+export const ClinicCountControls = memo(function ClinicCountControls({ state, set, scaleRegDist }) {
+  const { M_clinics, datasetM, datasetLabel, regDist } = state;
+  const regSum = regDist.reduce((s, v) => s + v, 0);
 
   const setM = (m) => {
     const newM = Math.max(1, Math.round(m));
@@ -187,10 +211,10 @@ export const ClinicCountCard = memo(function ClinicCountCard({ state, set, scale
     if (datasetM) setM(datasetM);
   };
   return (
-    <div className={card + " p-3 space-y-2"}>
+    <div className="space-y-2">
       {/* 의원 수 */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-bold text-gray-900 shrink-0">사업 참여 의원 수</span>
+        <span className="text-sm font-semibold text-gray-700 shrink-0 w-32">사업 참여 의원 수</span>
         <NumBox value={M_clinics} onChange={setM} color="#1f2937" suffix="개" />
         <div className="flex flex-wrap gap-1">
           {CLINIC_COUNT_PRESETS.map(p => {
@@ -216,10 +240,10 @@ export const ClinicCountCard = memo(function ClinicCountCard({ state, set, scale
         )}
       </div>
 
-      {/* 의원당 등록환자수 (regDist 합 비례 스케일) — v7.1.1 */}
+      {/* 의원당 등록환자수 (regDist 합 비례 스케일) */}
       {scaleRegDist && (
-        <div className="flex items-center gap-2 flex-wrap pt-1.5 border-t border-dashed border-gray-200">
-          <span className="text-xs font-semibold text-gray-700 shrink-0">의원당 등록환자수</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-semibold text-gray-700 shrink-0 w-32">의원당 등록환자수</span>
           <NumBox value={regSum} onChange={v => scaleRegDist(Math.max(0, Math.round(v)))} color="#2563eb" suffix="명" />
           <div className="flex flex-wrap gap-1">
             {REG_PER_CLINIC_PRESETS.map(v => {
@@ -237,16 +261,18 @@ export const ClinicCountCard = memo(function ClinicCountCard({ state, set, scale
           </div>
         </div>
       )}
+    </div>
+  );
+});
 
-      {/* footer: 의원당 환자수 + 등록/비등록 breakdown · 사업 전체 breakdown */}
-      <div className="text-[11px] text-gray-600 leading-relaxed pt-1.5 border-t border-dashed border-gray-200">
-        의원당 환자수 <b className="text-gray-900">{perClinic.toLocaleString()}명</b>
-        {" "}= 등록 <b className="text-blue-700">{regPerClinic.toLocaleString()}명</b>
-        {" + "}비등록 <b className="text-slate-700">{unregPerClinic.toLocaleString()}명</b>
-        <br />
-        사업 전체 <b className="text-gray-900">{(M_clinics * perClinic).toLocaleString()}명</b>
-        {" "}= 등록 <b className="text-blue-700">{totalReg.toLocaleString()}명</b>
-        {" + "}비등록 <b className="text-slate-700">{totalUnreg.toLocaleString()}명</b>
+/* v7.1.1 (deprecated v7.1.2): ClinicCountCard — 통합 카드. 분리됨 (ClinicSummaryStrip + ClinicCountControls).
+   기존 import 호환을 위해 유지 (=ClinicSummaryStrip + ClinicCountControls 합성). */
+export const ClinicCountCard = memo(function ClinicCountCard({ state, set, scaleRegDist }) {
+  return (
+    <div className={card + " p-3 space-y-2"}>
+      <ClinicCountControls state={state} set={set} scaleRegDist={scaleRegDist} />
+      <div className="pt-1.5 border-t border-dashed border-gray-200">
+        <ClinicSummaryStrip state={state} />
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
-import { FCard, TCard, ClinicCountCard } from "./RegistrationPanel";
+import { FCard, TCard, ClinicSummaryStrip, ClinicCountControls } from "./RegistrationPanel";
 import { SH, CL, INIT_REG_DIST, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB } from "../utils";
@@ -137,7 +137,9 @@ export default memo(function TabSimulation({
     </div>
   );
 
-  // 고급 패널 — v6.11.0: 부제·B 안내문·amber 박스 삭제 · L1 헤더 "평균 타원이용비중(L1)" · 버튼 통합 (RESET_L1이 base.L 복귀)
+  // v7.1.2: 고급 설정 — B·L1 박스 삭제 (환자군별 상세 편집 테이블과 중복).
+  //   대신 의원 수·의원당 등록환자수 선택 컨트롤 배치.
+  //   B/L1 직접 편집은 데이터 관리 카드의 환자군별 상세 편집 테이블에서 수행.
   const advancedPanel = (
     <div className="rounded-xl border border-dashed shadow-sm overflow-hidden"
       style={{ background: "#fafafa", borderColor: "#cbd5e1" }}>
@@ -145,58 +147,14 @@ export default memo(function TabSimulation({
         className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-slate-100 transition text-left">
         <span className="text-slate-400 text-xs">{showAdvanced ? "▲" : "▼"}</span>
         <span className="text-sm font-semibold text-slate-700">⚙️ 고급 설정</span>
+        <span className="text-[10px] text-slate-400">의원 수 · 의원당 등록환자수</span>
       </button>
       {showAdvanced && (
-        <div className="px-4 pb-4 pt-1 border-t border-dashed border-slate-300 space-y-4">
-          {/* B 직접 조정 */}
-          <div>
-            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-              <div className="text-sm font-semibold text-slate-700 flex items-baseline gap-2 flex-wrap">
-                환자군 기준의료비 (B)
-                <span className="text-[11px] font-normal text-slate-400">B = 환자군 평균 의료비(A) × 의원급 외래 비중(CR)</span>
-              </div>
-              <button onClick={resetP}
-                className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
-                ↩ 초기화
-              </button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {SH.map((g, i) => (
-                <div key={i} className="flex items-center gap-1.5 bg-white rounded-lg px-2 py-1.5 border border-slate-200">
-                  <span className="text-[11px] font-bold shrink-0" style={{ color: CL[i] }}>{g}</span>
-                  <NumBox value={P[i]} onChange={v => updP(i, Math.max(0, Math.round(v)))} color={CL[i]} suffix="원" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* L1 환자군별 차등 — v6.11.0: 헤더 "평균 타원이용비중(L1)", 단일 초기화 버튼 (base.L 복귀) */}
-          <div className="rounded-lg border-2 px-3 py-2.5"
-            style={{ background: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)", borderColor: "#5eead4" }}>
-            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-              <h3 className="text-sm font-bold" style={{ color: "#0f766e" }}>
-                평균 타원이용비중 (L1)
-              </h3>
-              <button onClick={resetL1}
-                className="text-xs text-teal-700 hover:text-red-600 border border-teal-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
-                ↩ 초기화
-              </button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {SH.map((g, i) => (
-                <div key={i} className="flex items-center gap-1.5 bg-white/70 rounded-lg px-2 py-1.5 border border-teal-200">
-                  <span className="text-[11px] font-bold shrink-0" style={{ color: CL[i] }}>{g}</span>
-                  <input type="number" min={0} max={1} step={0.01}
-                    value={(L1?.[i] ?? 0.7).toFixed(2)}
-                    onChange={e => {
-                      const v = parseFloat(e.target.value);
-                      if (!isNaN(v)) updL1(i, v);
-                    }}
-                    className="w-full text-sm text-center border border-teal-300 rounded px-1 py-0.5 tabular-nums"
-                    style={{ color: "#0f766e" }} />
-                </div>
-              ))}
-            </div>
+        <div className="px-4 pb-4 pt-2 border-t border-dashed border-slate-300">
+          <ClinicCountControls state={state} set={set} scaleRegDist={scaleRegDist} />
+          <div className="mt-3 text-[10px] text-slate-400 leading-relaxed">
+            ※ 환자군 기준의료비(B) · 평균 타원이용비중(L1)은 데이터 관리 카드의
+            <b className="text-slate-500"> 환자군별 상세 편집 테이블</b>에서 직접 편집.
           </div>
         </div>
       )}
@@ -322,8 +280,9 @@ export default memo(function TabSimulation({
       </div>
     </div>
 
-    {/* v7.1.1: 참여 의원 수 + 의원당 등록환자수 — 정책 모드에서만 노출 (의원 모드는 의원 1개 시뮬 관점이라 불필요) */}
-    {mode === "policy" && <ClinicCountCard state={state} set={set} scaleRegDist={scaleRegDist} />}
+    {/* v7.1.2: 참여 의원 수 + 의원당 등록환자수 — 슬림 1줄 요약만 (변경 컨트롤은 고급 설정으로 이동).
+        정책 모드에서만 노출 (의원 모드는 의원 1개 시뮬 관점이라 불필요). */}
+    {mode === "policy" && <ClinicSummaryStrip state={state} />}
 
     {/* ⑨ 차트 */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
