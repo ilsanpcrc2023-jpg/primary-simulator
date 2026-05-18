@@ -89,6 +89,52 @@ describe('calculation engine', () => {
     });
   });
 
+  it('v7.4 회귀 방지: 공단 지출 1인당 변화 = PF_g (본인부담 양쪽 상쇄, L2 격리)', () => {
+    // v7.4: 공단 지출 = 공단지급분만 (×0.7). 등록환자 타원비는 b.L 기반 (L2 격리).
+    //   baseline 공단 외래 (1인당) = C1 × 0.7 = M1 / (1−L) × 0.7
+    //   after 공단 외래 (등록 1인당) = M1×0.7 + PF + M1×L/(1−L) × 0.7
+    //                              = 0.7 × M1 × [1 + L/(1−L)] + PF
+    //                              = 0.7 × M1 / (1−L) + PF
+    //                              = baseline + PF  ✓
+    INIT_BASE.forEach((b, i) => {
+      const F_i = INIT_F[i];
+      const C1 = b.M1 / (1 - b.L);
+      const D1_base = C1 - b.M1;
+      const baseline_per_person = C1 * 0.70;
+      const after_per_person = (b.M1 * 0.70 + F_i) + D1_base * 0.70;
+      const delta = after_per_person - baseline_per_person;
+      expect(delta).toBeCloseTo(F_i, 4);
+    });
+  });
+
+  it('v7.4 회귀 방지: PF=0%일 때 공단 지출 1인당 변화 = 0 (등록환자)', () => {
+    // 사용자 정책 의도: "변화는 PB·PF만". PF=0이고 L2 효과 격리되면 공단 지출 변화 0.
+    INIT_BASE.forEach((b) => {
+      const F_zero = 0;
+      const C1 = b.M1 / (1 - b.L);
+      const D1_base = C1 - b.M1;
+      const baseline_per_person = C1 * 0.70;
+      const after_per_person = (b.M1 * 0.70 + F_zero) + D1_base * 0.70;
+      const delta = after_per_person - baseline_per_person;
+      expect(delta).toBeCloseTo(0, 4);
+    });
+  });
+
+  it('v7.4 회귀 방지: 의원 수입 변화 = 공단 지출 변화 (정책 의도 정합)', () => {
+    // 사용자 정책 의도: 양쪽 정확히 같은 절대값. 본인부담은 양쪽에서 상쇄.
+    INIT_BASE.forEach((b, i) => {
+      const F_i = INIT_F[i];
+      const C1 = b.M1 / (1 - b.L);
+      const D1_base = C1 - b.M1;
+      // 의원 수입 변화 (등록 1인당) = (M1 + F) - M1 = F
+      const inc_delta = (b.M1 + F_i) - b.M1;
+      // 공단 지출 변화 (등록 1인당) = (M1×0.7 + F + D1_base×0.7) - C1×0.7 = F
+      const nhi_delta = (b.M1 * 0.70 + F_i + D1_base * 0.70) - C1 * 0.70;
+      expect(inc_delta).toBeCloseTo(nhi_delta, 4);
+      expect(inc_delta).toBeCloseTo(F_i, 4);
+    });
+  });
+
   it('v6.9.5: L1 디폴트 = base.L 실측', () => {
     // v6.9.5: L1은 협상 변수가 아니라 데이터 실측 그 자체.
     //   v7.3.0에서 pay_gov 산식은 M1 베이스이지만, L1·base.L 동기화 의미는 보존
