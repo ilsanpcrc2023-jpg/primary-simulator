@@ -287,8 +287,10 @@ git -C "C:/Users/User/projects/Primary-Simulator" push origin v7.3.0
   - [x] PF 슬라이더 변동 ↔ modelEffect가 정확히 비례 (delta = PF_g)
   - [x] "왜 의원 수입이 늘어나는가?" → "**PF(일차의료 기능보정) 가산만**" 답변 가능
   - [x] PB 카드 라벨 "M1 × 0.7 (공단지급분)"으로 산출 근거 명시
-- [ ] **머지 commit**: (사용자 명시 승인 후 채움)
-- [ ] **태그**: v7.3.0 (예정)
+- [x] **feature 브랜치 commit**: `af26aba` (push 완료 2026-05-18)
+- [x] **main 머지 commit**: `f4f9f27` (v7.4와 함께 누적 머지, 2026-05-18)
+- [x] **태그**: `v7.4` (v7.3.0과 v7.4를 한 머지에 합쳐 v7.4 태그만 부여)
+- [x] **Vercel 자동 배포**: primarysimulator.kr (production)
 
 ### 갱신된 baseline 요약 (의료비 0원 제외)
 
