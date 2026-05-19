@@ -305,36 +305,51 @@ export default function useSimulator() {
   }, [base, L1]);
   const L2eff = L2 ?? L1avg;
 
-  // v6.7: L1 환자군별 배열에서 P_g 산출. LC(변화율) 제거.
-  // 의원 선지급 = P_g = B(1−L1_g) + F_g, 공단지급 = P_g (단일화).
-  // 공단 외래 지출은 등록환자 타원비를 L2 기반으로 반영 (L2 슬라이더 연동).
+  // v7.4: 공단 지출 산식 정정 — 본인부담 30%를 baseline·after 양쪽에서 동일 제외.
+  //   데이터 사전(docs/data_dictionary_v7.4.md): A·M1·CO·RC는 모두 총의료비(공단+본인부담).
+  //   M1 × 0.7 = 공단지급분, M1 × 0.3 = 본인부담. 본인부담은 시범사업 전후 동일(상쇄).
+  //   사용자 정책 의도: "의원 수입·공단 지출 모두 PB·PF에 따른 변화만 노출".
+  //
+  //   v7.3.0 → v7.4 변경 요약:
+  //   - 의원 수입 (inc0·inc): 그대로 (M1·M1+PF, 본인부담 양쪽 포함, 변화 = PF만 자동 정합)
+  //   - 공단 지출 (nhi0·nhi): 모두 × 0.70 (공단지급분만)
+  //   - 등록환자 타원비: L2 기반(D1_L2) → b.L 기반(D1_base_reg)로 변경 — L2 효과는 별도 성과급 모듈로 격리
+  //     ★ 의원 수입 변화 = 공단 지출 변화 = +Σ PF × n_reg (정확히 같은 절대값)
+  //     ★ 포괄관리성과(L2 < L1 효과)는 두 KPI 모두에 perf_blended로 추가 노출
   const G = useMemo(() => {
     const safeL2 = Math.max(0, Math.min(0.999, L2eff));
     return base.map((b, i) => {
       const N = Math.round(totalN * ratios[i]);
-      const p = P[i];                                    // B value (state.P = B 기호 유지)
-      const L1_g = L1[i] ?? 0.7;
+      const p = P[i];                                    // B value (reference, 시뮬 미사용)
+      const L1_g = L1[i] ?? 0.7;                         // 성과급 산식(L1−L2)에서 사용
       const F_i = F_g[i] ?? 0;
-      const pay_gov = p * (1 - L1_g) + F_i;              // 공단지급 = P_g
-      const ab_reg = pay_gov + b.M1 * 0.30;              // 등록환자 1인당 의원수입
+      const pay_gov_reg = b.M1 * 0.70 + F_i;             // PB + PF (등록환자 공단지급분)
+      const ab_reg = pay_gov_reg + b.M1 * 0.30;          // 의원 수입 1인당 = M1 + PF
 
-      // 외래비 상수
-      const C1 = b.M1 / (1 - b.L);                       // 기존 L 기반 총 외래비 (비등록·baseline)
-      const D1_base = C1 - b.M1;                         // 비등록환자 타원 외래비 (기존 L)
-      const D1_L2 = b.M1 * safeL2 / (1 - safeL2);        // 등록환자 타원 외래비 (L2 반영 · L2 슬라이더 연동)
+      // 외래비 상수 — 모두 총의료비 베이스
+      const C1 = b.M1 / (1 - b.L);                       // 1인당 총 외래비 (의원급+타원, 본인부담 포함)
+      const D1_base = C1 - b.M1;                         // 1인당 타원 외래비 (총, b.L 기반)
+      const D1_base_reg = D1_base;                       // v7.4: 등록환자도 baseline L 기반 (L2 격리)
+      const D1_L2 = b.M1 * safeL2 / (1 - safeL2);        // (reference) L2 기반 타원비 — 성과급 산정에만 사용
 
       // 등록/비등록 (등록 ⊆ 이용 clamp)
       const n_reg_g_raw = reg.n_reg_total * regRatios[i];
       const n_reg_g = Math.min(n_reg_g_raw, N);
       const n_unreg_g = Math.max(0, N - n_reg_g);
 
-      // 의원 수입 (선지급만 · 성과급은 T 레벨에서 합산)
+      // 의원 수입 (선지급만 · 성과급은 T 레벨에서 합산) — 본인부담 양쪽 포함
       const inc0 = b.M1 * N;                              // baseline: 전원 FFS
-      const inc = ab_reg * n_reg_g + b.M1 * n_unreg_g;    // 참여 후 선지급 수입
+      const inc = ab_reg * n_reg_g + b.M1 * n_unreg_g;    // 참여 후 = (M1+PF)·n_reg + M1·n_unreg
 
-      // 공단 의원급 외래 지출 — 등록환자는 L2 기반 타원비, 비등록은 기존 L 유지
-      const nhi0 = C1 * N;                                // baseline
-      const nhi = (ab_reg + D1_L2) * n_reg_g + C1 * n_unreg_g;
+      // v7.4: 공단 의원급 외래 지출 — 본인부담 30% 양쪽 제외 (×0.70), L2 효과 격리
+      //   baseline = 전원 FFS × 의원급 외래 공단지급분 = C1 × 0.7 × N
+      //   after 등록환자 = pay_gov_reg(=M1×0.7+PF) + 타원 외래 공단분(D1_base_reg × 0.7)
+      //   after 비등록환자 = C1 × 0.7 (FFS 그대로)
+      //   변화 = (pay_gov_reg + D1_base_reg×0.7 − C1×0.7) × n_reg
+      //        = (M1×0.7 + PF + M1×L/(1−L)×0.7 − M1/(1−L)×0.7) × n_reg
+      //        = PF × n_reg  ✓ (양쪽 본인부담 상쇄 + L2 격리로 PF만 남음)
+      const nhi0 = C1 * 0.70 * N;
+      const nhi = (pay_gov_reg + D1_base_reg * 0.70) * n_reg_g + C1 * 0.70 * n_unreg_g;
 
       // Track (1인당 등록환자 실지불액 · 선지급만, 성과급은 T 레벨)
       const tA = b.M1 + F_i;
@@ -344,7 +359,7 @@ export default function useSimulator() {
 
       return {
         N, p, b, L1_g,
-        pay_gov, ab_reg,
+        pay_gov: pay_gov_reg, ab_reg,                     // pay_gov alias 유지 (의존 컴포넌트 호환)
         B: b.M1 * 0.30,
         F_per_pt: F_i,
         n_reg: n_reg_g, n_unreg: n_unreg_g,
@@ -368,13 +383,17 @@ export default function useSimulator() {
     return s;
   }, [G]);
 
-  // v6.7: 성과급 메모 — no-downside 비대칭, 의원 100% 환원 (공유율 α 없음, SS와 상이)
-  // Track 배수(A=0/B=0.5/C=1.0) 선형 보간 (hccPct/100)
+  // v6.7 → v7.3.0: 성과급 베이스 B → M1 (사용자 결정).
+  //   성과급 = Σ max(0, L1_g − L2) × M1 × n_reg × TrackMul
+  //   의미: 등록환자가 등록의원 외래로 더 집중(L2 < L1, 즉 C2 > C1)할 때 그 절감분을 의원에 환원.
+  //   베이스 M1 = 등록의원 외래 1인당 — 시뮬 핵심 산식 정합(PB·ab_reg가 M1 베이스).
+  //   no-downside 비대칭, 의원 100% 환원(공유율 α 없음, SS와 상이).
+  //   Track 배수(A=0/B=0.5/C=1.0) 선형 보간 (hccPct/100)
   const performance = useMemo(() => {
     let perf_raw_total = 0;
     G.forEach((r, i) => {
       const diff = Math.max(0, (L1[i] ?? 0.7) - L2eff);
-      perf_raw_total += diff * r.p * r.n_reg;
+      perf_raw_total += diff * r.b.M1 * r.n_reg;
     });
     const perf_total = perf_raw_total;                    // Track C 최대치 = 전체 절감액 100% 환원
     const perfByTrack = {
@@ -391,9 +410,10 @@ export default function useSimulator() {
     };
   }, [G, L1, L2eff, L1avg, hccPct]);
 
-  // v6.7: KPI 변화율 — L2 연동
-  //   의원 수입  = 선지급 inc + 성과급 perf_blended
-  //   공단 지출 = L2 반영 nhi + 성과급 지급 perf_blended
+  // v7.4: KPI 변화율 — 양쪽 본인부담 상쇄, L2 효과는 perf_blended로 격리
+  //   의원 수입  = 선지급 inc(M1+PF) + 성과급 perf_blended
+  //   공단 지출 = 공단지급분 nhi(M1×0.7+PF, b.L 베이스) + 성과급 perf_blended
+  //   → 변화 = 양쪽 모두 +Σ PF × n_reg + perf_blended (정확히 같은 절대값)
   const incTotal = T.inc + performance.perf_blended;
   const nhiTotal = T.nhi + performance.perf_blended;
   const incChg = T.inc0 > 0 ? (incTotal - T.inc0) / T.inc0 : 0;
@@ -403,12 +423,14 @@ export default function useSimulator() {
   const incNewChg = incChg;
   const nhiNewChg = nhiChg;
 
-  // v6.7 패널 분해 (L2 반응):
+  // v7.3.0 패널 분해 (PF-only · 본인부담 양쪽 상쇄):
   //   baselineIncome = baseN × ffsPerPerson × M       (참여 전 전원 FFS)
   //   panelEffect    = Σ M1 × (N_after − baseN)       (패널 변화 · FFS 유지)
-  //   modelEffect    = Σ n_reg × (ab_reg − M1)        (지불방식 전환 · 선지급)
-  //   performanceEffect = perf_blended                 (L2 성과급 · Track 배수 반영)
+  //   modelEffect    = Σ n_reg × (ab_reg − M1) = Σ n_reg × PF   (지불방식 전환 = PF 가산만)
+  //   performanceEffect = perf_blended                 (L2 성과급 · Track 배수, 베이스 M1)
   //   afterIncome = 선지급 + 성과급 (의원 수입 KPI)
+  //   ※ PF=0%이면 modelEffect = 0 → 구조 전환만으로는 의원 수입 변동 없음
+  //     (정책 발표 시 "왜 의원 수입이 늘어나는가?" → "PF 가산만"으로 명확하게 답변).
   const decomp = useMemo(() => {
     const M = Math.max(1, M_clinics);
     const baseN_total = Math.max(0, baseN_per_clinic) * M;
@@ -534,8 +556,13 @@ export default function useSimulator() {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf);
       let sheetName = wb.SheetNames[0];
+      // v7.3.0: 시트명 우선순위 — 시뮬레이터 업로드용 → 핵심표(NHIS-HCC v3.0 엑셀) → 첫 시트.
       const simIdx = wb.SheetNames.findIndex(n => n.includes("시뮬레이터"));
       if (simIdx >= 0) sheetName = wb.SheetNames[simIdx];
+      else {
+        const coreIdx = wb.SheetNames.findIndex(n => n.includes("핵심표") || n.includes("핵심 표"));
+        if (coreIdx >= 0) sheetName = wb.SheetNames[coreIdx];
+      }
       const ws = wb.Sheets[sheetName];
       const data = XLSX.utils.sheet_to_json(ws);
       if (data.length < 4) {

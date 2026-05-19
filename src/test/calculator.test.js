@@ -17,9 +17,10 @@ describe('calculation engine', () => {
   it('ON: total patient count from INIT_BASE', () => {
     const total = INIT_BASE.reduce((s, g) => s + g.N, 0);
     expect(total).toBe(ON);
-    // v3.0(2025): HCC v3.0 baseline — 만성질환관리 시범사업 참여의원 2,923개
-    //   ΣNC = 2,050,360 + 2,869,115 + 3,808,633 + 4,073,035 = 12,801,143
-    expect(ON).toBe(12801143);
+    // v7.3.0: HCC v3.0 baseline (의료비 0원 제외) — 만성질환관리 시범사업 참여의원 2,923개
+    //   ΣRN = 2,502,705 + 2,453,897 + 3,646,697 + 3,807,853 = 12,411,152
+    //   (이전 v7.2.2 zero 포함: 12,801,143)
+    expect(ON).toBe(12411152);
   });
 
   it('INIT_BASE has 4 patient groups', () => {
@@ -54,28 +55,92 @@ describe('calculation engine', () => {
     });
   });
 
-  it('v6.7: pay_gov = B × (1 − L1) + F for each group (공단지급 = P 단일화)', () => {
+  it('v7.3.0: pay_gov = M1 × 0.7 + F for each group (PB = M1×0.7, 공단지급분)', () => {
     INIT_BASE.forEach((b, i) => {
-      const B_i = INIT_P[i];
-      const L1_i = INIT_L1[i];
       const F_i = INIT_F[i];
-      const pay_gov = B_i * (1 - L1_i) + F_i;
+      const pay_gov = b.M1 * 0.70 + F_i;
       expect(pay_gov).toBeGreaterThan(0);
-      // 등록환자 1인당 의원수입 = 공단지급 + 본인부담
+      // 등록환자 1인당 의원수입 = 공단지급 + 본인부담 = M1 + PF
       const ab_reg = pay_gov + b.M1 * 0.30;
-      expect(ab_reg).toBeGreaterThan(pay_gov);
+      expect(ab_reg).toBeCloseTo(b.M1 + F_i, 6);
     });
   });
 
-  it('v6.9.5: L1 디폴트 = base.L 실측 → pay_gov(L1) = pay_gov(base.L)', () => {
-    // v6.9.5: L1은 협상 변수가 아니라 데이터 실측 그 자체.
-    //   디폴트가 base.L과 동일하므로, L1·base.L 적용 시 동일 공단지급 산출.
+  it('v7.3.0 회귀 방지: PF=0%일 때 의원 수입 1인당 변화 = 0', () => {
+    // 사용자 정책 의도: "PF만큼만 의원 수입이 늘어남". PF=0이면 변화 0.
+    INIT_BASE.forEach((b) => {
+      const F_zero = 0;
+      const pay_gov = b.M1 * 0.70 + F_zero;
+      const ab_reg = pay_gov + b.M1 * 0.30;
+      const baseline_per_person = b.M1;          // FFS baseline
+      const delta = ab_reg - baseline_per_person;
+      expect(delta).toBeCloseTo(0, 6);
+    });
+  });
+
+  it('v7.3.0 회귀 방지: PF=5% (디폴트)일 때 의원 수입 1인당 변화 = PF_g', () => {
+    // 의원당 등록 1,000명 시 의원 수입 변화 ≈ Σ regDist[i] × PF[i] (M1 베이스라인 대비).
     INIT_BASE.forEach((b, i) => {
-      const B_i = INIT_P[i];
       const F_i = INIT_F[i];
-      const pay_L1 = B_i * (1 - INIT_L1[i]) + F_i;
-      const pay_baseL = B_i * (1 - b.L) + F_i;
-      expect(pay_L1).toBeCloseTo(pay_baseL, 0);
+      const pay_gov = b.M1 * 0.70 + F_i;
+      const ab_reg = pay_gov + b.M1 * 0.30;
+      const delta = ab_reg - b.M1;
+      expect(delta).toBeCloseTo(F_i, 6);
+    });
+  });
+
+  it('v7.4 회귀 방지: 공단 지출 1인당 변화 = PF_g (본인부담 양쪽 상쇄, L2 격리)', () => {
+    // v7.4: 공단 지출 = 공단지급분만 (×0.7). 등록환자 타원비는 b.L 기반 (L2 격리).
+    //   baseline 공단 외래 (1인당) = C1 × 0.7 = M1 / (1−L) × 0.7
+    //   after 공단 외래 (등록 1인당) = M1×0.7 + PF + M1×L/(1−L) × 0.7
+    //                              = 0.7 × M1 × [1 + L/(1−L)] + PF
+    //                              = 0.7 × M1 / (1−L) + PF
+    //                              = baseline + PF  ✓
+    INIT_BASE.forEach((b, i) => {
+      const F_i = INIT_F[i];
+      const C1 = b.M1 / (1 - b.L);
+      const D1_base = C1 - b.M1;
+      const baseline_per_person = C1 * 0.70;
+      const after_per_person = (b.M1 * 0.70 + F_i) + D1_base * 0.70;
+      const delta = after_per_person - baseline_per_person;
+      expect(delta).toBeCloseTo(F_i, 4);
+    });
+  });
+
+  it('v7.4 회귀 방지: PF=0%일 때 공단 지출 1인당 변화 = 0 (등록환자)', () => {
+    // 사용자 정책 의도: "변화는 PB·PF만". PF=0이고 L2 효과 격리되면 공단 지출 변화 0.
+    INIT_BASE.forEach((b) => {
+      const F_zero = 0;
+      const C1 = b.M1 / (1 - b.L);
+      const D1_base = C1 - b.M1;
+      const baseline_per_person = C1 * 0.70;
+      const after_per_person = (b.M1 * 0.70 + F_zero) + D1_base * 0.70;
+      const delta = after_per_person - baseline_per_person;
+      expect(delta).toBeCloseTo(0, 4);
+    });
+  });
+
+  it('v7.4 회귀 방지: 의원 수입 변화 = 공단 지출 변화 (정책 의도 정합)', () => {
+    // 사용자 정책 의도: 양쪽 정확히 같은 절대값. 본인부담은 양쪽에서 상쇄.
+    INIT_BASE.forEach((b, i) => {
+      const F_i = INIT_F[i];
+      const C1 = b.M1 / (1 - b.L);
+      const D1_base = C1 - b.M1;
+      // 의원 수입 변화 (등록 1인당) = (M1 + F) - M1 = F
+      const inc_delta = (b.M1 + F_i) - b.M1;
+      // 공단 지출 변화 (등록 1인당) = (M1×0.7 + F + D1_base×0.7) - C1×0.7 = F
+      const nhi_delta = (b.M1 * 0.70 + F_i + D1_base * 0.70) - C1 * 0.70;
+      expect(inc_delta).toBeCloseTo(nhi_delta, 4);
+      expect(inc_delta).toBeCloseTo(F_i, 4);
+    });
+  });
+
+  it('v6.9.5: L1 디폴트 = base.L 실측', () => {
+    // v6.9.5: L1은 협상 변수가 아니라 데이터 실측 그 자체.
+    //   v7.3.0에서 pay_gov 산식은 M1 베이스이지만, L1·base.L 동기화 의미는 보존
+    //   (성과급 산식 max(0, L1−L2)에서 L1이 여전히 사용됨).
+    INIT_BASE.forEach((b, i) => {
+      expect(INIT_L1[i]).toBeCloseTo(b.L, 6);
     });
   });
 
@@ -342,19 +407,19 @@ describe('v6.5 PT/SS Track percentages', () => {
     expect(f2 / f1).toBeCloseTo(2, 5);
   });
 
-  // v6.9.4 · v3.0(2025): 데이터 기반 디폴트 (HCC v3.0 anchor)
+  // v6.9.4 · v3.0(2025) · v7.3.0: 데이터 기반 디폴트 (HCC v3.0 anchor, 의료비 0원 제외)
   describe('v3.0(2025) · HCC v3.0 anchor 디폴트', () => {
-    it('INIT_TOTAL_N = sum(INIT_BASE.N) = ON (HCC v3.0: 12,801,143)', () => {
+    it('INIT_TOTAL_N = sum(INIT_BASE.N) = ON (HCC v3.0 exc_zero: 12,411,152)', () => {
       expect(INIT_TOTAL_N).toBe(ON);
-      expect(INIT_TOTAL_N).toBe(12801143);
+      expect(INIT_TOTAL_N).toBe(12411152);
     });
 
     it('INIT_M_CLINICS는 official_baseline.json의 M_clinics (HCC v3.0: 2,923)', () => {
       expect(INIT_M_CLINICS).toBe(2923);
     });
 
-    it('INIT_PER_CLINIC = round(INIT_TOTAL_N / INIT_M_CLINICS) (HCC v3.0: 4,379)', () => {
-      expect(INIT_PER_CLINIC).toBe(4379);
+    it('INIT_PER_CLINIC = round(INIT_TOTAL_N / INIT_M_CLINICS) (HCC v3.0 exc_zero: 4,246)', () => {
+      expect(INIT_PER_CLINIC).toBe(4246);
       expect(INIT_BASE_PER_CLINIC).toBe(INIT_PER_CLINIC);
     });
 
@@ -409,12 +474,12 @@ describe('v6.10.0 / v7.2.2 · PF 디폴트 (B의 5%, HCC 비례 자동)', () => 
       const expected = Math.round(INIT_P[i] * 0.05);
       expect(v).toBe(expected);
     });
-    // HCC v3.0(2025): B = [208318, 316212, 567999, 884553] (환자군 평균 의료비 A × CR)
-    //   → INIT_F[i] = round(B[i] × 5%) (v7.2.2)
-    expect(INIT_F[0]).toBe(10416);
-    expect(INIT_F[1]).toBe(15811);
-    expect(INIT_F[2]).toBe(28400);
-    expect(INIT_F[3]).toBe(44228);
+    // v7.3.0: HCC v3.0 exc_zero baseline — B = [238515, 413166, 662478, 1013352] (환자군 실제 평균 의료비 A × CR)
+    //   → INIT_F[i] = round(B[i] × 5%) (v7.2.2 PF 5% 디폴트)
+    expect(INIT_F[0]).toBe(11926);
+    expect(INIT_F[1]).toBe(20658);
+    expect(INIT_F[2]).toBe(33124);
+    expect(INIT_F[3]).toBe(50668);
   });
 
   it('INIT_R는 INIT_F alias (하위 호환)', () => {
@@ -565,16 +630,17 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     expect(INIT_DEFAULT_M).toBe(100);
   });
 
-  it('INIT_DEFAULT_TOTAL_N = 100 × INIT_PER_CLINIC = 437,900', () => {
+  it('INIT_DEFAULT_TOTAL_N = 100 × INIT_PER_CLINIC = 424,600 (v7.3.0 exc_zero)', () => {
     expect(INIT_DEFAULT_TOTAL_N).toBe(INIT_DEFAULT_M * INIT_PER_CLINIC);
-    expect(INIT_DEFAULT_TOTAL_N).toBe(437900);
+    expect(INIT_DEFAULT_TOTAL_N).toBe(424600);
   });
 
-  it('데이터 anchor (INIT_M_CLINICS = 2,923)는 보존', () => {
+  it('데이터 anchor (INIT_M_CLINICS = 2,923)는 보존 (v7.3.0 exc_zero baseline)', () => {
     // v7.1.1에서 초기 디폴트는 100개로 변경됐지만, 데이터 anchor는 official_baseline 그대로.
+    // v7.3.0: 의료비 0원 제외로 ON·INIT_PER_CLINIC 갱신.
     expect(INIT_M_CLINICS).toBe(2923);
-    expect(INIT_TOTAL_N).toBe(12801143);
-    expect(INIT_PER_CLINIC).toBe(4379);
+    expect(INIT_TOTAL_N).toBe(12411152);
+    expect(INIT_PER_CLINIC).toBe(4246);
   });
 
   it('CLINIC_COUNT_PRESETS는 4개 (100/1000/3000/2923 일만시)', () => {
@@ -590,43 +656,44 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     expect(REG_PER_CLINIC_PRESETS).toEqual([1000, 1500, 2000, 3000, 4000]);
   });
 
-  it('초기화 (v7.1.5 / v7.2.0): RESET_REG는 1차년도 시범사업 디폴트(M=100, regDist 합 1,000) 복귀', () => {
+  it('초기화 (v7.1.5 / v7.2.0 / v7.3.0): RESET_REG는 1차년도 시범사업 디폴트(M=100, regDist 합 1,000) 복귀', () => {
     // v7.1.5: 일만시 모드 버튼 → 초기화 버튼으로 교체. resetReg 호출 → RESET_REG 액션.
-    // v7.2.0: regDist 디폴트 = [160,224,298,318] (참여의원 환자분포 RD × 1,000명).
-    //   복귀 값: M=INIT_DEFAULT_M(100), regDist=INIT_REG_DIST([160,224,298,318], 합 1,000),
-    //          baseN_per_clinic=데이터 anchor 의원당 환자수(4,379).
+    // v7.3.0: regDist 디폴트 = [201,198,294,307] (exc_zero RD × 1,000명, largest-remainder rounding).
+    //   복귀 값: M=INIT_DEFAULT_M(100), regDist=INIT_REG_DIST([201,198,294,307], 합 1,000),
+    //          baseN_per_clinic=데이터 anchor 의원당 환자수(4,246).
     const resetM = INIT_DEFAULT_M;             // 100
-    const resetRegDist = INIT_REG_DIST;        // [160, 224, 298, 318]
+    const resetRegDist = INIT_REG_DIST;        // [201, 198, 294, 307]
     const resetRegSum = resetRegDist.reduce((s, v) => s + v, 0);
     const resetTotalReg = resetM * resetRegSum;
     expect(resetM).toBe(100);
-    expect(resetRegDist).toEqual([160, 224, 298, 318]);
+    expect(resetRegDist).toEqual([201, 198, 294, 307]);
     expect(resetRegSum).toBe(1000);
     expect(resetTotalReg).toBe(100000);        // 1차년도 사업 전체 등록환자
   });
 
-  it('100개 의원 디폴트: 437,900명 = 등록 100,000명 + 비등록 337,900명 (regDist 합 1,000)', () => {
+  it('100개 의원 디폴트 (v7.3.0): 424,600명 = 등록 100,000명 + 비등록 324,600명 (regDist 합 1,000)', () => {
     const M = INIT_DEFAULT_M;
     const totalN = INIT_DEFAULT_TOTAL_N;
     const perClinic = totalN / M;
-    expect(perClinic).toBe(4379);
-    const regDistSum = INIT_REG_DIST.reduce((s, v) => s + v, 0);   // v7.2.0 [160,224,298,318]
+    expect(perClinic).toBe(4246);
+    const regDistSum = INIT_REG_DIST.reduce((s, v) => s + v, 0);   // v7.3.0 [201,198,294,307]
     expect(regDistSum).toBe(1000);
     const totalReg = M * regDistSum;
     const totalUnreg = totalN - totalReg;
     expect(totalReg).toBe(100000);
-    expect(totalUnreg).toBe(337900);
+    expect(totalUnreg).toBe(324600);
   });
 });
 
-// v7.2.0: 엑셀 약어 체계 정비 + regDist 디폴트 데이터 비례 전환
-describe('v7.2.0 · regDist 디폴트 = 데이터 비례 [160, 224, 298, 318]', () => {
-  it('INIT_REG_DIST = [160, 224, 298, 318] (참여의원 환자분포 RD × 1,000명)', () => {
-    expect(INIT_REG_DIST).toEqual([160, 224, 298, 318]);
+// v7.2.0 → v7.3.0: 엑셀 약어 체계 정비 + regDist 디폴트 데이터 비례 (exc_zero 갱신)
+describe('v7.3.0 · regDist 디폴트 = 데이터 비례 [201, 198, 294, 307] (exc_zero)', () => {
+  it('INIT_REG_DIST = [201, 198, 294, 307] (exc_zero RD × 1,000명, largest-remainder)', () => {
+    expect(INIT_REG_DIST).toEqual([201, 198, 294, 307]);
     expect(INIT_REG_DIST.reduce((s, v) => s + v, 0)).toBe(1000);
   });
 
-  it('이전 임의값 [100, 600, 200, 100] 폐기 — 회귀 방지', () => {
+  it('이전 v7.2.0 zero 포함 값 [160, 224, 298, 318] 폐기 — 회귀 방지', () => {
+    expect(INIT_REG_DIST).not.toEqual([160, 224, 298, 318]);
     expect(INIT_REG_DIST).not.toEqual([100, 600, 200, 100]);
   });
 
@@ -643,10 +710,10 @@ describe('v7.2.0 · regDist 디폴트 = 데이터 비례 [160, 224, 298, 318]', 
     });
   });
 
-  it('CLINIC_PRESETS.general 라벨 "데이터 비례" + regDist [160,224,298,318]', () => {
+  it('CLINIC_PRESETS.general 라벨 "데이터 비례" + regDist [201,198,294,307] (v7.3.0 exc_zero)', () => {
     const general = CLINIC_PRESETS.find(p => p.key === 'general');
     expect(general.label).toBe('데이터 비례');
-    expect(general.regDist).toEqual([160, 224, 298, 318]);
+    expect(general.regDist).toEqual([201, 198, 294, 307]);
   });
 
   it('CLINIC_PRESETS.elderly·custom은 v7.2.0 영향 없음 (보존)', () => {
@@ -666,12 +733,12 @@ describe('v7.2.0 · 엑셀 파서 호환 (M1 fallback + RR auto-inject)', () => 
       if (!M1 && RO > 0 && N > 0) return Math.round(RO / N);
       return M1;
     };
-    // NHIS-HCC v3.0 1군: RO=204,787,598,620, N=2,050,360 → M1=99,879
-    expect(fallback(0, 204787598620, 2050360)).toBe(99879);
+    // v7.3.0 NHIS-HCC v3.0 exc_zero 1군: RC=216,375,316,600, RN=2,502,705 → M1≈86,457
+    expect(fallback(0, 216375316600, 2502705)).toBe(86457);
     // M1 이미 있으면 RO/N 무시
-    expect(fallback(50000, 204787598620, 2050360)).toBe(50000);
+    expect(fallback(50000, 216375316600, 2502705)).toBe(50000);
     // RO=0이면 M1=0 그대로
-    expect(fallback(0, 0, 2050360)).toBe(0);
+    expect(fallback(0, 0, 2502705)).toBe(0);
     // N=0이면 M1=0 그대로 (0 나누기 방지)
     expect(fallback(0, 100000, 0)).toBe(0);
   });
@@ -684,10 +751,10 @@ describe('v7.2.0 · 엑셀 파서 호환 (M1 fallback + RR auto-inject)', () => 
       }
       return currentRegDist;
     };
-    // 정상: 모두 양수
-    expect(inject([160, 224, 298, 318], [100, 600, 200, 100])).toEqual([160, 224, 298, 318]);
+    // v7.3.0: 정상 (exc_zero RR ≈ [201.65, 197.72, 293.82, 306.81])
+    expect(inject([202, 198, 294, 307], [201, 198, 294, 307])).toEqual([202, 198, 294, 307]);
     // 하나라도 0: 기존 보존
-    expect(inject([160, 0, 298, 318], [100, 600, 200, 100])).toEqual([100, 600, 200, 100]);
+    expect(inject([202, 0, 294, 307], [201, 198, 294, 307])).toEqual([201, 198, 294, 307]);
     // 길이 부족: 기존 보존
     expect(inject([160, 224], [100, 600, 200, 100])).toEqual([100, 600, 200, 100]);
     // null: 기존 보존
