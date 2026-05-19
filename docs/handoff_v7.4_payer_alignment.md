@@ -1,11 +1,8 @@
 # v7.4 인계장 — 공단 지출 산식 정합 (본인부담 양쪽 상쇄 + L2 격리)
 
-**상태**: ✅ main 머지 완료 (2026-05-18)
+**상태**: 작업 완료 (2026-05-18)
 **선행 머지**: v7.3.0 (commit `af26aba`, feature 브랜치 `feature/v7.3.0-pf-only-and-baseline-exc_zero`)
-**v7.4 commit**: `7f37ec1` (feature 브랜치)
-**main 머지 commit**: `f4f9f27` (v7.3.0 + v7.4 누적, --no-ff)
-**태그**: `v7.4`
-**Vercel 자동 배포**: primarysimulator.kr (production)
+**적용 브랜치**: 동일 브랜치에 누적 커밋
 
 ---
 
