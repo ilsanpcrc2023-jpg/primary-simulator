@@ -346,24 +346,25 @@ export default memo(function TabSimulation({
       </button>
       {showDetail && (
         <div className="px-3 pb-3 border-t border-gray-100">
-          {/* v7.1.3: 자료 분석 절차 (NHIS-HCC v3.0 2025 baseline 출처·방법론) — 엑셀 시트 텍스트 정합 */}
+          {/* v7.5: 자료 분석 절차 (NHIS-HCC v3.0 2025 baseline · 의료비 0원 제외) — 엑셀 시트 텍스트 정합 */}
           <div className="mt-3 mb-3 rounded-lg border bg-slate-50 px-3 py-2.5"
             style={{ borderColor: "#cbd5e1" }}>
             <div className="text-xs font-bold text-slate-700 mb-1.5">📊 자료 분석 절차</div>
             <div className="text-[11px] text-slate-700 leading-relaxed space-y-1">
               <div><b className="text-slate-800">1단계 (건보공단 전수자료 HCC 분석)</b></div>
-              <div className="pl-3">1) 2025년 건보공단 전수자료 <b>53,247,650명</b>으로 NHIS-HCC v3.0 구축</div>
+              <div className="pl-3">1) 2025년 건강보험 이용자 전수자료 <b>48,874,201명</b>으로 NHIS-HCC v3.0 구축 후 <span className="text-slate-500">(의료비 0원 제외)</span></div>
               <div className="pl-3">2) HCC 4분위(quartile)로 환자군 1~4군 분류</div>
               <div className="pt-1"><b className="text-slate-800">2단계 (일만시 참여의원 환자 중심 분석)</b></div>
               <div className="pl-3 text-[10px] text-slate-500 leading-tight">
                 주분석 대상: 일차의료 만성질환관리 시범사업 참여의원 <b className="text-slate-700">2,923개 의원</b>
-                · 환자 <b className="text-slate-700">12,801,143명</b> (의원당 <b className="text-slate-700">4,379명</b>)
+                · 환자 <b className="text-slate-700">12,411,152명</b> (의원당 환자수 <b className="text-slate-700">4,246명</b>)
               </div>
               <div className="pl-3">1) 환자군 평균 의료비 <b>A</b></div>
-              <div className="pl-3">2) 환자군 기준의료비(의원급외래) <b>B = A × CR</b></div>
-              <div className="pl-3">3) 일차의료 기본수가 <b>PB = B × C1</b> (C1 = 1 − L1)</div>
-              <div className="pt-1 text-slate-500"><i>cf. 일차의료 정책 보정 후 수가</i></div>
-              <div className="pl-3 text-slate-600">· 일차의료 기능보정 <b>PF</b> · 일차의료수가 <b>P = PB + PF</b></div>
+              <div className="pl-3">2) 환자군 기준 의료비(의원급외래) <b>B = A × CR</b></div>
+              <div className="pl-3">3) 일차의료 기본수가 <b>PB = B × C1</b> <span className="text-slate-500">(C1 = 1 − L1)</span></div>
+              <div className="pt-1 text-slate-500"><i>cf. 일차의료 정책 보정 후 일차의료수가</i></div>
+              <div className="pl-3 text-slate-600">· 일차의료 기능보정 <b>PF</b> <span className="text-slate-500">(B 기준 N% 정책 슬라이더, 디폴트 5%)</span></div>
+              <div className="pl-3 text-slate-600">· 일차의료수가 <b>P = PB + PF</b></div>
             </div>
           </div>
 
@@ -397,7 +398,7 @@ export default memo(function TabSimulation({
             </div>
             <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
               onClick={() => {
-                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,379명\n· 의원당 등록환자수: 1,000명 (데이터 비례 [160, 224, 298, 318])\n· 사업 전체 등록: 100,000명\n\n환자군별 RN · M1 · L · RR(등록 분포)만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
+                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,246명\n· 의원당 등록환자수: 1,000명 (데이터 비례 [201, 198, 294, 307])\n· 사업 전체 등록: 100,000명\n\n환자군별 RN · M1 · L · RR(등록 분포)만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
                 if (confirm(msg)) resetReg?.();
               }}>
               <div className="text-amber-500 text-xl mb-0.5">↩</div>
