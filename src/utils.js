@@ -26,21 +26,15 @@ export const diffMan = (delta) => (delta >= 0 ? "+" : "") + fMan(delta);
 // "이용 감소 가정" 박스에서 양수 입력을 음(−) 변화로 표기할 때 사용.
 export const fChangeAuto = (v) => v > 0 ? `−${fAuto(v)}` : fAuto(v);
 
-// v6.9.3 → v7.3.0: PB 정의 변경 (B×(1−L1) → M1×0.7).
-//   시뮬 핵심 산식의 PB는 useSimulator.js의 pay_gov에서 M1×0.7 + F로 직접 산출.
-//   아래 calcPB·PBtoB·calcPB_M1은 reference / 상세 편집 테이블 표시용으로만 사용.
-//   PBtoB는 더 이상 호출되지 않음(슬라이더가 PB가 아니라 B를 직접 조작) — 하위 호환 유지.
-//
-// @deprecated v7.3.0 — 시뮬 핵심 산식에는 calcPB_M1 사용. calcPB는 reference (B×C1 표시).
+// v6.9.3: PB·PF 명칭 체계 — P = PB + PF 단순합 회복 (L1 곱셈 단계 추상화).
+// PB = B × (1 − L1) — "일차의료 기본수가" (환자군 위험도 반영, 데이터 기반)
+// PF = F           — "일차의료 기능보정" (정책 협상)
+// 내부 변수는 B(=state.P) / F(=state.F_g) 그대로 유지, UI 라벨/표시값만 PB·PF.
 export const calcPB = (B_g, L1_g) =>
   B_g.map((b, i) => Math.round(b * (1 - (L1_g?.[i] ?? 0.7))));
 
-// v7.3.0: PB(시뮬 본체) = M1 × 0.7 — 공단지급분.
-//   사용자 정책 의도("환자 본인부담 변화 없음, 의원 받는 돈 변화 없음, 변화는 PF만")에 정합.
-export const calcPB_M1 = (base) =>
-  base.map((b) => Math.round((b?.M1 ?? 0) * 0.70));
-
-// @deprecated v7.3.0 — 더 이상 호출되지 않음. 하위 호환 유지 (이전 테스트 통과).
+// PB 슬라이더 입력값을 B로 역산 (L1 고정).
+// 사용자가 1번 카드 PB 슬라이더 조작 → 내부 state.P (B)에 반영.
 export const PBtoB = (PB_input, L1) =>
   Math.round(PB_input / Math.max(0.001, 1 - L1));
 

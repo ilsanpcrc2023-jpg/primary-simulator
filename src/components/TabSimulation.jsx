@@ -5,7 +5,7 @@ import WinWinWin from "./WinWinWin";
 import { FCard, TCard, ClinicSummaryStrip, ClinicCountControls } from "./RegistrationPanel";
 import { SH, CL, INIT_REG_DIST, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
-import { f, fE, pct, diffAuto, fMan, diffMan, calcPB_M1 } from "../utils";
+import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB } from "../utils";
 
 const TRACK_LABELS = { 0: "Track A 유지", 50: "Track B 혼합", 100: "Track C 환자군" };
 
@@ -28,9 +28,8 @@ export default memo(function TabSimulation({
   // v7.1.3: 수가 산출 구조 박스 삭제 (formula 컬럼 헤더와 중복 · showFormula state 제거).
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // v7.3.0: PB = M1 × 0.7 — 공단지급분 (시뮬 핵심 산식). NumBox 편집 시 base.M1 직접 갱신.
-  //   이전 v6.9.3 PB = B × (1 − L1)은 NT 베이스의 산출값으로 시뮬에서 사용하지 않음 (reference 강등).
-  const PB = calcPB_M1(base);
+  // v6.9.3: PB = B × (1 − L1) — UI 표시값. 슬라이더 onChange는 PBtoB로 B 역산.
+  const PB = calcPB(P, L1);
 
   // L2 기본값 · 표시값 (null이면 L1 가중평균)
   const L2_display = L2 ?? perfMemo.L1avg;
@@ -89,7 +88,7 @@ export default memo(function TabSimulation({
     </div>
   );
 
-  // ① PB 카드 (연회색) — v7.3.0: PB = M1 × 0.7 (공단지급분). NumBox 편집은 base.M1 직접 갱신.
+  // ① PB 카드 (연회색) — v6.11.0: 배지 "환자군 위험도(HCC) 기반" · 안내문 삭제
   const PBcard = (
     <div className="rounded-xl border shadow-sm p-4"
       style={{ background: "#f8fafc", borderColor: "#e2e8f0" }}>
@@ -97,19 +96,27 @@ export default memo(function TabSimulation({
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2">
           <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-200 text-slate-700 text-xs font-extrabold">1</span>
           일차의료 기본수가 (PB)
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">M1 × 0.7 (공단지급분)</span>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">환자군 위험도(HCC) 기반</span>
         </h2>
+        <button onClick={resetP}
+          className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
+          ↩ 초기화
+        </button>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {SH.map((g, i) => (
-          <div key={i} className="flex items-center gap-1.5 bg-white rounded-lg px-2 py-1.5 border border-slate-200">
-            <span className="text-[11px] font-bold shrink-0" style={{ color: CL[i] }}>{g}</span>
-            <NumBox value={PB[i]} onChange={v => {
-              const newM1 = Math.max(0, Math.round(v / 0.70));
-              updBase(i, "M1", newM1);
-            }} color={CL[i]} suffix="원" />
-          </div>
-        ))}
+        {SH.map((g, i) => {
+          const PB_val = PB[i];
+          const L1_g = L1?.[i] ?? 0.7;
+          return (
+            <div key={i} className="flex items-center gap-1.5 bg-white rounded-lg px-2 py-1.5 border border-slate-200">
+              <span className="text-[11px] font-bold shrink-0" style={{ color: CL[i] }}>{g}</span>
+              <NumBox value={PB_val} onChange={v => {
+                const newB = Math.max(50000, Math.min(2000000, PBtoB(Math.max(0, Math.round(v)), L1_g)));
+                updP(i, newB);
+              }} color={CL[i]} suffix="원" />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -461,8 +468,8 @@ export default memo(function TabSimulation({
               </div>
             </div>
             <div className="overflow-x-auto">
-              {/* v7.3.0: 시뮬 핵심 산식 PB = M1 × 0.7 (공단지급분). B = A × CR · C1 = 1 − L1은 reference.
-                  편집: RN, M1, L1, A, CR, RR. 산출: B=A×CR(reference), C1=1−L1(reference), PB=M1×0.7(시뮬 본체), P=PB+PF. */}
+              {/* v7.2.0: 엑셀 정합 약어 갱신 — NT / RN(이전 NC) / A / CR / B / L1 / C1 / PF / PB / P / RR(이전 등록).
+                  편집: RN, M1, L1, A, CR, RR. 산출: B=A×CR (A·CR 모두 있을 때 표시), C1=1−L1, PB=B(1−L1), P=PB+PF. */}
               <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1080 }}>
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
@@ -476,8 +483,8 @@ export default memo(function TabSimulation({
                     <th className="text-center px-1" title="cf. 타원이용비중 L1 (편집 가능)">L1<br /><span className="font-normal text-[9px]">타원</span></th>
                     <th className="text-center px-1" title="포괄관리 비중 C1 = 1 − L1 (산출)">C1<br /><span className="font-normal text-[9px]">1−L1</span></th>
                     <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF (정책 슬라이더)">PF</th>
-                    <th className="text-center px-1 text-slate-700" title="일차의료 기본수가 PB = M1 × 0.7 (공단지급분, 시뮬 본체)">PB<br /><span className="font-normal text-[9px]">M1×0.7</span></th>
-                    <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF = M1×0.7 + PF">P<br /><span className="font-normal text-[9px]">PB+PF</span></th>
+                    <th className="text-center px-1 text-slate-700" title="일차의료 기본수가 PB = B × C1 (산출)">PB<br /><span className="font-normal text-[9px]">B×C1</span></th>
+                    <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF">P<br /><span className="font-normal text-[9px]">PB+PF</span></th>
                     <th className="text-center px-1 text-blue-700" title="참여의원당 등록환자수 RR (이전 '등록')">RR<br /><span className="font-normal text-[9px]">등록</span></th>
                   </tr>
                 </thead>
@@ -494,9 +501,7 @@ export default memo(function TabSimulation({
                       ? Math.round(A_i * CR_i)
                       : null;
                     const B_display = B_calc ?? P[i];
-                    // v7.3.0: 시뮬 본체 PB = M1 × 0.7 (공단지급분). B × C1는 reference.
-                    const PB_display = Math.round(base[i].M1 * 0.70);
-                    const PB_BxC1_ref = Math.round(B_display * C1_i);
+                    const PB_display = Math.round(B_display * C1_i);
                     return (
                       <tr key={i} className="border-t border-gray-100">
                         <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
@@ -538,13 +543,8 @@ export default memo(function TabSimulation({
                         </td>
                         <td className="text-center px-1 text-emerald-700">{(C1_i * 100).toFixed(1)}%</td>
                         <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
-                        <td className="text-center px-1 text-slate-700">
-                          {f(PB_display)}
-                          {Math.abs(PB_BxC1_ref - PB_display) > 1 && (
-                            <span className="block text-[9px] text-gray-400" title={`B×C1 reference = ${f(PB_BxC1_ref)}`}>B×C1 {f(PB_BxC1_ref)}</span>
-                          )}
-                        </td>
-                        <td className="text-center px-1 font-bold text-indigo-700">{f(PB_display + Fi)}<span className="block text-[9px] font-normal text-gray-400">+본인부담 {f(Math.round(base[i].M1 * 0.30))}</span></td>
+                        <td className="text-center px-1 text-slate-700">{f(PB_display)}</td>
+                        <td className="text-center px-1 font-bold text-indigo-700">{f(PB_display + Fi)}</td>
                         <td className="text-center px-1">
                           <input type="text" value={f(state.regDist[i])} className="w-14 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5 text-blue-700"
                             onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updRegDist(i, v); }} />
@@ -556,8 +556,8 @@ export default memo(function TabSimulation({
               </table>
               <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
                 ※ 직접 편집: RN · M1 · L (= L1 시드) · A · CR · RR.
-                <b>시뮬 본체</b>: PB = M1 × 0.7 (공단지급분), P = PB + PF, 의원 수입 = M1 + PF (본인부담 30% 양쪽 상쇄).
-                <b>Reference</b>: B = A × CR · C1 = 1 − L1 · B × C1 (이전 PB 산식, 표시값이 시뮬 본체와 다르면 회색 부제로 노출).
+                B는 A × CR 산출값 (정책 슬라이더 B와 다르면 노란색 ⚠ 안내).
+                PF · L1 · 정책 B는 상단 슬라이더 또는 고급 패널에서 설정.
                 NT(전체 환자수)는 데이터 anchor의 reference (편집 불가).
                 약어: RN(참여의원 전체 환자수, 이전 NC) · RR(참여의원당 등록환자수, 이전 등록).
               </div>
