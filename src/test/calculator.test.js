@@ -17,9 +17,10 @@ describe('calculation engine', () => {
   it('ON: total patient count from INIT_BASE', () => {
     const total = INIT_BASE.reduce((s, g) => s + g.N, 0);
     expect(total).toBe(ON);
-    // v3.0(2025): HCC v3.0 baseline — 만성질환관리 시범사업 참여의원 2,923개
-    //   ΣNC = 2,050,360 + 2,869,115 + 3,808,633 + 4,073,035 = 12,801,143
-    expect(ON).toBe(12801143);
+    // v7.5: HCC v3.0 baseline (의료비 0원 제외) — 만성질환관리 시범사업 참여의원 2,923개
+    //   ΣRN = 2,502,705 + 2,453,897 + 3,646,697 + 3,807,853 = 12,411,152
+    //   (이전 v7.2.x zero 포함: 12,801,143)
+    expect(ON).toBe(12411152);
   });
 
   it('INIT_BASE has 4 patient groups', () => {
@@ -342,19 +343,19 @@ describe('v6.5 PT/SS Track percentages', () => {
     expect(f2 / f1).toBeCloseTo(2, 5);
   });
 
-  // v6.9.4 · v3.0(2025): 데이터 기반 디폴트 (HCC v3.0 anchor)
+  // v6.9.4 · v3.0(2025) · v7.5: 데이터 기반 디폴트 (HCC v3.0 anchor, 의료비 0원 제외)
   describe('v3.0(2025) · HCC v3.0 anchor 디폴트', () => {
-    it('INIT_TOTAL_N = sum(INIT_BASE.N) = ON (HCC v3.0: 12,801,143)', () => {
+    it('INIT_TOTAL_N = sum(INIT_BASE.N) = ON (HCC v3.0 exc_zero: 12,411,152)', () => {
       expect(INIT_TOTAL_N).toBe(ON);
-      expect(INIT_TOTAL_N).toBe(12801143);
+      expect(INIT_TOTAL_N).toBe(12411152);
     });
 
     it('INIT_M_CLINICS는 official_baseline.json의 M_clinics (HCC v3.0: 2,923)', () => {
       expect(INIT_M_CLINICS).toBe(2923);
     });
 
-    it('INIT_PER_CLINIC = round(INIT_TOTAL_N / INIT_M_CLINICS) (HCC v3.0: 4,379)', () => {
-      expect(INIT_PER_CLINIC).toBe(4379);
+    it('INIT_PER_CLINIC = round(INIT_TOTAL_N / INIT_M_CLINICS) (HCC v3.0 exc_zero: 4,246)', () => {
+      expect(INIT_PER_CLINIC).toBe(4246);
       expect(INIT_BASE_PER_CLINIC).toBe(INIT_PER_CLINIC);
     });
 
@@ -409,12 +410,12 @@ describe('v6.10.0 / v7.2.2 · PF 디폴트 (B의 5%, HCC 비례 자동)', () => 
       const expected = Math.round(INIT_P[i] * 0.05);
       expect(v).toBe(expected);
     });
-    // HCC v3.0(2025): B = [208318, 316212, 567999, 884553] (환자군 평균 의료비 A × CR)
-    //   → INIT_F[i] = round(B[i] × 5%) (v7.2.2)
-    expect(INIT_F[0]).toBe(10416);
-    expect(INIT_F[1]).toBe(15811);
-    expect(INIT_F[2]).toBe(28400);
-    expect(INIT_F[3]).toBe(44228);
+    // v7.5: HCC v3.0 exc_zero baseline — B = [238515, 413166, 662478, 1013352] (환자군 실제 평균 의료비 A × CR)
+    //   → INIT_F[i] = round(B[i] × 5%) (v7.2.2 PF 5% 디폴트)
+    expect(INIT_F[0]).toBe(11926);
+    expect(INIT_F[1]).toBe(20658);
+    expect(INIT_F[2]).toBe(33124);
+    expect(INIT_F[3]).toBe(50668);
   });
 
   it('INIT_R는 INIT_F alias (하위 호환)', () => {
@@ -565,16 +566,17 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     expect(INIT_DEFAULT_M).toBe(100);
   });
 
-  it('INIT_DEFAULT_TOTAL_N = 100 × INIT_PER_CLINIC = 437,900', () => {
+  it('INIT_DEFAULT_TOTAL_N = 100 × INIT_PER_CLINIC = 424,600 (v7.5 exc_zero)', () => {
     expect(INIT_DEFAULT_TOTAL_N).toBe(INIT_DEFAULT_M * INIT_PER_CLINIC);
-    expect(INIT_DEFAULT_TOTAL_N).toBe(437900);
+    expect(INIT_DEFAULT_TOTAL_N).toBe(424600);
   });
 
-  it('데이터 anchor (INIT_M_CLINICS = 2,923)는 보존', () => {
-    // v7.1.1에서 초기 디폴트는 100개로 변경됐지만, 데이터 anchor는 official_baseline 그대로.
+  it('데이터 anchor (INIT_M_CLINICS = 2,923)는 보존 (v7.5 exc_zero baseline)', () => {
+    // v7.1.1: 초기 디폴트는 100개로 변경됐지만, 데이터 anchor는 official_baseline 그대로.
+    // v7.5: 의료비 0원 제외로 ON·INIT_PER_CLINIC 갱신.
     expect(INIT_M_CLINICS).toBe(2923);
-    expect(INIT_TOTAL_N).toBe(12801143);
-    expect(INIT_PER_CLINIC).toBe(4379);
+    expect(INIT_TOTAL_N).toBe(12411152);
+    expect(INIT_PER_CLINIC).toBe(4246);
   });
 
   it('CLINIC_COUNT_PRESETS는 4개 (100/1000/3000/2923 일만시)', () => {
@@ -590,43 +592,42 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     expect(REG_PER_CLINIC_PRESETS).toEqual([1000, 1500, 2000, 3000, 4000]);
   });
 
-  it('초기화 (v7.1.5 / v7.2.0): RESET_REG는 1차년도 시범사업 디폴트(M=100, regDist 합 1,000) 복귀', () => {
+  it('초기화 (v7.1.5 / v7.2.0 / v7.5): RESET_REG는 1차년도 시범사업 디폴트(M=100, regDist 합 1,000) 복귀', () => {
     // v7.1.5: 일만시 모드 버튼 → 초기화 버튼으로 교체. resetReg 호출 → RESET_REG 액션.
-    // v7.2.0: regDist 디폴트 = [160,224,298,318] (참여의원 환자분포 RD × 1,000명).
-    //   복귀 값: M=INIT_DEFAULT_M(100), regDist=INIT_REG_DIST([160,224,298,318], 합 1,000),
-    //          baseN_per_clinic=데이터 anchor 의원당 환자수(4,379).
+    // v7.5: regDist 디폴트 = [201,198,294,307] (exc_zero RD × 1,000명, largest-remainder).
     const resetM = INIT_DEFAULT_M;             // 100
-    const resetRegDist = INIT_REG_DIST;        // [160, 224, 298, 318]
+    const resetRegDist = INIT_REG_DIST;        // [201, 198, 294, 307]
     const resetRegSum = resetRegDist.reduce((s, v) => s + v, 0);
     const resetTotalReg = resetM * resetRegSum;
     expect(resetM).toBe(100);
-    expect(resetRegDist).toEqual([160, 224, 298, 318]);
+    expect(resetRegDist).toEqual([201, 198, 294, 307]);
     expect(resetRegSum).toBe(1000);
     expect(resetTotalReg).toBe(100000);        // 1차년도 사업 전체 등록환자
   });
 
-  it('100개 의원 디폴트: 437,900명 = 등록 100,000명 + 비등록 337,900명 (regDist 합 1,000)', () => {
+  it('100개 의원 디폴트 (v7.5): 424,600명 = 등록 100,000명 + 비등록 324,600명 (regDist 합 1,000)', () => {
     const M = INIT_DEFAULT_M;
     const totalN = INIT_DEFAULT_TOTAL_N;
     const perClinic = totalN / M;
-    expect(perClinic).toBe(4379);
-    const regDistSum = INIT_REG_DIST.reduce((s, v) => s + v, 0);   // v7.2.0 [160,224,298,318]
+    expect(perClinic).toBe(4246);
+    const regDistSum = INIT_REG_DIST.reduce((s, v) => s + v, 0);   // v7.5 [201,198,294,307]
     expect(regDistSum).toBe(1000);
     const totalReg = M * regDistSum;
     const totalUnreg = totalN - totalReg;
     expect(totalReg).toBe(100000);
-    expect(totalUnreg).toBe(337900);
+    expect(totalUnreg).toBe(324600);
   });
 });
 
-// v7.2.0: 엑셀 약어 체계 정비 + regDist 디폴트 데이터 비례 전환
-describe('v7.2.0 · regDist 디폴트 = 데이터 비례 [160, 224, 298, 318]', () => {
-  it('INIT_REG_DIST = [160, 224, 298, 318] (참여의원 환자분포 RD × 1,000명)', () => {
-    expect(INIT_REG_DIST).toEqual([160, 224, 298, 318]);
+// v7.2.0 → v7.5: 엑셀 약어 체계 정비 + regDist 디폴트 데이터 비례 (exc_zero 갱신)
+describe('v7.5 · regDist 디폴트 = 데이터 비례 [201, 198, 294, 307] (exc_zero)', () => {
+  it('INIT_REG_DIST = [201, 198, 294, 307] (exc_zero RD × 1,000명, largest-remainder)', () => {
+    expect(INIT_REG_DIST).toEqual([201, 198, 294, 307]);
     expect(INIT_REG_DIST.reduce((s, v) => s + v, 0)).toBe(1000);
   });
 
-  it('이전 임의값 [100, 600, 200, 100] 폐기 — 회귀 방지', () => {
+  it('이전 v7.2.0 zero 포함 값 [160, 224, 298, 318] 폐기 — 회귀 방지', () => {
+    expect(INIT_REG_DIST).not.toEqual([160, 224, 298, 318]);
     expect(INIT_REG_DIST).not.toEqual([100, 600, 200, 100]);
   });
 
@@ -643,10 +644,10 @@ describe('v7.2.0 · regDist 디폴트 = 데이터 비례 [160, 224, 298, 318]', 
     });
   });
 
-  it('CLINIC_PRESETS.general 라벨 "데이터 비례" + regDist [160,224,298,318]', () => {
+  it('CLINIC_PRESETS.general 라벨 "데이터 비례" + regDist [201,198,294,307] (v7.5 exc_zero)', () => {
     const general = CLINIC_PRESETS.find(p => p.key === 'general');
     expect(general.label).toBe('데이터 비례');
-    expect(general.regDist).toEqual([160, 224, 298, 318]);
+    expect(general.regDist).toEqual([201, 198, 294, 307]);
   });
 
   it('CLINIC_PRESETS.elderly·custom은 v7.2.0 영향 없음 (보존)', () => {
@@ -666,12 +667,12 @@ describe('v7.2.0 · 엑셀 파서 호환 (M1 fallback + RR auto-inject)', () => 
       if (!M1 && RO > 0 && N > 0) return Math.round(RO / N);
       return M1;
     };
-    // NHIS-HCC v3.0 1군: RO=204,787,598,620, N=2,050,360 → M1=99,879
-    expect(fallback(0, 204787598620, 2050360)).toBe(99879);
+    // v7.5 NHIS-HCC v3.0 exc_zero 1군: RC=216,375,316,600, RN=2,502,705 → M1≈86,457
+    expect(fallback(0, 216375316600, 2502705)).toBe(86457);
     // M1 이미 있으면 RO/N 무시
-    expect(fallback(50000, 204787598620, 2050360)).toBe(50000);
+    expect(fallback(50000, 216375316600, 2502705)).toBe(50000);
     // RO=0이면 M1=0 그대로
-    expect(fallback(0, 0, 2050360)).toBe(0);
+    expect(fallback(0, 0, 2502705)).toBe(0);
     // N=0이면 M1=0 그대로 (0 나누기 방지)
     expect(fallback(0, 100000, 0)).toBe(0);
   });
@@ -684,12 +685,12 @@ describe('v7.2.0 · 엑셀 파서 호환 (M1 fallback + RR auto-inject)', () => 
       }
       return currentRegDist;
     };
-    // 정상: 모두 양수
-    expect(inject([160, 224, 298, 318], [100, 600, 200, 100])).toEqual([160, 224, 298, 318]);
+    // v7.5: 정상 (exc_zero RR ≈ [201.65, 197.72, 293.82, 306.81])
+    expect(inject([202, 198, 294, 307], [201, 198, 294, 307])).toEqual([202, 198, 294, 307]);
     // 하나라도 0: 기존 보존
-    expect(inject([160, 0, 298, 318], [100, 600, 200, 100])).toEqual([100, 600, 200, 100]);
+    expect(inject([202, 0, 294, 307], [201, 198, 294, 307])).toEqual([201, 198, 294, 307]);
     // 길이 부족: 기존 보존
-    expect(inject([160, 224], [100, 600, 200, 100])).toEqual([100, 600, 200, 100]);
+    expect(inject([202, 198], [201, 198, 294, 307])).toEqual([201, 198, 294, 307]);
     // null: 기존 보존
     expect(inject(null, [100, 600, 200, 100])).toEqual([100, 600, 200, 100]);
   });

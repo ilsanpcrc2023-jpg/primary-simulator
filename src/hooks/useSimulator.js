@@ -534,8 +534,13 @@ export default function useSimulator() {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf);
       let sheetName = wb.SheetNames[0];
+      // v7.5: 시트명 우선순위 — 시뮬레이터 업로드용 → 핵심표(NHIS-HCC v3.0 엑셀) → 첫 시트.
       const simIdx = wb.SheetNames.findIndex(n => n.includes("시뮬레이터"));
       if (simIdx >= 0) sheetName = wb.SheetNames[simIdx];
+      else {
+        const coreIdx = wb.SheetNames.findIndex(n => n.includes("핵심표") || n.includes("핵심 표"));
+        if (coreIdx >= 0) sheetName = wb.SheetNames[coreIdx];
+      }
       const ws = wb.Sheets[sheetName];
       const data = XLSX.utils.sheet_to_json(ws);
       if (data.length < 4) {
