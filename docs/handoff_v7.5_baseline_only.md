@@ -1,7 +1,12 @@
 # v7.5 인계장 — 데이터만 갱신 (의료비 0원 제외 baseline)
 
 **상태**: ✅ main 머지 완료 (2026-05-20)
-**브랜치**: `feature/v7.5-baseline-only-260520`
+**feature 브랜치**: `feature/v7.5-baseline-only-260520`
+**v7.5 commit**: `377df76` (feature 브랜치)
+**main 머지 commit**: `0175dfd` (--no-ff)
+**태그**: `v7.5`
+**후속 chore**: `d9d0010` (vercel.json — 모든 브랜치 preview deployment 명시 활성화)
+**Vercel 자동 배포**: primarysimulator.kr (production)
 **선행 머지**: v7.2.3 (main commit `da8ca2c`)
 **v7.4 보류**: `archive/v7.4-prerevert-260520` (PB·공단 산식 변경 + perf_blended 모순 발견 → 옵션 C 후속)
 
