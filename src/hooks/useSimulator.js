@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX, COPAY_RATE, INIT_COPAY_RATES } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
 import { roundRegDist, refRatiosFromBase, regDistFromRatios } from "../utils";
 
 // v7.5.8: 등록 기준 총량 (분포비를 곱하기 전 base) = Σ regDist ÷ Σ 현재 분포비. 디폴트 1,000명.
@@ -55,8 +55,6 @@ const initialState = {
   F_g: [...INIT_F],
   // v6.10.0: PF 분배 규칙 (hcc|equal|inverse) — PF 카드 분배 토글에서 사용.
   pfRule: INIT_PF_RULE,
-  // v7.5.2: 환자군별 본인부담비 (0~1). 디폴트 4군 모두 30%. 상세 편집 테이블에서 수기 수정.
-  copayRates: [...INIT_COPAY_RATES],
   // v7.5.3: 기준 군별 분포비(ratio_i) 수기 override. null이면 base.N에서 산출 (N_i / ΣN).
   //   자유 입력 (합 100% 강제 없음). LOAD_DATA 시 null로 복귀 (새 데이터 실측 비율).
   baseRatios: null,
@@ -150,12 +148,6 @@ function reducer(state, action) {
     // v7.5.8: 실측 복귀 — 기준 분포비 override 폐기 + 등록 분포비도 실측 비율로 재산출 ("데이터 비례").
     case "RESET_BASE_RATIOS":
       return { ...state, baseRatios: null, regDist: regDistFromRatios(refRatiosFromBase(state.base), regBaseOf(state)) };
-    // v7.5.2: 환자군별 본인부담비 수기 편집 (0~1 clamp).
-    case "SET_COPAY_AT": {
-      const copayRates = [...(state.copayRates ?? INIT_COPAY_RATES)];
-      copayRates[action.i] = Math.max(0, Math.min(1, action.value));
-      return { ...state, copayRates };
-    }
     case "SET_F_AT": {
       // v6.9.6: PF 음수 금지 (사용자 결정). 0 floor.
       //   v6.9.2-bidir에서 도입한 음수 PF 시나리오는 폐기.
@@ -350,7 +342,7 @@ export default function useSimulator() {
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
     ssCostBase, ssProjectCost,
     F_g, M_clinics, regDist, baseN_per_clinic,
-    copayRates, baseRatios,
+    baseRatios,
   } = state;
 
   const ffsPct = 100 - hccPct;
@@ -402,11 +394,12 @@ export default function useSimulator() {
       const L1_g = L1[i] ?? 0.7;
       const F_i = F_g[i] ?? 0;
       // v7.6.0 (사용자 결정): 현행 1인당 외래비 M1을 더 이상 사용하지 않고 PB(= B × (1−L1))로 대체.
-      //   baseline FFS·비등록 FFS·본인부담·공단 외래비·Track A 모두 PB 기준. base.M1은 데이터 필드로만 보존.
+      //   baseline FFS·비등록 FFS·공단 외래비·Track A 모두 PB 기준. base.M1은 데이터 필드로만 보존.
+      // v7.6.1 (사용자 결정): 참여 후 수입·공단 지출에 더해지던 본인부담 항(M1×0.3 → PB×본인부담비)은 잘못 추가된 값 → 완전 제거.
+      //   등록환자 1인당 의원수입 = 공단지급 P = PB + PF (본인부담 없음).
       const PB_g = p * (1 - L1_g);                       // 일차의료 기본수가 (M1 대체)
       const pay_gov = PB_g + F_i;                        // 공단지급 = P_g
-      const copay_i = copayRates?.[i] ?? COPAY_RATE;     // v7.5.2: 환자군별 본인부담비 (디폴트 30%)
-      const ab_reg = pay_gov + PB_g * copay_i;           // 등록환자 1인당 의원수입 (본인부담 = PB × 본인부담비)
+      const ab_reg = pay_gov;                            // 등록환자 1인당 의원수입 = P (본인부담 항 제거)
 
       // 외래비 상수 (PB 기준)
       const C1 = PB_g / (1 - b.L);                       // 기존 L 기반 총 외래비 (비등록·baseline)
@@ -435,14 +428,13 @@ export default function useSimulator() {
       return {
         N, p, b, L1_g, PB: PB_g,
         pay_gov, ab_reg,
-        B: PB_g * copay_i,
         F_per_pt: F_i,
         n_reg: n_reg_g, n_unreg: n_unreg_g,
         inc0, inc, nhi0, nhi,
         tA, tB, tC, tS,
       };
     });
-  }, [base, P, L1, L2eff, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g, copayRates]);
+  }, [base, P, L1, L2eff, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g]);
 
   const T = useMemo(() => {
     const s = { inc0: 0, inc: 0, nhi0: 0, nhi: 0, tA: 0, tB: 0, tC: 0, tS: 0 };
@@ -496,7 +488,7 @@ export default function useSimulator() {
   // v6.7 패널 분해 (L2 반응):
   //   baselineIncome = baseN × ffsPerPerson × M       (참여 전 전원 FFS)
   //   panelEffect    = Σ PB × (N_after − baseN)       (패널 변화 · FFS 유지)   ※ v7.6.0: M1 → PB
-  //   modelEffect    = Σ n_reg × (ab_reg − PB)        (지불방식 전환 · 선지급 = PF + PB×본인부담비)
+  //   modelEffect    = Σ n_reg × (ab_reg − PB)        (지불방식 전환 · 선지급 = PF, v7.6.1 본인부담 항 제거)
   //   performanceEffect = perf_blended                 (L2 성과급 · Track 배수 반영)
   //   afterIncome = 선지급 + 성과급 (의원 수입 KPI)
   const decomp = useMemo(() => {
@@ -596,11 +588,10 @@ export default function useSimulator() {
   const set = useCallback((key, value) => dispatch({ type: "SET", key, value }), []);
   const updP = useCallback((i, value) => dispatch({ type: "SET_P", i, value }), []);
   const updBase = useCallback((i, key, value) => dispatch({ type: "SET_BASE", i, key, value }), []);
-  // v7.5.2: 상세 편집 테이블 — 기준 분포비(ratio_i) · 본인부담비 수기 편집
+  // v7.5.2: 상세 편집 테이블 — 기준 분포비(ratio_i) 수기 편집 (v7.6.1: 본인부담비 편집 제거)
   const updBaseRatio = useCallback((i, ratio) => dispatch({ type: "SET_BASE_RATIO_AT", i, ratio }), []);
   const resetBaseRatios = useCallback(() => dispatch({ type: "RESET_BASE_RATIOS" }), []);
   const setDistAll = useCallback((ratios) => dispatch({ type: "SET_DIST_ALL", ratios }), []);
-  const updCopay = useCallback((i, value) => dispatch({ type: "SET_COPAY_AT", i, value }), []);
   const updF = useCallback((i, value) => dispatch({ type: "SET_F_AT", i, value }), []);
   const setFAll = useCallback((values) => dispatch({ type: "SET_F_ALL", values }), []);
   const setPfRule = useCallback((value) => dispatch({ type: "SET_PF_RULE", value }), []);
@@ -817,7 +808,7 @@ export default function useSimulator() {
 
   return {
     state, set, updP, updBase, updF, setFAll, setPfRule,
-    updBaseRatio, resetBaseRatios, setDistAll, updCopay,
+    updBaseRatio, resetBaseRatios, setDistAll,
     resetF, resetP, resetReg,
     // v6.7 L1·L2 (α 제거)
     updL1, setL1All, resetL1,
