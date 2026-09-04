@@ -801,3 +801,26 @@ describe('v7.6.6/v7.6.7 · 참여 후 공단 지출: D1_L2·비등록 C1에 (1 �
     expect(nhi + perf_nhi - nhi0).toBeCloseTo(structural, 4);
   });
 });
+
+describe('v7.6.8 · 군별 L2_g = L1_g − Δ (Δ = L1avg − L2)', () => {
+  const t = INIT_BASE.reduce((s, g) => s + g.N, 0);
+  const L1avg = INIT_BASE.reduce((s, g, i) => s + INIT_L1[i] * g.N, 0) / t;
+  it('Δ = 0 (디폴트): 모든 군에서 참여 후 타원비 = 참여 전 타원비, 성과 = 0', () => {
+    const dL2 = L1avg - L1avg;
+    INIT_BASE.forEach((b, i) => {
+      const L2_g = INIT_L1[i] - dL2;
+      const PB = INIT_P[i] * (1 - INIT_L1[i]);
+      const D1_base = PB / (1 - b.L) - PB;
+      const D1_L2 = PB * L2_g / (1 - L2_g);
+      expect(D1_L2).toBeCloseTo(D1_base, 4);
+      expect(Math.max(0, INIT_L1[i] - L2_g)).toBe(0);
+    });
+  });
+  it('Δ = 0.05: 모든 군에서 L1_g − L2_g = 0.05 (군별 비대칭 없음)', () => {
+    const dL2 = 0.05;
+    INIT_BASE.forEach((b, i) => {
+      const L2_g = Math.max(0, Math.min(0.999, INIT_L1[i] - dL2));
+      expect(INIT_L1[i] - L2_g).toBeCloseTo(0.05, 10);
+    });
+  });
+});

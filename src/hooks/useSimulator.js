@@ -390,13 +390,18 @@ export default function useSimulator() {
     return base.reduce((s, g, i) => s + (L1[i] ?? 0.7) * g.N, 0) / t;
   }, [base, L1]);
   const L2eff = L2 ?? L1avg;
+  // v7.6.8 (사용자 결정): L2를 스칼라 평균 하나로 전 군에 적용하던 것을 군별 L2_g = L1_g − Δ로 변경.
+  //   Δ = L1avg − L2eff (C 슬라이더의 ΔC). Δ = 0이면 모든 군에서 참여 전·후 타원비가 같고 성과도 0 (진짜 무변화 기준점).
+  //   state.L2(평균 수준 목표값)·setL2·UI 표시는 그대로 두고, 엔진 안에서만 군별로 환산한다.
+  const dL2 = L1avg - L2eff;
+  const L2_g = useMemo(() => L1.map(l => Math.max(0, Math.min(0.999, (l ?? 0.7) - dL2))), [L1, dL2]);
 
   // v6.7: L1 환자군별 배열에서 P_g 산출. LC(변화율) 제거.
   // 의원 선지급 = P_g = B(1−L1_g) + F_g, 공단지급 = P_g (단일화).
   // 공단 외래 지출은 등록환자 타원비를 L2 기반으로 반영 (L2 슬라이더 연동).
   const G = useMemo(() => {
-    const safeL2 = Math.max(0, Math.min(0.999, L2eff));
     return base.map((b, i) => {
+      const safeL2 = L2_g[i];                            // v7.6.8: 군별 L2_g = L1_g − Δ
       const N = Math.round(totalN * ratios[i]);
       const p = P[i];                                    // B value (state.P = B 기호 유지)
       const L1_g = L1[i] ?? 0.7;
@@ -451,7 +456,7 @@ export default function useSimulator() {
         tA, tB, tC, tS,
       };
     });
-  }, [base, P, L1, L2eff, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g, copayRates]);
+  }, [base, P, L1, L2_g, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g, copayRates]);
 
   const T = useMemo(() => {
     const s = { inc0: 0, inc: 0, nhi0: 0, nhi: 0, tA: 0, tB: 0, tC: 0, tS: 0 };
@@ -472,7 +477,7 @@ export default function useSimulator() {
   const performance = useMemo(() => {
     let perf_raw_total = 0;
     G.forEach((r, i) => {
-      const diff = Math.max(0, (L1[i] ?? 0.7) - L2eff);
+      const diff = Math.max(0, (L1[i] ?? 0.7) - L2_g[i]);   // v7.6.8: 군별 L2_g → 모든 군에서 diff = Δ (clamp 전)
       perf_raw_total += diff * r.p * r.n_reg;
     });
     const perf_total = perf_raw_total;                    // Track C 최대치 = 전체 절감액 100% 환원
@@ -487,11 +492,11 @@ export default function useSimulator() {
     //   v7.6.6에서 곱했던 (1 − 본인부담비)를 성과 항목에서만 되돌려 공단 지출 = 의원 수령액(perf_blended)으로 정합.
     const perf_nhi = perf_blended;
     return {
-      L2eff, L1avg,
+      L2eff, L1avg, dL2, L2_g,
       perf_raw_total, perf_total, perfByTrack,
       trackMul, perf_blended, perf_nhi,
     };
-  }, [G, L1, L2eff, L1avg, hccPct]);
+  }, [G, L1, L2eff, L1avg, dL2, L2_g, hccPct]);
 
   // v6.7: KPI 변화율 — L2 연동
   //   의원 수입  = 선지급 inc + 성과급 perf_blended

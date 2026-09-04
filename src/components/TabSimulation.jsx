@@ -261,7 +261,7 @@ export default memo(function TabSimulation({
           <div className="flex items-center mb-2 gap-3 flex-wrap">
             <div className="flex flex-col">
               <h2 className="font-bold text-base leading-tight" style={{ color: "#6d28d9" }}>포괄관리 지표 (C)</h2>
-              <div className="text-[11px] text-purple-700/70 leading-tight mt-0.5">등록의원의 외래 진료비 비중 (C = 1 − L2)</div>
+              <div className="text-[11px] text-purple-700/70 leading-tight mt-0.5">등록의원의 외래 진료비 비중 (C = 1 − L2 · 환자군별 L2_g = L1_g − ΔC, 평균 표시)</div>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-xs text-purple-600 font-semibold">기존</span>
