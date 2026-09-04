@@ -541,11 +541,12 @@ export default memo(function TabSimulation({
                     <th className="text-center px-1 text-purple-600" title="일차의료 기능보정율 F = PF ÷ B (편집 가능)">F<br /><span className="font-normal text-[9px]">기능보정율 %</span></th>
                     <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF = B × F (산출)">PF<br /><span className="font-normal text-[9px]">=B×F · 기능보정</span></th>
                     <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF (산출)">P<br /><span className="font-normal text-[9px]">=PB+PF · 일차의료수가</span></th>
-                    <th className="text-center px-1" title="환자 본인부담비 (현행 외래비 M1 대비, 디폴트 30% · 편집 가능)">본인부담비<br /><span className="font-normal text-[9px]">% · 디폴트 30</span></th>
                     <th className="text-center px-1" title="환자군별 전체 환자수 NT (건보 전수 · 참고 · 편집 가능)">NT<br /><span className="font-normal text-[9px]">전체 환자수</span></th>
                     <th className="text-center px-1" title="참여의원(일만시) 환자수 RN (기준 분포비·엔진 환자 배분 재료 · 편집 가능)">RN<br /><span className="font-normal text-[9px]">일만시 환자수</span></th>
                     {/* v7.5.11: 분포비 열 표시 전용 (수기 입력 불가, 사용자 결정). 변경은 프리셋 버튼으로만. */}
                     <th className="text-center px-1 text-blue-700" title="환자군별 분포비 (기준 = 등록) · 디폴트 = 일만시 실측 RN_i ÷ ΣRN · 표시 전용 — 변경은 분포비 프리셋 버튼으로">분포비<br /><span className="font-normal text-[9px]">% · 기준 = 등록</span></th>
+                    {/* v7.5.12: 본인부담비 열을 맨 오른쪽으로 이동 (사용자 결정). */}
+                    <th className="text-center px-1" title="환자 본인부담비 (현행 외래비 M1 대비, 디폴트 30% · 편집 가능)">본인부담비<br /><span className="font-normal text-[9px]">% · 디폴트 30</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -595,10 +596,6 @@ export default memo(function TabSimulation({
                         <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
                         <td className="text-center px-1 font-bold text-indigo-700">{f(PB_display + Fi)}</td>
                         <td className="text-center px-1">
-                          <DraftInput value={copay_i * 100} decimals={1} className="w-16 text-gray-700" min={0} max={100}
-                            onCommit={v => updCopay(i, v / 100)} />
-                        </td>
-                        <td className="text-center px-1">
                           <DraftInput value={typeof base[i].NT === "number" ? base[i].NT : undefined} decimals={0} grouping placeholder="—"
                             className="w-24 text-gray-700" min={0}
                             onCommit={v => updBase(i, "NT", Math.round(v))} />
@@ -608,6 +605,10 @@ export default memo(function TabSimulation({
                             onCommit={v => updBase(i, "N", Math.round(v))} />
                         </td>
                         <td className="text-center px-1 text-blue-700 font-semibold">{(ratios[i] * 100).toFixed(1)}%</td>
+                        <td className="text-center px-1">
+                          <DraftInput value={copay_i * 100} decimals={1} className="w-16 text-gray-700" min={0} max={100}
+                            onCommit={v => updCopay(i, v / 100)} />
+                        </td>
                       </tr>
                     );
                   })}
@@ -615,10 +616,11 @@ export default memo(function TabSimulation({
                 <tfoot>
                   <tr className="border-t border-gray-200 bg-gray-50 text-[10px] text-gray-500">
                     <td className="px-2 py-1 font-semibold">합계</td>
-                    <td colSpan={9}></td>
+                    <td colSpan={8}></td>
                     <td className="text-center px-1">{f(base.reduce((s, g) => s + (typeof g.NT === "number" ? g.NT : 0), 0))}</td>
                     <td className="text-center px-1">{f(base.reduce((s, g) => s + (g.N || 0), 0))}</td>
                     <td className="text-center px-1 text-blue-600">{(ratios.reduce((s, v) => s + v, 0) * 100).toFixed(1)}%{ratiosOverridden && <span className="block text-[9px] text-amber-600">프리셋</span>}</td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>
