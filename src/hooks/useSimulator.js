@@ -408,6 +408,11 @@ export default function useSimulator() {
       const PB_g = p * (1 - L1_g);                       // 일차의료 기본수가 (M1 대체)
       const pay_gov = PB_g + F_i;                        // 공단지급 = P_g
       const ab_reg = pay_gov;                            // 등록환자 1인당 의원수입 = P (본인부담 항 제거)
+      // v7.6.3/v7.6.5 본인부담비 (상세 편집 테이블 · 디폴트 26.1%)
+      const copay_i = Math.max(0, Math.min(1, copayRates?.[i] ?? INIT_COPAY_RATES[i]));
+      // v7.6.5 (사용자 결정): 참여 후 공단 지출의 등록환자 항에서 PB에만 (1 − 본인부담비)를 곱하고 PF는 전액 공단 부담.
+      //   의원 수입(ab_reg = PB + PF)은 불변 — 차액(PB × 본인부담비)은 환자 본인부담. D1_L2·비등록 C1 항은 그대로.
+      const nhi_reg = PB_g * (1 - copay_i) + F_i;         // 등록환자 1인당 공단 부담분
 
       // 외래비 상수 (PB 기준)
       const C1 = PB_g / (1 - b.L);                       // 기존 L 기반 총 외래비 (비등록·baseline)
@@ -425,10 +430,9 @@ export default function useSimulator() {
 
       // 공단 의원급 외래 지출 — 등록환자는 L2 기반 타원비, 비등록은 기존 L 유지
       // v7.6.3 (사용자 결정): 참여 전 공단 지출 = 총 외래비 × (1 − 본인부담비). 참여 전(FFS)에는 본인부담이 있으므로
-      //   공단 부담분만 baseline으로 잡는다. 참여 후(nhi)는 공단지급 P 단일화(본인부담 항 없음 · v7.6.1)라 변경 없음.
-      const copay_i = Math.max(0, Math.min(1, copayRates?.[i] ?? INIT_COPAY_RATES[i]));
+      //   공단 부담분만 baseline으로 잡는다.
       const nhi0 = C1 * N * (1 - copay_i);                // baseline (공단 부담분)
-      const nhi = (ab_reg + D1_L2) * n_reg_g + C1 * n_unreg_g;
+      const nhi = (nhi_reg + D1_L2) * n_reg_g + C1 * n_unreg_g;   // v7.6.5: 등록환자 = PB×(1−본인부담비) + PF + 타원비
 
       // Track (1인당 등록환자 실지불액 · 선지급만, 성과급은 T 레벨)
       const tA = PB_g + F_i;
@@ -438,7 +442,7 @@ export default function useSimulator() {
 
       return {
         N, p, b, L1_g, PB: PB_g,
-        pay_gov, ab_reg,
+        pay_gov, ab_reg, nhi_reg, copay: copay_i,
         F_per_pt: F_i,
         n_reg: n_reg_g, n_unreg: n_unreg_g,
         inc0, inc, nhi0, nhi,

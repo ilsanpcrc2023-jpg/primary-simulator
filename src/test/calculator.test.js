@@ -753,3 +753,19 @@ describe('v7.6.3 · 참여 전 공단 지출 baseline = 총 외래비 × (1 − 
     expect(P + D1_L2).toBeCloseTo(PB + INIT_F[0] + PB * b.L / (1 - b.L), 6);
   });
 });
+
+describe('v7.6.5 · 참여 후 공단 지출 등록환자 항 = PB × (1 − 본인부담비) + PF', () => {
+  it('PB에만 (1 − copay), PF는 전액 공단 부담 · 의원 수입(P = PB + PF)은 불변', () => {
+    const b = INIT_BASE[0];
+    const PB = INIT_P[0] * (1 - b.L);
+    const PF = INIT_F[0];
+    const copay = 0.261;
+    const nhi_reg = PB * (1 - copay) + PF;
+    const P = PB + PF;
+    expect(nhi_reg).toBeCloseTo(P - PB * copay, 6);
+    expect(nhi_reg).toBeLessThan(P);
+    expect(P - nhi_reg).toBeCloseTo(PB * copay, 6);   // 차액 = 환자 본인부담 (PB 부분만)
+    // copay 0이면 공단 부담 = P
+    expect(PB * (1 - 0) + PF).toBeCloseTo(P, 6);
+  });
+});
