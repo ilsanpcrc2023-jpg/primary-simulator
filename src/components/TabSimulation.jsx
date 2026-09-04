@@ -564,7 +564,7 @@ export default memo(function TabSimulation({
                     const F_rate = B_display > 0 ? (Fi / B_display) * 100 : 0;
                     const regPct = (state.regDist[i] / REG_DENOM) * 100;
                     const copay_i = copayRates[i] ?? COPAY_RATE;
-                    // v7.5.2 표시 규칙: % → 소수 2자리, 비중(0.XXXX) → 소수 4자리, 금액 → 정수
+                    // v7.5.2 → v7.5.7 표시 규칙: % → 소수 1자리, 비중(0.XXX) → 소수 3자리, 금액 → 정수 (state 정밀도는 그대로)
                     return (
                       <tr key={i} className="border-t border-gray-100">
                         <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
@@ -574,7 +574,7 @@ export default memo(function TabSimulation({
                             onCommit={v => updBase(i, "A", Math.round(v))} />
                         </td>
                         <td className="text-center px-1">
-                          <DraftInput value={typeof CR_i === "number" ? CR_i : undefined} decimals={4} placeholder="—"
+                          <DraftInput value={typeof CR_i === "number" ? CR_i : undefined} decimals={3} placeholder="—"
                             className="w-16" min={0} max={1}
                             onCommit={v => updBase(i, "CR", v)} />
                         </td>
@@ -585,18 +585,18 @@ export default memo(function TabSimulation({
                           )}
                         </td>
                         <td className="text-center px-1">
-                          <DraftInput value={C1_i * 100} decimals={2} className="w-16 text-emerald-700" min={0} max={100}
+                          <DraftInput value={C1_i * 100} decimals={1} className="w-16 text-emerald-700" min={0} max={100}
                             onCommit={v => { const newL = 1 - v / 100; updL1(i, newL); updBase(i, "L", newL); }} />
                         </td>
                         <td className="text-center px-1 text-slate-700">{f(PB_display)}</td>
                         <td className="text-center px-1">
-                          <DraftInput value={F_rate} decimals={2} className="w-16 text-purple-600" min={0}
+                          <DraftInput value={F_rate} decimals={1} className="w-16 text-purple-600" min={0}
                             onCommit={v => updF(i, Math.round(B_display * v / 100))} />
                         </td>
                         <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
                         <td className="text-center px-1 font-bold text-indigo-700">{f(PB_display + Fi)}</td>
                         <td className="text-center px-1">
-                          <DraftInput value={copay_i * 100} decimals={2} className="w-16 text-gray-700" min={0} max={100}
+                          <DraftInput value={copay_i * 100} decimals={1} className="w-16 text-gray-700" min={0} max={100}
                             onCommit={v => updCopay(i, v / 100)} />
                         </td>
                         <td className="text-center px-1">
@@ -609,11 +609,11 @@ export default memo(function TabSimulation({
                             onCommit={v => updBase(i, "N", Math.round(v))} />
                         </td>
                         <td className="text-center px-1">
-                          <DraftInput value={ratios[i] * 100} decimals={2} className="w-16 text-gray-700" min={0} max={100}
+                          <DraftInput value={ratios[i] * 100} decimals={1} className="w-16 text-gray-700" min={0} max={100}
                             onCommit={v => updBaseRatio(i, v / 100)} />
                         </td>
                         <td className="text-center px-1">
-                          <DraftInput value={regPct} decimals={2} className="w-16 text-blue-700" min={0}
+                          <DraftInput value={regPct} decimals={1} className="w-16 text-blue-700" min={0}
                             onCommit={v => updRegDist(i, REG_DENOM * v / 100)} />
                           <span className="block text-[9px] text-blue-500">RR {fRR(state.regDist[i])}명</span>
                         </td>
@@ -627,8 +627,8 @@ export default memo(function TabSimulation({
                     <td colSpan={9}></td>
                     <td className="text-center px-1">{f(base.reduce((s, g) => s + (typeof g.NT === "number" ? g.NT : 0), 0))}</td>
                     <td className="text-center px-1">{f(base.reduce((s, g) => s + (g.N || 0), 0))}</td>
-                    <td className="text-center px-1">{(ratios.reduce((s, v) => s + v, 0) * 100).toFixed(2)}%{ratiosOverridden && <span className="block text-[9px] text-amber-600">수기</span>}</td>
-                    <td className="text-center px-1 text-blue-600">{(regSum / REG_DENOM * 100).toFixed(2)}%<span className="block text-[9px]">RR {fRR(regSum)}명</span></td>
+                    <td className="text-center px-1">{(ratios.reduce((s, v) => s + v, 0) * 100).toFixed(1)}%{ratiosOverridden && <span className="block text-[9px] text-amber-600">수기</span>}</td>
+                    <td className="text-center px-1 text-blue-600">{(regSum / REG_DENOM * 100).toFixed(1)}%<span className="block text-[9px]">RR {fRR(regSum)}명</span></td>
                   </tr>
                 </tfoot>
               </table>
@@ -638,7 +638,7 @@ export default memo(function TabSimulation({
                 B는 A × CR 산출값 (정책 슬라이더 B와 다르면 노란색 ⚠ 안내). 본인부담비는 환자군별 M1 × 본인부담비(디폴트 30%).
                 기준 분포비 = RN 기준(ratio_i = RN_i ÷ ΣRN, 일만시 참여의원 환자수 12,411,152명) — 자유 입력(다른 군 불변, 합 100% 강제 없음), 수기 입력 시 "↩ 기준 분포비 실측 복귀" 버튼으로 되돌릴 수 있음.
                 RN 편집 시 기준 분포비는 RN 실측 비율로 재산출되고 엔진의 참여의원 환자 배분(N_g)에도 반영. NT(전체 환자수)는 참고 표시.
-                등록 분포비 = 의원당 등록환자수 RR ÷ 1,000 — 자유 입력(합 100% 강제 없음, 합계 행 참고), 디폴트("데이터 비례")는 기준 분포비와 소수점 2자리까지 동일 (RR은 0.1명 단위).
+                등록 분포비 = 의원당 등록환자수 RR ÷ 1,000 — 자유 입력(합 100% 강제 없음, 합계 행 참고), 디폴트("데이터 비례")는 기준 분포비와 동일 (RR은 0.1명 단위 · 표시는 소수 1자리).
                 M1 절대값은 데이터 관리(엑셀 업로드·baseline)에서 관리.
               </div>
             </div>
