@@ -491,7 +491,7 @@ export default memo(function TabSimulation({
             <div className="flex items-center justify-between gap-2 py-1.5 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-600">📋 환자군별 상세 편집 테이블</span>
-                <span className="text-[10px] font-normal text-gray-400">A → B = A×CR → PB = B×C1 → PF = B×F → P = PB+PF · 입력: A · CR · C1 · F · NT · RN · 본인부담비(공단 지출)</span>
+                <span className="text-[10px] font-normal text-gray-400">A → B = A×CR → PB = B×C1 → PF = B×F → P = PB+PF · 입력: A · CR · C1 · NT · RN · 본인부담비(공단 지출)</span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-[10px] text-gray-500">분포비 프리셋:</span>
@@ -525,7 +525,7 @@ export default memo(function TabSimulation({
             <div className="overflow-x-auto">
               {/* v7.5.1: 컬럼 재구성 (사용자 결정) —
                     A(=T/NT) | CR | B(=A×CR) | C1(=1−L1) | PB(=B×C1) | F(기능보정율) | PF(=B×F) | P(=PB+PF) | NT | RN | 분포비(표시 전용) | 본인부담비(v7.6.3 참여 전 공단 지출 × (1−본인부담비) · v7.6.5~v7.6.7 참여 후 PB·타원비·비등록 × (1−본인부담비), PF·성과 제외)
-                  편집: A, CR, C1(→ L1·base.L 동시 갱신), F(→ F_g = B×F), 등록 분포비(→ regDist = 비율 × Σ regDist).
+                  편집: A, CR, C1(→ L1·base.L 동시 갱신), NT, RN, 본인부담비. F 보정율은 v7.7.2부터 표시 전용(상단 PF 슬라이더로만 변경).
                   산출: B, PB, PF, P. 표시만: 분포비(ratio_i, 프리셋으로만 변경).
                   NT·RN·M1·RR 절대값 컬럼은 제거 (데이터 anchor·엑셀 업로드로 관리). */}
               {/* v7.6.9: 모든 열이 한 화면(max-w-4xl 카드 폭)에 들어오도록 minWidth 제거 + 헤더 부제 축약(전체 설명은 title 툴팁) + 입력 폭 축소. overflow-x-auto는 좁은 화면 fallback. */}
@@ -538,7 +538,7 @@ export default memo(function TabSimulation({
                     <th className="text-center px-1" title="1인당 의원급 외래비 B = A × CR (산출)">B<br /><span className="font-normal text-[9px]">=A×CR</span></th>
                     <th className="text-center px-1 text-emerald-700" title="등록의원 외래 의료비 비중 C1 = 1 − L1 (편집 가능 · L1 동시 갱신)">C1<br /><span className="font-normal text-[9px]">=1−L1 %</span></th>
                     <th className="text-center px-1 text-slate-700" title="일차의료 기본수가 PB = B × C1 (산출)">PB<br /><span className="font-normal text-[9px]">=B×C1</span></th>
-                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정율 F = PF ÷ B (편집 가능)">F<br /><span className="font-normal text-[9px]">보정율 %</span></th>
+                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정율 F = PF ÷ B (표시 전용 · 변경은 상단 PF 슬라이더)">F<br /><span className="font-normal text-[9px]">보정율 %</span></th>
                     <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF = B × F (산출)">PF<br /><span className="font-normal text-[9px]">=B×F</span></th>
                     <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF (산출)">P<br /><span className="font-normal text-[9px]">=PB+PF</span></th>
                     <th className="text-center px-1" title="환자군별 전체 환자수 NT (건보 전수 · 참고 · 편집 가능)">NT<br /><span className="font-normal text-[9px]">전체</span></th>
@@ -588,10 +588,8 @@ export default memo(function TabSimulation({
                             onCommit={v => { const newL = 1 - v / 100; updL1(i, newL); updBase(i, "L", newL); }} />
                         </td>
                         <td className="text-center px-1 text-slate-700">{f(PB_display)}</td>
-                        <td className="text-center px-1">
-                          <DraftInput value={F_rate} decimals={1} className="w-[44px] text-purple-600" min={0}
-                            onCommit={v => updF(i, Math.round(B_display * v / 100))} />
-                        </td>
+                        {/* v7.7.2: F 보정율은 표시 전용 (수기 입력 불가, 사용자 결정) — 변경은 상단 PF 슬라이더로만 */}
+                        <td className="text-center px-1 text-purple-600">{F_rate.toFixed(1)}%</td>
                         <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
                         <td className="text-center px-1 font-bold text-indigo-700">{f(PB_display + Fi)}</td>
                         <td className="text-center px-1">
@@ -624,7 +622,7 @@ export default memo(function TabSimulation({
                 </tfoot>
               </table>
               <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
-                ※ 직접 편집: A · CR · C1 · F · NT · RN · 본인부담비 (셀 클릭 후 입력, Enter 또는 포커스 이동 시 반영 · Esc 취소).
+                ※ 직접 편집: A · CR · C1 · NT · RN · 본인부담비 (셀 클릭 후 입력, Enter 또는 포커스 이동 시 반영 · Esc 취소).
                 C1 편집 시 L1(=1−C1)과 실측 L이 함께 갱신되어 PB에 즉시 반영. F 편집 시 PF = B × F로 재산출 (상단 PF 슬라이더와 연동).
                 B는 A × CR 산출값 — A·CR 편집 시 엔진 B(상단 PB 카드·KPI)도 즉시 동기화되고 PF는 기존 비율(B의 X%)을 유지해 재산출. (PB 카드 "↩ 초기화" 등으로 B가 A×CR과 달라지면 노란색 ⚠ 안내.) 등록환자 1인당 의원수입 = P = PB + PF (v7.6.1: 참여 후 본인부담 항 제거). 본인부담비는 공단 지출에만 적용 — 참여 전 = 총 외래비 × (1 − 본인부담비) (v7.6.3), 참여 후 = PB·타원비(D1_L2)·비등록(C1) × (1 − 본인부담비), PF와 포괄관리성과는 공단 직접 지급이라 전액 공단 부담 (v7.6.5~v7.6.7) — v7.6.0부터 현행 외래비 M1은 계산에 쓰지 않음(baseline FFS·비등록·공단 외래비·Track A 모두 PB 기준).
                 분포비(기준 = 등록)는 표시 전용 — 수기 입력 불가. 디폴트는 일만시 실측 비율(RN_i ÷ ΣRN)이며, 위의 분포비 프리셋(데이터 비례 · 균등 · 건강편중 · 고위험편중)으로만 변경 — 의원당 등록환자 배분에 그대로 적용.

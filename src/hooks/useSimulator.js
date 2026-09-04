@@ -699,8 +699,7 @@ export default function useSimulator() {
         const RO = findCol(row, COL_ALIASES.RO, 0);
         const NT = findColExact(row, COL_ALIASES.NT, 0);
         let C1 = findColExact(row, COL_ALIASES.C1, NaN);
-        let Fpct = findColExact(row, COL_ALIASES.F, NaN);
-        const PFamt = findColExact(row, COL_ALIASES.PF, NaN);
+        // v7.7.2: F(%)·PF(원) 열은 더 이상 읽지 않음 — PF는 상단 PF 슬라이더로만 조정, 업로드 시 현재 F_g 보존.
         let copay = findColExact(row, COL_ALIASES.COPAY, NaN);
         if (L > 1) L = L / 100;
         if (L < 0 || L > 1) L = INIT_BASE[i].L;
@@ -708,7 +707,6 @@ export default function useSimulator() {
         if (isFinite(C1)) { if (C1 > 1) C1 = C1 / 100; if (C1 >= 0 && C1 <= 1) L = 1 - C1; }
         if (CR > 1) CR = CR / 100;   // 퍼센트 입력 방어
         if (CR < 0 || CR > 1) CR = 0;
-        if (isFinite(Fpct) && Fpct > 1 && Fpct <= 100) { /* % 그대로 */ } else if (isFinite(Fpct) && Fpct >= 0 && Fpct <= 1) Fpct = Fpct * 100;
         if (isFinite(copay)) { if (copay > 1) copay = copay / 100; if (copay < 0 || copay > 1) copay = NaN; }
         // M1 fallback: M1 누락 시 RO ÷ N (= R1 = RO/RN, NHIS-HCC v3.0 정의)
         if (!M1 && RO > 0 && N > 0) M1 = Math.round(RO / N);
@@ -720,8 +718,6 @@ export default function useSimulator() {
           CR,
           RR: RR > 0 ? RR : 0,          // v7.7.0: 0.1명 단위 보존 (reducer의 roundRegDist가 정리)
           NT: Math.round(NT) || 0,
-          Fpct: isFinite(Fpct) && Fpct >= 0 ? Fpct : NaN,
-          PFamt: isFinite(PFamt) && PFamt >= 0 ? Math.round(PFamt) : NaN,
           copay,
         };
       });
@@ -752,13 +748,13 @@ export default function useSimulator() {
       const RR_arr = rows.map(r => r.RR);
       const hasRR = RR_arr.every(v => v > 0);
       const newRegDist = hasRR ? RR_arr : null;
-      // v7.7.0: F(%) 열이 있으면 F_g = round(B × F/100) (테이블 F 편집 규칙), 없고 PF(원) 열이 있으면 그 값, 둘 다 없으면 보존.
-      const hasFpct = rows.every(r => isFinite(r.Fpct));
-      const hasPF = rows.every(r => isFinite(r.PFamt));
-      //   F% 기준 B는 테이블과 동일하게 A × CR(미clamp) 우선, 없으면 엔진 B.
-      const newF = hasFpct ? rows.map((r, i) => Math.max(0, Math.round(((r.HCC > 0 && r.CR > 0) ? Math.round(r.HCC * r.CR) : newB[i]) * r.Fpct / 100)))
-        : hasPF ? rows.map(r => r.PFamt)
-        : state.F_g;
+      // v7.7.2: PF(state.F_g)는 엑셀 비반영 — PF 슬라이더로만 조정. 업로드로 B(A×CR)가 바뀌면 테이블 A·CR 편집(v7.5.9)과 같이
+      //   기존 비율(F_g / B_old)을 새 B에 곱해 재산출 → "B 기준 X%" 위치 보존. B가 그대로면 F_g 그대로.
+      const newF = state.F_g.map((f, i) => {
+        const oldB = state.P[i];
+        if (!(oldB > 0) || newB[i] === oldB) return f;
+        return Math.max(0, Math.round((f / oldB) * newB[i]));
+      });
       const hasCopay = rows.every(r => isFinite(r.copay));
       const newCopay = hasCopay ? rows.map(r => r.copay) : null;
       const label = file.name.replace(/\.(xlsx|xls|csv)$/i, "");
@@ -772,7 +768,6 @@ export default function useSimulator() {
         const rrDet = hasRR ? `, RR=${fmt(r.RR)}` : "";
         const extra = [
           r.NT > 0 ? `NT=${fmt(r.NT)}` : null,
-          hasFpct ? `F=${r.Fpct.toFixed(1)}% → PF=${fmt(newF[i])}` : hasPF ? `PF=${fmt(newF[i])}` : null,
           hasCopay ? `본인부담비=${(r.copay * 100).toFixed(1)}%` : null,
         ].filter(Boolean);
         return base + bDet + rrDet + (extra.length ? `, ${extra.join(", ")}` : "");
@@ -781,7 +776,7 @@ export default function useSimulator() {
         ? `B 권장값 ${derivedCount}/4군 자동 유도 (A × CR)`
         : `B 슬라이더 보존 (A·CR 없음)`;
       const rrMsg = hasRR ? ` · RR 컬럼 → 의원당 등록환자수 자동 주입` : ``;
-      const tblMsg = [hasFpct || hasPF ? "F/PF" : null, hasCopay ? "본인부담비" : null, rows.some(r => r.NT > 0) ? "NT" : null].filter(Boolean);
+      const tblMsg = [hasCopay ? "본인부담비" : null, rows.some(r => r.NT > 0) ? "NT" : null].filter(Boolean);
       const tblMsgS = tblMsg.length ? ` · 테이블 열 반영: ${tblMsg.join("·")}` : "";
       const bannerMsg = `"${sheetName}" 시트에서 4군 데이터 로딩 완료 — ${bMsg}${rrMsg}${tblMsgS}`;
       dispatch({
@@ -805,10 +800,11 @@ export default function useSimulator() {
   const handleExport = useCallback(async () => {
     try {
       const SH = ["1군", "2군", "3군", "4군"];
-      // v7.7.1 (사용자 결정): 수기 입력 가능 + 계산에 쓰이는 열만 — 열 순서 A · CR · C1 · F · NT · RN · 본인부담비.
+      // v7.7.1 (사용자 결정): 수기 입력 가능 + 계산에 쓰이는 열만. v7.7.2: F 보정율은 테이블에서 표시 전용이 되어 엑셀에서도 제외
+      //   (PF는 상단 PF 슬라이더로만 조정 · 엑셀 라운드트립 시 현재 PF 보존). 열 순서 A · CR · C1 · NT · RN · 본인부담비.
       //   산출 열(B·PB·PF·P·분포비)과 미사용/파생 필드(M1·L·RR)는 내보내지 않음.
-      //   업로드 시 L = 1 − C1, PF = round(A×CR × F/100), 분포비·regDist = RN 비율로 재산출, M1은 현재 값 보존.
-      const headers = ["환자군", "A", "CR", "C1", "F", "NT", "RN", "본인부담비"];
+      //   업로드 시 L = 1 − C1, 분포비·regDist = RN 비율로 재산출, M1·PF는 현재 값 보존.
+      const headers = ["환자군", "A", "CR", "C1", "NT", "RN", "본인부담비"];
       const ws = {};
       const put = (r, c, cell) => { ws[XLSX.utils.encode_cell({ r, c })] = cell; };
       headers.forEach((h, c) => put(0, c, { t: "s", v: h }));
@@ -821,27 +817,24 @@ export default function useSimulator() {
         const CR = typeof b.CR === "number" ? b.CR : null;
         const Bv = (A > 0 && CR > 0) ? Math.round(A * CR) : P[idx];
         const C1 = 1 - (L1[idx] ?? b.L);
-        const Fi = F_g[idx] ?? 0;
-        const Fpct = Bv > 0 ? Fi / Bv * 100 : 0;
         const cp = copayRates?.[idx] ?? INIT_COPAY_RATES[idx];
         put(r, 0, { t: "s", v: SH[idx] });
         put(r, 1, A !== null ? num(A) : blank);
         put(r, 2, CR !== null ? num(Number(CR.toFixed(6))) : blank);
         put(r, 3, num(Number((C1 * 100).toFixed(4))));
-        put(r, 4, num(Number(Fpct.toFixed(4))));
-        put(r, 5, typeof b.NT === "number" ? num(b.NT) : blank);
-        put(r, 6, num(b.N));
-        put(r, 7, num(Number((cp * 100).toFixed(4))));
+        put(r, 4, typeof b.NT === "number" ? num(b.NT) : blank);
+        put(r, 5, num(b.N));
+        put(r, 6, num(Number((cp * 100).toFixed(4))));
       });
 
       // 합계 행 (r=5): NT·RN 합계
       const SR = 5;
       put(SR, 0, { t: "s", v: "합계" });
-      put(SR, 5, { t: "n", f: "SUM(F2:F5)", v: base.reduce((s, b) => s + (typeof b.NT === "number" ? b.NT : 0), 0) });
-      put(SR, 6, { t: "n", f: "SUM(G2:G5)", v: base.reduce((s, b) => s + b.N, 0) });
+      put(SR, 4, { t: "n", f: "SUM(E2:E5)", v: base.reduce((s, b) => s + (typeof b.NT === "number" ? b.NT : 0), 0) });
+      put(SR, 5, { t: "n", f: "SUM(F2:F5)", v: base.reduce((s, b) => s + b.N, 0) });
 
       ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: SR, c: headers.length - 1 } });
-      ws["!cols"] = [{ wch: 8 }, { wch: 11 }, { wch: 9 }, { wch: 9 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 11 }];
+      ws["!cols"] = [{ wch: 8 }, { wch: 11 }, { wch: 9 }, { wch: 9 }, { wch: 12 }, { wch: 12 }, { wch: 11 }];
 
       const wb_new = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb_new, ws, "시뮬레이터_업로드");
@@ -849,7 +842,7 @@ export default function useSimulator() {
     } catch (err) {
       alert("내보내기 실패: " + err.message);
     }
-  }, [base, P, L1, F_g, copayRates]);
+  }, [base, P, L1, copayRates]);
 
   // v6.6: 관리자 "공식 baseline으로 등록" — /api/commit-baseline로 POST.
   // 서버리스 함수가 GitHub API로 src/data/presets/official_baseline.json 갱신 → Vercel 재배포.
