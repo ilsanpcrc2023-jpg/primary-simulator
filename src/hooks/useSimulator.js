@@ -432,7 +432,9 @@ export default function useSimulator() {
       // v7.6.3 (사용자 결정): 참여 전 공단 지출 = 총 외래비 × (1 − 본인부담비). 참여 전(FFS)에는 본인부담이 있으므로
       //   공단 부담분만 baseline으로 잡는다.
       const nhi0 = C1 * N * (1 - copay_i);                // baseline (공단 부담분)
-      const nhi = (nhi_reg + D1_L2) * n_reg_g + C1 * n_unreg_g;   // v7.6.5: 등록환자 = PB×(1−본인부담비) + PF + 타원비
+      // v7.6.6 (사용자 결정): 참여 후 공단 지출에서 타원 외래비 D1_L2·비등록 C1에도 (1 − 본인부담비) 적용 (FFS 공단 부담분).
+      //   PF만 전액 공단 부담. 의원 수입(inc)은 불변.
+      const nhi = (nhi_reg + D1_L2 * (1 - copay_i)) * n_reg_g + C1 * (1 - copay_i) * n_unreg_g;
 
       // Track (1인당 등록환자 실지불액 · 선지급만, 성과급은 T 레벨)
       const tA = PB_g + F_i;
@@ -469,9 +471,12 @@ export default function useSimulator() {
   // Track 배수(A=0/B=0.5/C=1.0) 선형 보간 (hccPct/100)
   const performance = useMemo(() => {
     let perf_raw_total = 0;
+    let perf_nhi_raw = 0;                                 // v7.6.6: 공단 부담분 = × (1 − 본인부담비_g)
     G.forEach((r, i) => {
       const diff = Math.max(0, (L1[i] ?? 0.7) - L2eff);
-      perf_raw_total += diff * r.p * r.n_reg;
+      const perf_g = diff * r.p * r.n_reg;
+      perf_raw_total += perf_g;
+      perf_nhi_raw += perf_g * (1 - (r.copay ?? 0));
     });
     const perf_total = perf_raw_total;                    // Track C 최대치 = 전체 절감액 100% 환원
     const perfByTrack = {
@@ -481,18 +486,19 @@ export default function useSimulator() {
     };
     const trackMul = Math.max(0, Math.min(1, hccPct / 100));   // hccPct 0→A, 50→B, 100→C
     const perf_blended = perf_total * trackMul;
+    const perf_nhi = perf_nhi_raw * trackMul;             // v7.6.6: 공단 지출에 더하는 성과 (의원 수입은 perf_blended 그대로)
     return {
       L2eff, L1avg,
       perf_raw_total, perf_total, perfByTrack,
-      trackMul, perf_blended,
+      trackMul, perf_blended, perf_nhi,
     };
   }, [G, L1, L2eff, L1avg, hccPct]);
 
   // v6.7: KPI 변화율 — L2 연동
   //   의원 수입  = 선지급 inc + 성과급 perf_blended
-  //   공단 지출 = L2 반영 nhi + 성과급 지급 perf_blended
+  //   공단 지출 = L2 반영 nhi + 성과급 지급 perf_nhi (v7.6.6: × (1 − 본인부담비))
   const incTotal = T.inc + performance.perf_blended;
-  const nhiTotal = T.nhi + performance.perf_blended;
+  const nhiTotal = T.nhi + performance.perf_nhi;
   const incChg = T.inc0 > 0 ? (incTotal - T.inc0) / T.inc0 : 0;
   const nhiChg = T.nhi0 > 0 ? (nhiTotal - T.nhi0) / T.nhi0 : 0;
   // 하위 호환 alias (v6.6까지 쓰던 이름 — 추후 제거 가능)
