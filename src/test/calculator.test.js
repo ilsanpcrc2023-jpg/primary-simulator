@@ -770,21 +770,29 @@ describe('v7.6.5 · 참여 후 공단 지출 등록환자 항 = PB × (1 − 본
   });
 });
 
-describe('v7.6.6 · 참여 후 공단 지출: D1_L2·비등록 C1·포괄관리성과에도 (1 − 본인부담비)', () => {
-  it('PF만 전액 공단 부담 — 등록·비등록·성과 모두 공단 부담분 = × (1 − copay)', () => {
+describe('v7.6.6/v7.6.7 · 참여 후 공단 지출: D1_L2·비등록 C1에 (1 − 본인부담비), 성과는 100% (v7.6.7 되돌림)', () => {
+  it('v7.6.7: 성과 공단 지출 = 의원 수령액 (공단→의원 직접 지급, 본인부담 없음)', () => {
+    const b = INIT_BASE[2];
+    const B = INIT_P[2], L1 = b.L, L2 = 0.70, copay = 0.261;
+    const perf_clinic = Math.max(0, L1 - L2) * B * 100;   // Track C
+    const perf_nhi = perf_clinic;                          // (1 − copay) 곱하지 않음
+    expect(perf_nhi).toBeCloseTo(perf_clinic, 6);
+    expect(perf_nhi).not.toBeCloseTo(perf_clinic * (1 - copay), 0);
+  });
+  it('v7.6.6: PF·성과 외 항목 공단 부담분 = × (1 − copay)', () => {
     const b = INIT_BASE[0];
     const B = INIT_P[0], L1 = b.L, L2 = 0.70, copay = 0.261;
     const PB = B * (1 - L1), PF = INIT_F[0];
     const C1 = PB / (1 - b.L), D1_L2 = PB * L2 / (1 - L2);
     const n_reg = 100, n_unreg = 300;
     const nhi = (PB * (1 - copay) + PF + D1_L2 * (1 - copay)) * n_reg + C1 * (1 - copay) * n_unreg;
-    const perf_nhi = Math.max(0, L1 - L2) * B * n_reg * (1 - copay);
+    const perf_nhi = Math.max(0, L1 - L2) * B * n_reg;     // v7.6.7: 성과는 100%
     // copay 0이면 v7.6.2 이전 구조(P + D1_L2, C1 전액)와 동일
     const nhi_full = (PB + PF + D1_L2) * n_reg + C1 * n_unreg;
     expect(nhi + perf_nhi).toBeLessThan(nhi_full + Math.max(0, L1 - L2) * B * n_reg);
-    // 차액 = (PB + D1_L2) × n_reg × copay + C1 × n_unreg × copay + perf × copay  (PF는 차감 없음)
+    // 차액 = (PB + D1_L2) × n_reg × copay + C1 × n_unreg × copay  (PF·성과는 차감 없음)
     const perf_full = Math.max(0, L1 - L2) * B * n_reg;
-    const expectedDiff = ((PB + D1_L2) * n_reg + C1 * n_unreg + perf_full) * copay;
+    const expectedDiff = ((PB + D1_L2) * n_reg + C1 * n_unreg) * copay;
     expect((nhi_full + perf_full) - (nhi + perf_nhi)).toBeCloseTo(expectedDiff, 4);
     // 참여 전(FFS)과 대칭: copay 적용 범위가 같아 PF·성과·L2 효과만 남음
     const N = n_reg + n_unreg;
