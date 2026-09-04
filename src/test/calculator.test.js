@@ -62,11 +62,10 @@ describe('calculation engine', () => {
       const F_i = INIT_F[i];
       const pay_gov = B_i * (1 - L1_i) + F_i;
       expect(pay_gov).toBeGreaterThan(0);
-      // 등록환자 1인당 의원수입 = 공단지급 + 본인부담 (v7.6.0: 본인부담 = PB × 30%, M1 미사용)
+      // v7.6.1: 등록환자 1인당 의원수입 = 공단지급 P = PB + PF (본인부담 항 제거, M1 미사용)
       const PB_i = B_i * (1 - L1_i);
-      const ab_reg = pay_gov + PB_i * 0.30;
-      expect(ab_reg).toBeGreaterThan(pay_gov);
-      expect(ab_reg).toBeCloseTo(PB_i * 1.30 + F_i, 6);
+      const ab_reg = pay_gov;
+      expect(ab_reg).toBeCloseTo(PB_i + F_i, 6);
     });
   });
 
@@ -277,7 +276,7 @@ describe('v6.7 L1·L2 분리 (선지급 vs 사후 성과급)', () => {
       const L1_i = INIT_L1[i];
       const PB_i = B_i * (1 - L1_i);
       const tA = PB_i + F_i;                             // v7.6.0: M1 → PB
-      const tC = PB_i + F_i + PB_i * 0.30;               // 환자군 모형 1인당 (본인부담 = PB × 30%)
+      const tC = PB_i + F_i;                             // 환자군 모형 1인당 = P (v7.6.1: 본인부담 항 제거)
       const tB = 0.5 * tA + 0.5 * tC;
       expect(tB).toBeCloseTo((tA + tC) / 2, 5);
     });

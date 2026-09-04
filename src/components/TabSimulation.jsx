@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { FCard, TCard, ClinicSummaryStrip, ClinicCountControls } from "./RegistrationPanel";
-import { SH, CL, COPAY_RATE, OFFICIAL_BASELINE_META } from "../constants";
+import { SH, CL, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB, refRatiosFromBase } from "../utils";
 
@@ -44,7 +44,7 @@ function DraftInput({ value, decimals = 2, onCommit, min = -Infinity, max = Infi
 
 export default memo(function TabSimulation({
   mode = "policy", setMode,
-  state, set, updP, updBase, updBaseRatio, resetBaseRatios, setDistAll, updCopay, updF, setFAll, setPfRule, resetF, resetP, resetReg,
+  state, set, updP, updBase, updBaseRatio, resetBaseRatios, setDistAll, updF, setFAll, setPfRule, resetF, resetP, resetReg,
   updL1, setL1All, resetL1, setL2, resetL2,
   updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset,
   G, T, decomp, performance: perfMemo, tracks,
@@ -74,7 +74,6 @@ export default memo(function TabSimulation({
   const ratiosMeasured = refRatiosFromBase(base);
   const ratiosOverridden = Array.isArray(state.baseRatios) && state.baseRatios.length === base.length;
   const ratios = ratiosOverridden ? state.baseRatios : ratiosMeasured;
-  const copayRates = state.copayRates ?? [COPAY_RATE, COPAY_RATE, COPAY_RATE, COPAY_RATE];
 
   // L2 기본값 · 표시값 (null이면 L1 가중평균)
   const L2_display = L2 ?? perfMemo.L1avg;
@@ -492,7 +491,7 @@ export default memo(function TabSimulation({
             <div className="flex items-center justify-between gap-2 py-1.5 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-600">📋 환자군별 상세 편집 테이블</span>
-                <span className="text-[10px] font-normal text-gray-400">A → B = A×CR → PB = B×C1 → PF = B×F → P = PB+PF · 입력: A · CR · C1 · F · 본인부담비 · NT · RN</span>
+                <span className="text-[10px] font-normal text-gray-400">A → B = A×CR → PB = B×C1 → PF = B×F → P = PB+PF · 입력: A · CR · C1 · F · NT · RN</span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-[10px] text-gray-500">분포비 프리셋:</span>
@@ -525,9 +524,9 @@ export default memo(function TabSimulation({
             </div>
             <div className="overflow-x-auto">
               {/* v7.5.1: 컬럼 재구성 (사용자 결정) —
-                    A(=T/NT) | CR | B(=A×CR) | C1(=1−L1) | PB(=B×C1) | F(기능보정율) | PF(=B×F) | P(=PB+PF) | 본인부담비 | 기준 분포비 | 등록 분포비
+                    A(=T/NT) | CR | B(=A×CR) | C1(=1−L1) | PB(=B×C1) | F(기능보정율) | PF(=B×F) | P(=PB+PF) | NT | RN | 분포비(표시 전용)  (v7.6.1: 본인부담비 열 삭제)
                   편집: A, CR, C1(→ L1·base.L 동시 갱신), F(→ F_g = B×F), 등록 분포비(→ regDist = 비율 × Σ regDist).
-                  산출: B, PB, PF, P. 표시만: 본인부담비(30% 고정), 기준 분포비(ratio_i = N_i/ΣN).
+                  산출: B, PB, PF, P. 표시만: 분포비(ratio_i, 프리셋으로만 변경).
                   NT·RN·M1·RR 절대값 컬럼은 제거 (데이터 anchor·엑셀 업로드로 관리). */}
               <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1140 }}>
                 <thead>
@@ -545,8 +544,7 @@ export default memo(function TabSimulation({
                     <th className="text-center px-1" title="참여의원(일만시) 환자수 RN (기준 분포비·엔진 환자 배분 재료 · 편집 가능)">RN<br /><span className="font-normal text-[9px]">일만시 환자수</span></th>
                     {/* v7.5.11: 분포비 열 표시 전용 (수기 입력 불가, 사용자 결정). 변경은 프리셋 버튼으로만. */}
                     <th className="text-center px-1 text-blue-700" title="환자군별 분포비 (기준 = 등록) · 디폴트 = 일만시 실측 RN_i ÷ ΣRN · 표시 전용 — 변경은 분포비 프리셋 버튼으로">분포비<br /><span className="font-normal text-[9px]">% · 기준 = 등록</span></th>
-                    {/* v7.5.12: 본인부담비 열을 맨 오른쪽으로 이동 (사용자 결정). */}
-                    <th className="text-center px-1" title="환자 본인부담비 (일차의료 기본수가 PB 대비, 디폴트 30% · 편집 가능) — 본인부담 = PB × 본인부담비">본인부담비<br /><span className="font-normal text-[9px]">% · PB 대비 · 디폴트 30</span></th>
+                    {/* v7.6.1: 본인부담비 열 삭제 — 본인부담 항 자체가 산식에서 제거됨 (사용자 결정). */}
                   </tr>
                 </thead>
                 <tbody>
@@ -563,7 +561,6 @@ export default memo(function TabSimulation({
                     const B_display = B_calc ?? P[i];
                     const PB_display = Math.round(B_display * C1_i);
                     const F_rate = B_display > 0 ? (Fi / B_display) * 100 : 0;
-                    const copay_i = copayRates[i] ?? COPAY_RATE;
                     // v7.5.2 → v7.5.7 표시 규칙: % → 소수 1자리, 비중(0.XXX) → 소수 3자리, 금액 → 정수 (state 정밀도는 그대로)
                     return (
                       <tr key={i} className="border-t border-gray-100">
@@ -605,10 +602,6 @@ export default memo(function TabSimulation({
                             onCommit={v => updBase(i, "N", Math.round(v))} />
                         </td>
                         <td className="text-center px-1 text-blue-700 font-semibold">{(ratios[i] * 100).toFixed(1)}%</td>
-                        <td className="text-center px-1">
-                          <DraftInput value={copay_i * 100} decimals={1} className="w-16 text-gray-700" min={0} max={100}
-                            onCommit={v => updCopay(i, v / 100)} />
-                        </td>
                       </tr>
                     );
                   })}
@@ -620,14 +613,13 @@ export default memo(function TabSimulation({
                     <td className="text-center px-1">{f(base.reduce((s, g) => s + (typeof g.NT === "number" ? g.NT : 0), 0))}</td>
                     <td className="text-center px-1">{f(base.reduce((s, g) => s + (g.N || 0), 0))}</td>
                     <td className="text-center px-1 text-blue-600">{(ratios.reduce((s, v) => s + v, 0) * 100).toFixed(1)}%{ratiosOverridden && <span className="block text-[9px] text-amber-600">프리셋</span>}</td>
-                    <td></td>
                   </tr>
                 </tfoot>
               </table>
               <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
-                ※ 직접 편집: A · CR · C1 · F · 본인부담비 · NT · RN (셀 클릭 후 입력, Enter 또는 포커스 이동 시 반영 · Esc 취소).
+                ※ 직접 편집: A · CR · C1 · F · NT · RN (셀 클릭 후 입력, Enter 또는 포커스 이동 시 반영 · Esc 취소).
                 C1 편집 시 L1(=1−C1)과 실측 L이 함께 갱신되어 PB에 즉시 반영. F 편집 시 PF = B × F로 재산출 (상단 PF 슬라이더와 연동).
-                B는 A × CR 산출값 — A·CR 편집 시 엔진 B(상단 PB 카드·KPI)도 즉시 동기화되고 PF는 기존 비율(B의 X%)을 유지해 재산출. (PB 카드 "↩ 초기화" 등으로 B가 A×CR과 달라지면 노란색 ⚠ 안내.) 본인부담은 환자군별 PB × 본인부담비(디폴트 30%) — v7.6.0부터 현행 외래비 M1은 계산에 쓰지 않음(baseline FFS·비등록·공단 외래비·Track A 모두 PB 기준).
+                B는 A × CR 산출값 — A·CR 편집 시 엔진 B(상단 PB 카드·KPI)도 즉시 동기화되고 PF는 기존 비율(B의 X%)을 유지해 재산출. (PB 카드 "↩ 초기화" 등으로 B가 A×CR과 달라지면 노란색 ⚠ 안내.) 등록환자 1인당 의원수입 = P = PB + PF (v7.6.1: 본인부담 항 제거) — v7.6.0부터 현행 외래비 M1은 계산에 쓰지 않음(baseline FFS·비등록·공단 외래비·Track A 모두 PB 기준).
                 분포비(기준 = 등록)는 표시 전용 — 수기 입력 불가. 디폴트는 일만시 실측 비율(RN_i ÷ ΣRN)이며, 위의 분포비 프리셋(데이터 비례 · 균등 · 건강편중 · 고위험편중)으로만 변경 — 의원당 등록환자 배분에 그대로 적용.
                 RN 편집 시 등록 분포는 RN 실측 비율로 재산출되고 엔진의 참여의원 환자 배분(N_g)에도 반영. NT(전체 환자수)는 참고 표시. M1은 데이터 필드로만 보존(엑셀 업로드·baseline), 계산 미사용.
               </div>

@@ -105,7 +105,7 @@ export default function App() {
           <TabSimulation
             mode={mode} setMode={setMode}
             state={state} set={set}
-            updP={sim.updP} updBase={sim.updBase} updBaseRatio={sim.updBaseRatio} resetBaseRatios={sim.resetBaseRatios} setDistAll={sim.setDistAll} updCopay={sim.updCopay}
+            updP={sim.updP} updBase={sim.updBase} updBaseRatio={sim.updBaseRatio} resetBaseRatios={sim.resetBaseRatios} setDistAll={sim.setDistAll}
             updF={sim.updF} setFAll={sim.setFAll} setPfRule={sim.setPfRule}
             resetF={sim.resetF} resetP={sim.resetP} resetReg={sim.resetReg}
             updL1={sim.updL1} setL1All={sim.setL1All} resetL1={sim.resetL1}
