@@ -108,9 +108,27 @@ function reducer(state, action) {
       base[action.i] = { ...base[action.i], [action.key]: action.value };
       // v7.5.5: RN(N · 기준 분포비 재료) 편집 시 수기 override는 폐기 → RN 실측 비율로 재산출
       // v7.5.8: 등록 분포비 = 기준 분포비이므로 regDist도 새 실측 비율로 동기화
-      return action.key === "N"
-        ? { ...state, base, baseRatios: null, regDist: regDistFromRatios(refRatiosFromBase(base), regBaseOf(state)) }
-        : { ...state, base };
+      if (action.key === "N") {
+        return { ...state, base, baseRatios: null, regDist: regDistFromRatios(refRatiosFromBase(base), regBaseOf(state)) };
+      }
+      // v7.5.9: A·CR 편집 시 엔진 B(state.P)도 A × CR로 동기화 (사용자 결정 — 테이블 B·PB가 시뮬에 반영되지 않던 문제).
+      //   엑셀 업로드와 동일하게 [B_MIN, B_MAX] clamp. A·CR 중 하나라도 없거나 0이면 B 유지.
+      //   PF(F_g)는 "B × F%" 의미를 지키기 위해 기존 비율(F_g/B_old)을 새 B에 곱해 재산출 (PF 슬라이더 % 위치 보존).
+      if (action.key === "A" || action.key === "CR") {
+        const { A, CR } = base[action.i];
+        if (typeof A === "number" && typeof CR === "number" && A > 0 && CR > 0) {
+          const newB = Math.max(B_MIN, Math.min(B_MAX, Math.round(A * CR)));
+          const oldB = state.P[action.i];
+          if (newB !== oldB) {
+            const P = [...state.P];
+            P[action.i] = newB;
+            const F_g = [...state.F_g];
+            if (oldB > 0) F_g[action.i] = Math.max(0, Math.round((F_g[action.i] ?? 0) / oldB * newB));
+            return { ...state, base, P, F_g };
+          }
+        }
+      }
+      return { ...state, base };
     }
     // v7.5.3: 기준 군별 분포비(ratio_i) 수기 편집 — 자유 입력 override (다른 군 불변, 합 100% 강제 없음).
     // v7.5.5: 디폴트(override 없을 때) = RN 기준 (refRatiosFromBase).
