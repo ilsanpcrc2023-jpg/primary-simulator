@@ -529,7 +529,7 @@ export default memo(function TabSimulation({
                   편집: A, CR, C1(→ L1·base.L 동시 갱신), F(→ F_g = B×F), 등록 분포비(→ regDist = 비율 × Σ regDist).
                   산출: B, PB, PF, P. 표시만: 본인부담비(30% 고정), 기준 분포비(ratio_i = N_i/ΣN).
                   NT·RN·M1·RR 절대값 컬럼은 제거 (데이터 anchor·엑셀 업로드로 관리). */}
-              <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1040 }}>
+              <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1140 }}>
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
                     <th className="text-left px-2 py-1.5" title="HCC 4분위 환자군">환자군</th>
@@ -544,7 +544,8 @@ export default memo(function TabSimulation({
                     <th className="text-center px-1" title="환자 본인부담비 (현행 외래비 M1 대비, 디폴트 30% · 편집 가능)">본인부담비<br /><span className="font-normal text-[9px]">% · 디폴트 30</span></th>
                     <th className="text-center px-1" title="환자군별 전체 환자수 NT (건보 전수 · 참고 · 편집 가능)">NT<br /><span className="font-normal text-[9px]">전체 환자수</span></th>
                     <th className="text-center px-1" title="참여의원(일만시) 환자수 RN (기준 분포비·엔진 환자 배분 재료 · 편집 가능)">RN<br /><span className="font-normal text-[9px]">일만시 환자수</span></th>
-                    {/* v7.5.10: 분포비 열 화면 미노출 (사용자 결정). 내부 분포비(baseRatios·regDist)와 프리셋 버튼은 유지. */}
+                    {/* v7.5.11: 분포비 열 표시 전용 (수기 입력 불가, 사용자 결정). 변경은 프리셋 버튼으로만. */}
+                    <th className="text-center px-1 text-blue-700" title="환자군별 분포비 (기준 = 등록) · 디폴트 = 일만시 실측 RN_i ÷ ΣRN · 표시 전용 — 변경은 분포비 프리셋 버튼으로">분포비<br /><span className="font-normal text-[9px]">% · 기준 = 등록</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -606,6 +607,7 @@ export default memo(function TabSimulation({
                           <DraftInput value={base[i].N} decimals={0} grouping className="w-24 text-gray-700" min={1}
                             onCommit={v => updBase(i, "N", Math.round(v))} />
                         </td>
+                        <td className="text-center px-1 text-blue-700 font-semibold">{(ratios[i] * 100).toFixed(1)}%</td>
                       </tr>
                     );
                   })}
@@ -616,6 +618,7 @@ export default memo(function TabSimulation({
                     <td colSpan={9}></td>
                     <td className="text-center px-1">{f(base.reduce((s, g) => s + (typeof g.NT === "number" ? g.NT : 0), 0))}</td>
                     <td className="text-center px-1">{f(base.reduce((s, g) => s + (g.N || 0), 0))}</td>
+                    <td className="text-center px-1 text-blue-600">{(ratios.reduce((s, v) => s + v, 0) * 100).toFixed(1)}%{ratiosOverridden && <span className="block text-[9px] text-amber-600">프리셋</span>}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -623,7 +626,7 @@ export default memo(function TabSimulation({
                 ※ 직접 편집: A · CR · C1 · F · 본인부담비 · NT · RN (셀 클릭 후 입력, Enter 또는 포커스 이동 시 반영 · Esc 취소).
                 C1 편집 시 L1(=1−C1)과 실측 L이 함께 갱신되어 PB에 즉시 반영. F 편집 시 PF = B × F로 재산출 (상단 PF 슬라이더와 연동).
                 B는 A × CR 산출값 — A·CR 편집 시 엔진 B(상단 PB 카드·KPI)도 즉시 동기화되고 PF는 기존 비율(B의 X%)을 유지해 재산출. (PB 카드 "↩ 초기화" 등으로 B가 A×CR과 달라지면 노란색 ⚠ 안내.) 본인부담비는 환자군별 M1 × 본인부담비(디폴트 30%).
-                환자군별 등록 분포는 화면에 표시하지 않으며, 디폴트는 일만시 실측 비율(RN_i ÷ ΣRN). 위의 분포비 프리셋(데이터 비례 · 균등 · 건강편중 · 고위험편중)으로만 변경 — 의원당 등록환자 배분에 그대로 적용.
+                분포비(기준 = 등록)는 표시 전용 — 수기 입력 불가. 디폴트는 일만시 실측 비율(RN_i ÷ ΣRN)이며, 위의 분포비 프리셋(데이터 비례 · 균등 · 건강편중 · 고위험편중)으로만 변경 — 의원당 등록환자 배분에 그대로 적용.
                 RN 편집 시 등록 분포는 RN 실측 비율로 재산출되고 엔진의 참여의원 환자 배분(N_g)에도 반영. NT(전체 환자수)는 참고 표시. M1 절대값은 데이터 관리(엑셀 업로드·baseline)에서 관리.
               </div>
             </div>
