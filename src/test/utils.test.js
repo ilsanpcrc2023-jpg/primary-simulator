@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { f, fE, fSv, pct, diffE, calcPB, PBtoB, ratiosFromBase, refRatiosFromBase, regDistFromRatios, roundRegDist } from '../utils';
-import { INIT_BASE, INIT_REG_DIST } from '../constants';
+import { INIT_BASE, INIT_REG_DIST, COPAY_RATE, INIT_COPAY_RATES } from '../constants';
 
 describe('format utilities', () => {
   it('f: formats numbers with Korean locale', () => {
@@ -134,5 +134,13 @@ describe('v7.5.1 ratiosFromBase / regDistFromRatios', () => {
     expect(roundRegDist(-3)).toBe(0);
     expect(roundRegDist('12.34')).toBe(12.3);
     expect(roundRegDist(undefined)).toBe(0);
+  });
+});
+
+// v7.6.2: 본인부담비 참고값 상수 복원 (산식 미반영 — 상세 편집 테이블 표시/편집만)
+describe('v7.6.2 COPAY_RATE / INIT_COPAY_RATES (참고 항목)', () => {
+  it('COPAY_RATE = 0.30, INIT_COPAY_RATES 4군 모두 30%', () => {
+    expect(COPAY_RATE).toBe(0.30);
+    expect(INIT_COPAY_RATES).toEqual([0.30, 0.30, 0.30, 0.30]);
   });
 });
