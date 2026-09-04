@@ -319,7 +319,7 @@ export default memo(function TabSimulation({
           <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight text-blue-700">
             {diffAuto(T.nhi0, T.nhi + perfMemo.perf_nhi)}<span className="text-base text-gray-500 font-bold"> / 년</span>
           </div>
-          <div className="text-[11px] text-gray-500 font-normal mt-1">사업 전체 공단 지출 변화액 · 참여 전 = 총 외래비 × (1 − 본인부담비) · 참여 후 = (PB + 타원비 + 비등록) × (1 − 본인부담비) + PF + 포괄관리성과</div>
+          <div className="text-[11px] text-gray-500 font-normal mt-1">사업 전체 공단 지출 변화액</div>
         </div>
       </div>
     </div>
