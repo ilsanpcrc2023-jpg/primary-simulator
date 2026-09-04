@@ -138,9 +138,9 @@ describe('v7.5.1 ratiosFromBase / regDistFromRatios', () => {
 });
 
 // v7.6.2: 본인부담비 참고값 상수 복원 (산식 미반영 — 상세 편집 테이블 표시/편집만)
-describe('v7.6.2 COPAY_RATE / INIT_COPAY_RATES (참고 항목)', () => {
-  it('COPAY_RATE = 0.30, INIT_COPAY_RATES 4군 모두 30%', () => {
-    expect(COPAY_RATE).toBe(0.30);
-    expect(INIT_COPAY_RATES).toEqual([0.30, 0.30, 0.30, 0.30]);
+describe('v7.6.4 COPAY_RATE / INIT_COPAY_RATES (디폴트 26.1%)', () => {
+  it('COPAY_RATE = 0.261, INIT_COPAY_RATES 4군 모두 26.1%', () => {
+    expect(COPAY_RATE).toBe(0.261);
+    expect(INIT_COPAY_RATES).toEqual([0.261, 0.261, 0.261, 0.261]);
   });
 });
