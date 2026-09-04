@@ -57,7 +57,14 @@ export const INIT_R = INIT_F;                // 하위 호환 alias (v6.9.x까�
 //     4군 0.30681 × 1000 = 306.81 → 307  (합 1,000)
 //   이전 v7.2.0 값 [160, 224, 298, 318]은 zero 포함 기준의 RD에서 유도된 것이라
 //   의료비 0원 제외 baseline으로 갱신 시 함께 변경.
-export const INIT_REG_DIST = [201, 198, 294, 307];
+// v7.5.3: 등록 분포비 디폴트 = 기준 분포비(ratio_i)와 소수점 2자리(%)까지 동일 (사용자 결정).
+//   regDist를 0.1명 단위로 보관 → 등록 분포비(%) = regDist / 10 이 ratio_i × 100 의 2자리 반올림과 일치.
+//   exc_zero baseline: [201.6, 197.7, 293.8, 306.8] (합 999.9 — 군별 독립 반올림) ↔ 기준 분포비 20.16 / 19.77 / 29.38 / 30.68 %
+//   (이전 정수 largest-remainder [201, 198, 294, 307]은 20.10/19.80/29.40/30.70으로 2자리 불일치 → 폐기)
+const _sumN = INIT_BASE.reduce((s, g) => s + (g?.N || 0), 0);
+export const INIT_REG_DIST = _sumN > 0
+  ? INIT_BASE.map(g => Math.round((g.N / _sumN) * 1000 * 10) / 10)
+  : [201.6, 197.7, 293.8, 306.8];
 
 // v7.5.1: 환자 본인부담비 (현행 등록의원 외래비 M1 대비, 디폴트 30%).
 //   본인부담 = M1 × copayRates[i]. 디폴트는 4군 모두 COPAY_RATE(30%).
@@ -136,7 +143,7 @@ export const B_MAX = 2_000_000;
 //   엑셀 NHIS-HCC v3.0의 참여의원 환자분포 RD (16.0/22.4/29.8/31.8%)를 1,000명에 비례 배분.
 //   이전 임의값 폐기 (사용자 결정).
 export const CLINIC_PRESETS = [
-  { key: "general", label: "데이터 비례",  regDist: [201, 198, 294, 307] },
+  { key: "general", label: "데이터 비례",  regDist: [...INIT_REG_DIST] },
   { key: "elderly", label: "노인 집중",     regDist: [30, 200, 400, 370] },
   { key: "custom",  label: "사용자 지정",   regDist: null },
 ];

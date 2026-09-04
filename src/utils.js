@@ -89,39 +89,18 @@ export function ratiosFromBase(base) {
   return base.map(g => (g?.N || 0) / t);
 }
 
-// v7.5.1: 등록 군별 분포비 디폴트 = ratio_i. ratio_i × total을 largest-remainder 반올림해
-//   합이 정확히 total(디폴트 1,000명)이 되는 정수 regDist 배열을 만든다.
-//   INIT_BASE(v7.5 exc_zero)에 적용하면 INIT_REG_DIST [201, 198, 294, 307]과 일치.
-export function regDistFromRatios(ratios, total = 1000) {
-  const raw = ratios.map(r => r * total);
-  const floor = raw.map(v => Math.floor(v));
-  let remain = total - floor.reduce((s, v) => s + v, 0);
-  const order = raw
-    .map((v, i) => ({ i, frac: v - Math.floor(v) }))
-    .sort((a, b) => b.frac - a.frac || a.i - b.i);
-  const out = [...floor];
-  for (let k = 0; k < order.length && remain > 0; k++, remain--) out[order[k].i] += 1;
-  return out;
+// v7.5.1 → v7.5.3: 등록 군별 분포비 디폴트 = ratio_i.
+//   ratio_i × total을 0.1명(=% 소수 2자리) 단위로 반올림한 regDist 배열.
+//   등록 분포비(%) = regDist / (total/100) 가 (ratio_i × 100).toFixed(2)와 정확히 일치하도록
+//   각 군을 독립 반올림한다 (largest-remainder 합 보정은 2자리 동일성을 깨뜨리므로 폐기).
+//   INIT_BASE(v7.5 exc_zero) → [201.7, 197.7, 293.8, 306.8] = INIT_REG_DIST.
+export function regDistFromRatios(ratios, total = 1000, decimals = 1) {
+  const k = Math.pow(10, decimals);
+  return ratios.map(r => Math.round(r * total * k) / k);
 }
 
-// v7.5.2: 기준 군별 분포비(ratio_i) 수기 편집 — i군 비율을 ratio로 고정하고
-//   나머지 군의 N을 비례 축소/확대해 ΣN을 보존한다 (분포비 합 100% 유지).
-//   returns 새 base 배열 (N만 갱신, 다른 필드는 그대로).
-export function rescaleBaseN(base, i, ratio) {
-  const r = Math.max(0, Math.min(1, ratio));
-  const total = base.reduce((s, g) => s + (g?.N || 0), 0);
-  if (total <= 0 || base.length < 2) return base;
-  const othersOld = total - (base[i]?.N || 0);
-  const othersNew = total * (1 - r);
-  const k = othersOld > 0 ? othersNew / othersOld : 0;
-  const out = base.map((g, j) => {
-    if (j === i) return { ...g, N: Math.round(total * r) };
-    if (othersOld > 0) return { ...g, N: Math.round((g?.N || 0) * k) };
-    // 다른 군이 모두 0이면 균등 분배
-    return { ...g, N: Math.round(othersNew / (base.length - 1)) };
-  });
-  return out;
-}
+// v7.5.3: regDist 값 정규화 — 0 floor + 0.1명 단위 반올림 (reducer 공용).
+export const roundRegDist = (v) => Math.max(0, Math.round((Number(v) || 0) * 10) / 10);
 
 // v6.10.0: 현재 F_g에서 통합 슬라이더 % 역산 (사용자가 개별 슬라이더 조정 후 표시용).
 //   pfPct_implied = (Σ F_g[i] × n_reg_g[i]) / (Σ B[i] × n_reg_g[i]) × 100

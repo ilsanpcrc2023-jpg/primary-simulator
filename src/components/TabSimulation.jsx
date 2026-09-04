@@ -44,7 +44,7 @@ function DraftInput({ value, decimals = 2, onCommit, min = -Infinity, max = Infi
 
 export default memo(function TabSimulation({
   mode = "policy", setMode,
-  state, set, updP, updBase, updBaseRatio, updCopay, updF, setFAll, setPfRule, resetF, resetP, resetReg,
+  state, set, updP, updBase, updBaseRatio, resetBaseRatios, updCopay, updF, setFAll, setPfRule, resetF, resetP, resetReg,
   updL1, setL1All, resetL1, setL2, resetL2,
   updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset,
   G, T, decomp, performance: perfMemo, tracks,
@@ -63,13 +63,18 @@ export default memo(function TabSimulation({
   const PB = calcPB(P, L1);
 
   // v7.5.1: 상세 편집 테이블 분포비 2종.
-  //   ratio_i  = N_i / ΣN            → "기준 군별 분포비(%)" (v7.5.2: 수기 편집 가능 — ΣN 보존, 다른 군 비례 재배분)
-  //   regDist_i / 1000               → "등록 군별 분포비(%)" (= RR/1000, 사용자 정의 · 자유 입력, 합 100% 강제 없음)
-  //   등록 분포비 디폴트("데이터 비례" 프리셋) = ratio_i를 largest-remainder로 정수화 (= INIT_REG_DIST).
-  const ratios = ratiosFromBase(base);
+  //   ratio_i  = baseRatios[i] (수기 override) ?? N_i / ΣN (실측)
+  //              → "기준 군별 분포비(%)" (v7.5.3: 자유 입력, 다른 군 불변, 합 100% 강제 없음 · ↩ 실측 복귀)
+  //   regDist_i / 1000               → "등록 군별 분포비(%)" (= RR/1000, 자유 입력, 합 100% 강제 없음)
+  //   등록 분포비 디폴트("데이터 비례" 프리셋) = ratio_i × 1000을 0.1명 단위로 반올림 (= INIT_REG_DIST)
+  //   → 등록 분포비(%)가 기준 분포비(%)와 소수 2자리까지 동일 (v7.5.3 사용자 결정).
+  const ratiosMeasured = ratiosFromBase(base);
+  const ratiosOverridden = Array.isArray(state.baseRatios) && state.baseRatios.length === base.length;
+  const ratios = ratiosOverridden ? state.baseRatios : ratiosMeasured;
   const regSum = state.regDist.reduce((s, v) => s + v, 0);
   const REG_DENOM = 1000;
-  const regDistDefault = regDistFromRatios(ratios, regSum > 0 ? regSum : REG_DENOM);
+  const regDistDefault = regDistFromRatios(ratios, REG_DENOM);
+  const fRR = (v) => Number(v).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
   const copayRates = state.copayRates ?? [COPAY_RATE, COPAY_RATE, COPAY_RATE, COPAY_RATE];
 
   // L2 기본값 · 표시값 (null이면 L1 가중평균)
@@ -439,7 +444,7 @@ export default memo(function TabSimulation({
             </div>
             <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
               onClick={() => {
-                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,246명\n· 의원당 등록환자수: 1,000명 (데이터 비례 [201, 198, 294, 307])\n· 사업 전체 등록: 100,000명\n\n환자군별 RN · M1 · L · RR(등록 분포)만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
+                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,246명\n· 의원당 등록환자수: 약 1,000명 (데이터 비례 = 기준 분포비 20.16/19.77/29.38/30.68% → RR 201.6/197.7/293.8/306.8명, 합 999.9)\n· 사업 전체 등록: 약 100,000명 (99,990명)\n\n환자군별 RN · M1 · L · RR(등록 분포)만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
                 if (confirm(msg)) resetReg?.();
               }}>
               <div className="text-amber-500 text-xl mb-0.5">↩</div>
@@ -498,7 +503,7 @@ export default memo(function TabSimulation({
                   { label: "건강편중", v: [400, 400, 150, 50] },
                   { label: "고위험편중", v: [50, 350, 300, 300] },
                 ].map(p => {
-                  const active = state.regDist.every((v, i) => v === p.v[i]);
+                  const active = state.regDist.every((v, i) => Math.abs(v - p.v[i]) < 0.05);
                   return (
                     <button key={p.label} onClick={() => setRegDistAll(p.v)}
                       className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
@@ -507,6 +512,14 @@ export default memo(function TabSimulation({
                     </button>
                   );
                 })}
+                {ratiosOverridden && (
+                  <button onClick={resetBaseRatios}
+                    title="기준 분포비 수기 입력값을 버리고 실측(N_i ÷ ΣN)으로 복귀"
+                    className="ml-2 text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                    style={{ borderColor: "#fcd34d", background: "#fffbeb", color: "#b45309" }}>
+                    ↩ 기준 분포비 실측 복귀
+                  </button>
+                )}
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -528,7 +541,7 @@ export default memo(function TabSimulation({
                     <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF = B × F (산출)">PF<br /><span className="font-normal text-[9px]">=B×F · 기능보정</span></th>
                     <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF (산출)">P<br /><span className="font-normal text-[9px]">=PB+PF · 일차의료수가</span></th>
                     <th className="text-center px-1" title="환자 본인부담비 (현행 외래비 M1 대비, 디폴트 30% · 편집 가능)">본인부담비<br /><span className="font-normal text-[9px]">% · 디폴트 30</span></th>
-                    <th className="text-center px-1" title="기준 군별 분포비 ratio_i = N_i ÷ ΣN (편집 가능 · ΣN 보존, 다른 군 비례 재배분)">기준 분포비<br /><span className="font-normal text-[9px]">% · ratio_i</span></th>
+                    <th className="text-center px-1" title="기준 군별 분포비 ratio_i = N_i ÷ ΣN (자유 입력 · 다른 군 불변)">기준 분포비<br /><span className="font-normal text-[9px]">% · ratio_i</span></th>
                     <th className="text-center px-1 text-blue-700" title="등록 군별 분포비 = RR ÷ 1,000 (자유 입력 · 디폴트 = 기준 분포비)">등록 분포비<br /><span className="font-normal text-[9px]">% · RR/1000</span></th>
                   </tr>
                 </thead>
@@ -589,8 +602,8 @@ export default memo(function TabSimulation({
                         </td>
                         <td className="text-center px-1">
                           <DraftInput value={regPct} decimals={2} className="w-16 text-blue-700" min={0}
-                            onCommit={v => updRegDist(i, Math.round(REG_DENOM * v / 100))} />
-                          <span className="block text-[9px] text-blue-500">RR {f(state.regDist[i])}명</span>
+                            onCommit={v => updRegDist(i, REG_DENOM * v / 100)} />
+                          <span className="block text-[9px] text-blue-500">RR {fRR(state.regDist[i])}명</span>
                         </td>
                       </tr>
                     );
@@ -600,8 +613,8 @@ export default memo(function TabSimulation({
                   <tr className="border-t border-gray-200 bg-gray-50 text-[10px] text-gray-500">
                     <td className="px-2 py-1 font-semibold">합계</td>
                     <td colSpan={9}></td>
-                    <td className="text-center px-1">{(ratios.reduce((s, v) => s + v, 0) * 100).toFixed(2)}%</td>
-                    <td className="text-center px-1 text-blue-600">{(regSum / REG_DENOM * 100).toFixed(2)}%<span className="block text-[9px]">RR {f(regSum)}명</span></td>
+                    <td className="text-center px-1">{(ratios.reduce((s, v) => s + v, 0) * 100).toFixed(2)}%{ratiosOverridden && <span className="block text-[9px] text-amber-600">수기</span>}</td>
+                    <td className="text-center px-1 text-blue-600">{(regSum / REG_DENOM * 100).toFixed(2)}%<span className="block text-[9px]">RR {fRR(regSum)}명</span></td>
                   </tr>
                 </tfoot>
               </table>
@@ -609,8 +622,8 @@ export default memo(function TabSimulation({
                 ※ 직접 편집: A · CR · C1 · F · 본인부담비 · 기준 분포비 · 등록 분포비 (셀 클릭 후 입력, Enter 또는 포커스 이동 시 반영 · Esc 취소).
                 C1 편집 시 L1(=1−C1)과 실측 L이 함께 갱신되어 PB에 즉시 반영. F 편집 시 PF = B × F로 재산출 (상단 PF 슬라이더와 연동).
                 B는 A × CR 산출값 (정책 슬라이더 B와 다르면 노란색 ⚠ 안내). 본인부담비는 환자군별 M1 × 본인부담비(디폴트 30%).
-                기준 분포비(ratio_i = N_i ÷ ΣN)는 편집 시 ΣN을 보존하며 다른 군을 비례 재배분(합 100% 유지).
-                등록 분포비 = 의원당 등록환자수 RR ÷ 1,000 — 자유 입력(합 100% 강제 없음, 합계 행 참고), 디폴트("데이터 비례")는 기준 분포비와 동일.
+                기준 분포비(ratio_i = N_i ÷ ΣN)는 자유 입력(다른 군 불변, 합 100% 강제 없음) — 수기 입력 시 "↩ 기준 분포비 실측 복귀" 버튼으로 되돌릴 수 있음.
+                등록 분포비 = 의원당 등록환자수 RR ÷ 1,000 — 자유 입력(합 100% 강제 없음, 합계 행 참고), 디폴트("데이터 비례")는 기준 분포비와 소수점 2자리까지 동일 (RR은 0.1명 단위).
                 RN · M1 · NT 절대값은 데이터 관리(엑셀 업로드·baseline)에서 관리.
               </div>
             </div>

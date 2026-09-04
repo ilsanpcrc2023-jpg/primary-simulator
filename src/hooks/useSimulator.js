@@ -1,7 +1,7 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
 import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX, COPAY_RATE, INIT_COPAY_RATES } from "../constants";
-import { rescaleBaseN } from "../utils";
+import { roundRegDist } from "../utils";
 
 const initialState = {
   base: INIT_BASE,
@@ -44,6 +44,9 @@ const initialState = {
   pfRule: INIT_PF_RULE,
   // v7.5.2: 환자군별 본인부담비 (0~1). 디폴트 4군 모두 30%. 상세 편집 테이블에서 수기 수정.
   copayRates: [...INIT_COPAY_RATES],
+  // v7.5.3: 기준 군별 분포비(ratio_i) 수기 override. null이면 base.N에서 산출 (N_i / ΣN).
+  //   자유 입력 (합 100% 강제 없음). LOAD_DATA 시 null로 복귀 (새 데이터 실측 비율).
+  baseRatios: null,
   // v7.1.1: 초기 디폴트 = 100개 의원 (1차년도 시범사업).
   M_clinics: INIT_DEFAULT_M,
   // 의원당 환자군별 등록환자수 (부록 추정치 100/600/200/100)
@@ -92,9 +95,16 @@ function reducer(state, action) {
       base[action.i] = { ...base[action.i], [action.key]: action.value };
       return { ...state, base };
     }
-    // v7.5.2: 기준 군별 분포비(ratio_i) 수기 편집 — ΣN 보존하며 다른 군 비례 재배분.
-    case "SET_BASE_RATIO_AT":
-      return { ...state, base: rescaleBaseN(state.base, action.i, action.ratio) };
+    // v7.5.3: 기준 군별 분포비(ratio_i) 수기 편집 — 자유 입력 override (다른 군 불변, 합 100% 강제 없음).
+    case "SET_BASE_RATIO_AT": {
+      const t = state.base.reduce((s, g) => s + (g?.N || 0), 0);
+      const cur = state.baseRatios ?? state.base.map(g => (t > 0 ? (g?.N || 0) / t : 0.25));
+      const baseRatios = [...cur];
+      baseRatios[action.i] = Math.max(0, Math.min(1, action.ratio));
+      return { ...state, baseRatios };
+    }
+    case "RESET_BASE_RATIOS":
+      return { ...state, baseRatios: null };
     // v7.5.2: 환자군별 본인부담비 수기 편집 (0~1 clamp).
     case "SET_COPAY_AT": {
       const copayRates = [...(state.copayRates ?? INIT_COPAY_RATES)];
@@ -166,22 +176,23 @@ function reducer(state, action) {
       return { ...state, ssPctA: INIT_SS_PCT_A, ssPctB: INIT_SS_PCT_B, ssPctC: INIT_SS_PCT_C };
     case "RESET_SS_COST":
       return { ...state, ssCostBase: INIT_SS_COST_BASE, ssProjectCost: INIT_SS_PROJECT_COST };
+    // v7.5.3: regDist는 0.1명 단위 (등록 분포비 % 소수 2자리와 1:1 대응). roundRegDist 공용.
     case "SET_REGDIST_AT": {
       const regDist = [...state.regDist];
-      regDist[action.i] = Math.max(0, Math.round(action.value));
+      regDist[action.i] = roundRegDist(action.value);
       return { ...state, regDist };
     }
     case "SET_REGDIST_ALL":
-      return { ...state, regDist: action.values.map(v => Math.max(0, Math.round(v))) };
+      return { ...state, regDist: action.values.map(roundRegDist) };
     case "SCALE_REGDIST": {
       // 총합을 newTotal로 맞추되 비율 유지
       const sum = state.regDist.reduce((s, v) => s + v, 0);
       if (sum <= 0) {
-        const even = Math.max(0, Math.round(action.newTotal / 4));
+        const even = roundRegDist(action.newTotal / 4);
         return { ...state, regDist: [even, even, even, even] };
       }
       const scale = action.newTotal / sum;
-      const scaled = state.regDist.map(v => Math.max(0, Math.round(v * scale)));
+      const scaled = state.regDist.map(v => roundRegDist(v * scale));
       return { ...state, regDist: scaled };
     }
     case "LOAD_DATA": {
@@ -199,7 +210,7 @@ function reducer(state, action) {
       // v7.2.0: action.regDist (엑셀 RR 컬럼)가 4군 모두 양수면 자동 주입.
       //   없으면 기존 state.regDist 보존 (사용자 슬라이더 조정값 보호).
       const newRegDist = (Array.isArray(action.regDist) && action.regDist.length === 4 && action.regDist.every(v => v > 0))
-        ? action.regDist.map(v => Math.max(0, Math.round(v)))
+        ? action.regDist.map(roundRegDist)
         : state.regDist;
       return {
         ...state,
@@ -208,6 +219,7 @@ function reducer(state, action) {
         F_g: action.F_g ?? state.F_g,
         L1: newL1,
         regDist: newRegDist,
+        baseRatios: null,   // v7.5.3: 새 데이터 실측 비율로 복귀 (수기 override 폐기)
         totalN: newTotalN,
         dataLabel: action.dataLabel,
         uploadBanner: action.uploadBanner,
@@ -280,15 +292,17 @@ export default function useSimulator() {
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
     ssCostBase, ssProjectCost,
     F_g, M_clinics, regDist, baseN_per_clinic,
-    copayRates,
+    copayRates, baseRatios,
   } = state;
 
   const ffsPct = 100 - hccPct;
 
+  // v7.5.3: 기준 군별 분포비 — 수기 override(baseRatios)가 있으면 우선, 없으면 N_i / ΣN 실측.
   const ratios = useMemo(() => {
+    if (Array.isArray(baseRatios) && baseRatios.length === base.length) return baseRatios;
     const t = base.reduce((s, g) => s + g.N, 0);
     return base.map(g => g.N / t);
-  }, [base]);
+  }, [base, baseRatios]);
 
   // v2.7: 등록환자 분포 (의원당 환자군별 절대 등록수 regDist에서 직접 산출)
   const regRatios = useMemo(() => {
@@ -522,6 +536,7 @@ export default function useSimulator() {
   const updBase = useCallback((i, key, value) => dispatch({ type: "SET_BASE", i, key, value }), []);
   // v7.5.2: 상세 편집 테이블 — 기준 분포비(ratio_i) · 본인부담비 수기 편집
   const updBaseRatio = useCallback((i, ratio) => dispatch({ type: "SET_BASE_RATIO_AT", i, ratio }), []);
+  const resetBaseRatios = useCallback(() => dispatch({ type: "RESET_BASE_RATIOS" }), []);
   const updCopay = useCallback((i, value) => dispatch({ type: "SET_COPAY_AT", i, value }), []);
   const updF = useCallback((i, value) => dispatch({ type: "SET_F_AT", i, value }), []);
   const setFAll = useCallback((values) => dispatch({ type: "SET_F_ALL", values }), []);
@@ -739,7 +754,7 @@ export default function useSimulator() {
 
   return {
     state, set, updP, updBase, updF, setFAll, setPfRule,
-    updBaseRatio, updCopay,
+    updBaseRatio, resetBaseRatios, updCopay,
     resetF, resetP, resetReg,
     // v6.7 L1·L2 (α 제거)
     updL1, setL1All, resetL1,
