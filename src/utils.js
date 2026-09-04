@@ -89,13 +89,11 @@ export function ratiosFromBase(base, key = "N") {
   return base.map(g => (g?.[key] || 0) / t);
 }
 
-// v7.5.4: 기준 군별 분포비 = NT(전체 환자수) 기준 (사용자 결정).
-//   ratio_i = NT_i / ΣNT. NT가 없거나 0인 군이 있으면 RN(N) 기준으로 fallback.
-//   ※ 엔진의 참여의원 환자 배분(N_g = totalN × N_i/ΣN)은 RN 기준 그대로 — 기준 분포비는
-//     등록 분포비의 디폴트("데이터 비례" 프리셋)와 표시에만 쓰인다.
+// v7.5.4 → v7.5.5: 기준 군별 분포비 = RN(일만시 참여의원 환자수) 기준 (사용자 결정, NT 기준은 v7.5.4 한 번 시도 후 복귀).
+//   ratio_i = N_i / ΣN — 엔진의 참여의원 환자 배분(N_g = totalN × N_i/ΣN)과 동일 비율.
+//   기준 분포비는 등록 분포비의 디폴트("데이터 비례" 프리셋)와 표시에 쓰인다 (수기 override는 엔진 미연결).
 export function refRatiosFromBase(base) {
-  const ntOk = base.length > 0 && base.every(g => typeof g?.NT === "number" && g.NT > 0);
-  return ratiosFromBase(base, ntOk ? "NT" : "N");
+  return ratiosFromBase(base, "N");
 }
 
 // v7.5.1 → v7.5.3: 등록 군별 분포비 디폴트 = ratio_i.

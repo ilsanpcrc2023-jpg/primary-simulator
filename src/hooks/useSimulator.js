@@ -93,11 +93,11 @@ function reducer(state, action) {
     case "SET_BASE": {
       const base = [...state.base];
       base[action.i] = { ...base[action.i], [action.key]: action.value };
-      // v7.5.4: NT(기준 분포비 재료) 편집 시 수기 override는 폐기 → NT 실측 비율로 재산출
-      return action.key === "NT" ? { ...state, base, baseRatios: null } : { ...state, base };
+      // v7.5.5: RN(N · 기준 분포비 재료) 편집 시 수기 override는 폐기 → RN 실측 비율로 재산출
+      return action.key === "N" ? { ...state, base, baseRatios: null } : { ...state, base };
     }
     // v7.5.3: 기준 군별 분포비(ratio_i) 수기 편집 — 자유 입력 override (다른 군 불변, 합 100% 강제 없음).
-    // v7.5.4: 디폴트(override 없을 때) = NT 기준 (refRatiosFromBase).
+    // v7.5.5: 디폴트(override 없을 때) = RN 기준 (refRatiosFromBase).
     case "SET_BASE_RATIO_AT": {
       const cur = state.baseRatios ?? refRatiosFromBase(state.base);
       const baseRatios = [...cur];
@@ -299,8 +299,8 @@ export default function useSimulator() {
   const ffsPct = 100 - hccPct;
 
   // 참여의원 환자 분포 (RN 기준) — N_g = totalN × ratios[i], baseN_g, ffsPerPerson 가중치.
-  // v7.5.4: 기준 분포비(NT 기준 · state.baseRatios override)는 여기에 연결하지 않는다.
-  //   기준 분포비는 등록 분포비 디폴트("데이터 비례")와 표시용. 참여의원 실제 환자 구성은 RN 실측 그대로.
+  // v7.5.4/v7.5.5: 기준 분포비의 수기 override(state.baseRatios)는 여기에 연결하지 않는다.
+  //   기준 분포비(RN 기준)는 등록 분포비 디폴트("데이터 비례")와 표시용. 참여의원 환자 구성은 RN 실측 그대로.
   const ratios = useMemo(() => {
     const t = base.reduce((s, g) => s + g.N, 0);
     return base.map(g => g.N / t);

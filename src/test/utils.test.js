@@ -97,30 +97,30 @@ describe('v7.5.1 ratiosFromBase / regDistFromRatios', () => {
     expect(Math.abs(out2.reduce((s, v) => s + v, 0) - 1000)).toBeLessThan(0.3);
   });
 
-  it('v7.5.4: refRatiosFromBase = NT 기준 (NT_i / ΣNT), NT 없으면 RN(N) fallback', () => {
-    const nt = refRatiosFromBase(INIT_BASE);
-    const sumNT = INIT_BASE.reduce((s, g) => s + g.NT, 0);
-    expect(sumNT).toBe(48874201);
-    nt.forEach((r, i) => expect(r).toBeCloseTo(INIT_BASE[i].NT / sumNT, 12));
-    expect(nt.map(r => (r * 100).toFixed(2))).toEqual(['28.78', '21.10', '25.12', '25.00']);
-    // NT 누락 → N 기준
-    const noNT = INIT_BASE.map(({ N, M1, L }) => ({ N, M1, L }));
-    expect(refRatiosFromBase(noNT)).toEqual(ratiosFromBase(noNT, 'N'));
+  it('v7.5.5: refRatiosFromBase = RN 기준 (N_i / ΣN) — NT는 참고 표시일 뿐 기준 분포비에 쓰이지 않음', () => {
+    const rn = refRatiosFromBase(INIT_BASE);
+    const sumN = INIT_BASE.reduce((s, g) => s + g.N, 0);
+    expect(sumN).toBe(12411152);
+    rn.forEach((r, i) => expect(r).toBeCloseTo(INIT_BASE[i].N / sumN, 12));
+    expect(rn.map(r => (r * 100).toFixed(2))).toEqual(['20.16', '19.77', '29.38', '30.68']);
+    expect(refRatiosFromBase(INIT_BASE)).toEqual(ratiosFromBase(INIT_BASE, 'N'));
+    // NT 기준(v7.5.4)과는 다름
+    expect(ratiosFromBase(INIT_BASE, 'NT').map(r => (r * 100).toFixed(2))).toEqual(['28.78', '21.10', '25.12', '25.00']);
   });
 
-  it('regDistFromRatios: INIT_BASE(v7.5 exc_zero) NT 기준에 적용하면 INIT_REG_DIST와 일치 (등록 분포비 디폴트 = 기준 분포비)', () => {
+  it('regDistFromRatios: INIT_BASE(v7.5 exc_zero) RN 기준에 적용하면 INIT_REG_DIST와 일치 (등록 분포비 디폴트 = 기준 분포비)', () => {
     const ratios = refRatiosFromBase(INIT_BASE);
     expect(regDistFromRatios(ratios, 1000)).toEqual(INIT_REG_DIST);
-    expect(INIT_REG_DIST).toEqual([287.8, 211.0, 251.2, 250.0]);
+    expect(INIT_REG_DIST).toEqual([201.6, 197.7, 293.8, 306.8]);
   });
 
-  it('v7.5.3/v7.5.4: 디폴트 등록 분포비(%)는 기준 분포비(%, NT 기준)와 소수점 2자리까지 동일', () => {
+  it('v7.5.3/v7.5.5: 디폴트 등록 분포비(%)는 기준 분포비(%, RN 기준)와 소수점 2자리까지 동일', () => {
     const ratios = refRatiosFromBase(INIT_BASE);
     INIT_REG_DIST.forEach((rr, i) => {
       expect((rr / 10).toFixed(2)).toBe((ratios[i] * 100).toFixed(2));
     });
-    // exc_zero NT 기준값: 28.78 / 21.10 / 25.12 / 25.00 %
-    expect(INIT_REG_DIST.map(rr => (rr / 10).toFixed(2))).toEqual(['28.78', '21.10', '25.12', '25.00']);
+    // exc_zero RN 기준값: 20.16 / 19.77 / 29.38 / 30.68 % (사용자 제시값과 일치)
+    expect(INIT_REG_DIST.map(rr => (rr / 10).toFixed(2))).toEqual(['20.16', '19.77', '29.38', '30.68']);
   });
 
   it('regDistFromRatios: total 스케일(1,500명)에서도 0.1 단위·근사 합 보존', () => {

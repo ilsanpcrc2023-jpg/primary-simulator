@@ -594,36 +594,36 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
 
   it('초기화 (v7.1.5 / v7.2.0 / v7.5): RESET_REG는 1차년도 시범사업 디폴트(M=100, regDist 합 1,000) 복귀', () => {
     // v7.1.5: 일만시 모드 버튼 → 초기화 버튼으로 교체. resetReg 호출 → RESET_REG 액션.
-    // v7.5.4: regDist 디폴트 = [287.8, 211.0, 251.2, 250.0] (exc_zero NT 기준 ratio_i × 1,000명, 0.1명 단위 · 등록 분포비 = 기준 분포비 2자리).
+    // v7.5.5: regDist 디폴트 = [201.6, 197.7, 293.8, 306.8] (exc_zero RN 기준 ratio_i × 1,000명, 0.1명 단위 · 등록 분포비 = 기준 분포비 2자리).
     const resetM = INIT_DEFAULT_M;             // 100
-    const resetRegDist = INIT_REG_DIST;        // [287.8, 211.0, 251.2, 250.0]
+    const resetRegDist = INIT_REG_DIST;        // [201.6, 197.7, 293.8, 306.8]
     const resetRegSum = resetRegDist.reduce((s, v) => s + v, 0);
     const resetTotalReg = resetM * resetRegSum;
     expect(resetM).toBe(100);
-    expect(resetRegDist).toEqual([287.8, 211.0, 251.2, 250.0]);
-    expect(resetRegSum).toBeCloseTo(1000, 6);            // NT 기준은 군별 독립 0.1명 반올림에서도 합 1,000.0
-    expect(resetTotalReg).toBeCloseTo(100000, 3);        // 1차년도 사업 전체 등록환자
+    expect(resetRegDist).toEqual([201.6, 197.7, 293.8, 306.8]);
+    expect(resetRegSum).toBeCloseTo(999.9, 6);           // 군별 독립 0.1명 반올림 → 999.9
+    expect(resetTotalReg).toBeCloseTo(99990, 3);         // 1차년도 사업 전체 등록환자 (≈ 100,000)
   });
 
-  it('100개 의원 디폴트 (v7.5.4): 424,600명 = 등록 100,000명 + 비등록 324,600명 (regDist 합 1,000.0, NT 기준)', () => {
+  it('100개 의원 디폴트 (v7.5.5): 424,600명 = 등록 99,990명 + 비등록 324,610명 (regDist 합 999.9, RN 기준)', () => {
     const M = INIT_DEFAULT_M;
     const totalN = INIT_DEFAULT_TOTAL_N;
     const perClinic = totalN / M;
     expect(perClinic).toBe(4246);
-    const regDistSum = INIT_REG_DIST.reduce((s, v) => s + v, 0);   // v7.5.4 [287.8,211.0,251.2,250.0] = 1000.0
-    expect(regDistSum).toBeCloseTo(1000, 6);
+    const regDistSum = INIT_REG_DIST.reduce((s, v) => s + v, 0);   // v7.5.5 [201.6,197.7,293.8,306.8] = 999.9
+    expect(regDistSum).toBeCloseTo(999.9, 6);
     const totalReg = M * regDistSum;
     const totalUnreg = totalN - totalReg;
-    expect(totalReg).toBeCloseTo(100000, 3);
-    expect(totalUnreg).toBeCloseTo(324600, 3);
+    expect(totalReg).toBeCloseTo(99990, 3);
+    expect(totalUnreg).toBeCloseTo(324610, 3);
   });
 });
 
 // v7.2.0 → v7.5: 엑셀 약어 체계 정비 + regDist 디폴트 데이터 비례 (exc_zero 갱신)
-describe('v7.5 → v7.5.4 · regDist 디폴트 = 데이터 비례 [287.8, 211.0, 251.2, 250.0] (exc_zero · NT 기준 · 0.1명 단위)', () => {
-  it('INIT_REG_DIST = [287.8, 211.0, 251.2, 250.0] (exc_zero NT 기준 ratio_i × 1,000명, 등록 분포비 = 기준 분포비 2자리)', () => {
-    expect(INIT_REG_DIST).toEqual([287.8, 211.0, 251.2, 250.0]);
-    expect(INIT_REG_DIST.reduce((s, v) => s + v, 0)).toBeCloseTo(1000, 6);
+describe('v7.5 → v7.5.5 · regDist 디폴트 = 데이터 비례 [201.6, 197.7, 293.8, 306.8] (exc_zero · RN 기준 · 0.1명 단위)', () => {
+  it('INIT_REG_DIST = [201.6, 197.7, 293.8, 306.8] (exc_zero RN 기준 ratio_i × 1,000명, 등록 분포비 = 기준 분포비 2자리)', () => {
+    expect(INIT_REG_DIST).toEqual([201.6, 197.7, 293.8, 306.8]);
+    expect(INIT_REG_DIST.reduce((s, v) => s + v, 0)).toBeCloseTo(999.9, 6);
   });
 
   it('이전 v7.2.0 zero 포함 값 [160, 224, 298, 318] 폐기 — 회귀 방지', () => {
@@ -631,18 +631,18 @@ describe('v7.5 → v7.5.4 · regDist 디폴트 = 데이터 비례 [287.8, 211.0,
     expect(INIT_REG_DIST).not.toEqual([100, 600, 200, 100]);
   });
 
-  it('v7.5.4 NT 비례 검증: NT[i] / sum(NT) × 1000 (0.1명 반올림) = INIT_REG_DIST[i] · RN 비례와는 다름', () => {
-    // INIT_BASE의 NT (전체 환자수 48,874,201명) 비례 배분이 INIT_REG_DIST와 정합
-    const NT = INIT_BASE.map(b => b.NT);
-    const totalNT = NT.reduce((s, v) => s + v, 0);
-    const RR = NT.map(n => Math.round((n / totalNT) * 10000) / 10);
-    expect(RR).toEqual(INIT_REG_DIST);
-    // RN(참여의원) 비례 [201.6, 197.7, 293.8, 306.8]과는 의도적으로 다름 (기준 분포비 = NT 기준, 사용자 결정)
+  it('v7.5.5 RN 비례 검증: RN[i] / sum(RN) × 1000 (0.1명 반올림) = INIT_REG_DIST[i] · NT 비례와는 다름', () => {
+    // INIT_BASE의 N (= RN, 일만시 참여의원 환자수 12,411,152명) 비례 배분이 INIT_REG_DIST와 정합
     const N = INIT_BASE.map(b => b.N);
     const totalN = N.reduce((s, v) => s + v, 0);
-    const RR_rn = N.map(n => Math.round((n / totalN) * 10000) / 10);
-    expect(RR_rn).toEqual([201.6, 197.7, 293.8, 306.8]);
-    expect(RR_rn).not.toEqual(INIT_REG_DIST);
+    const RR = N.map(n => Math.round((n / totalN) * 10000) / 10);
+    expect(RR).toEqual(INIT_REG_DIST);
+    // NT(전체 환자수) 비례 [287.8, 211.0, 251.2, 250.0]과는 다름 (v7.5.4에서 시도 후 RN 기준으로 복귀, 사용자 결정)
+    const NT = INIT_BASE.map(b => b.NT);
+    const totalNT = NT.reduce((s, v) => s + v, 0);
+    const RR_nt = NT.map(n => Math.round((n / totalNT) * 10000) / 10);
+    expect(RR_nt).toEqual([287.8, 211.0, 251.2, 250.0]);
+    expect(RR_nt).not.toEqual(INIT_REG_DIST);
   });
 
   it('CLINIC_PRESETS.general 라벨 "데이터 비례" + regDist = INIT_REG_DIST (v7.5.3 exc_zero)', () => {
