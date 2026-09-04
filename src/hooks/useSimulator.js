@@ -471,12 +471,9 @@ export default function useSimulator() {
   // Track 배수(A=0/B=0.5/C=1.0) 선형 보간 (hccPct/100)
   const performance = useMemo(() => {
     let perf_raw_total = 0;
-    let perf_nhi_raw = 0;                                 // v7.6.6: 공단 부담분 = × (1 − 본인부담비_g)
     G.forEach((r, i) => {
       const diff = Math.max(0, (L1[i] ?? 0.7) - L2eff);
-      const perf_g = diff * r.p * r.n_reg;
-      perf_raw_total += perf_g;
-      perf_nhi_raw += perf_g * (1 - (r.copay ?? 0));
+      perf_raw_total += diff * r.p * r.n_reg;
     });
     const perf_total = perf_raw_total;                    // Track C 최대치 = 전체 절감액 100% 환원
     const perfByTrack = {
@@ -486,7 +483,9 @@ export default function useSimulator() {
     };
     const trackMul = Math.max(0, Math.min(1, hccPct / 100));   // hccPct 0→A, 50→B, 100→C
     const perf_blended = perf_total * trackMul;
-    const perf_nhi = perf_nhi_raw * trackMul;             // v7.6.6: 공단 지출에 더하는 성과 (의원 수입은 perf_blended 그대로)
+    // v7.6.7: 성과급은 공단→의원 직접 지급(진료비 청구 아님)이라 환자 본인부담이 없음.
+    //   v7.6.6에서 곱했던 (1 − 본인부담비)를 성과 항목에서만 되돌려 공단 지출 = 의원 수령액(perf_blended)으로 정합.
+    const perf_nhi = perf_blended;
     return {
       L2eff, L1avg,
       perf_raw_total, perf_total, perfByTrack,
@@ -496,7 +495,7 @@ export default function useSimulator() {
 
   // v6.7: KPI 변화율 — L2 연동
   //   의원 수입  = 선지급 inc + 성과급 perf_blended
-  //   공단 지출 = L2 반영 nhi + 성과급 지급 perf_nhi (v7.6.6: × (1 − 본인부담비))
+  //   공단 지출 = L2 반영 nhi + 성과급 지급 perf_nhi (= perf_blended, v7.6.7: 성과에는 본인부담비 없음)
   const incTotal = T.inc + performance.perf_blended;
   const nhiTotal = T.nhi + performance.perf_nhi;
   const incChg = T.inc0 > 0 ? (incTotal - T.inc0) / T.inc0 : 0;
