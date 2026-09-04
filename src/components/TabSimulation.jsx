@@ -546,7 +546,7 @@ export default memo(function TabSimulation({
                     {/* v7.5.11: 분포비 열 표시 전용 (수기 입력 불가, 사용자 결정). 변경은 프리셋 버튼으로만. */}
                     <th className="text-center px-1 text-blue-700" title="환자군별 분포비 (기준 = 등록) · 디폴트 = 일만시 실측 RN_i ÷ ΣRN · 표시 전용 — 변경은 분포비 프리셋 버튼으로">분포비<br /><span className="font-normal text-[9px]">%</span></th>
                     {/* v7.6.2: 본인부담비 열 복원 (맨 오른쪽). v7.6.3: 참여 전 공단 지출 baseline = 총 외래비 × (1 − 본인부담비)에 반영. 참여 후 산식에는 미반영(v7.6.1). */}
-                    <th className="text-center px-1" title="환자 본인부담비 (디폴트 26.1% · 편집 가능) — 공단 지출: 참여 전 = 총 외래비 × (1 − 본인부담비) (v7.6.3), 참여 후 = (PB·타원비·비등록) × (1 − 본인부담비) + PF + 포괄관리성과 (v7.6.5~v7.6.7 · PF·성과는 공단 직접 지급이라 본인부담 없음). 의원 수입(P = PB + PF)에는 미반영">본인부담<br /><span className="font-normal text-[9px]">% · 공단</span></th>
+                    <th className="text-center px-1" title="환자 본인부담비 (디폴트 26.1% · 편집 가능) — 공단 지출: 참여 전 = 총 외래비 × (1 − 본인부담비) (v7.6.3), 참여 후 = (PB·타원비·비등록) × (1 − 본인부담비) + PF + 포괄관리성과 (v7.6.5~v7.6.7 · PF·성과는 공단 직접 지급이라 본인부담 없음). 의원 수입(P = PB + PF)에는 미반영">본인부담<br /><span className="font-normal text-[9px]">%</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -616,7 +616,8 @@ export default memo(function TabSimulation({
                     <td colSpan={8}></td>
                     <td className="text-center px-1">{f(base.reduce((s, g) => s + (typeof g.NT === "number" ? g.NT : 0), 0))}</td>
                     <td className="text-center px-1">{f(base.reduce((s, g) => s + (g.N || 0), 0))}</td>
-                    <td className="text-center px-1 text-blue-600">{(ratios.reduce((s, v) => s + v, 0) * 100).toFixed(1)}%{ratiosOverridden && <span className="block text-[9px] text-amber-600">프리셋</span>}</td>
+                    {/* v7.7.3: 분포비 합계(100%) 표기 삭제 (사용자 결정) — 프리셋 배지만 유지 */}
+                    <td className="text-center px-1 text-blue-600">{ratiosOverridden && <span className="text-[9px] text-amber-600">프리셋</span>}</td>
                     <td></td>
                   </tr>
                 </tfoot>
