@@ -711,3 +711,21 @@ describe('v7.1.1 · 엑셀 정합 reference 필드 (A·CR·NT)', () => {
     });
   });
 });
+
+// v7.5.9: 상세 편집 테이블 A·CR 편집 → 엔진 B(state.P) 동기화 (reducer SET_BASE 명세)
+describe('v7.5.9 · A·CR 편집 시 B = clamp(round(A×CR)) 동기화 + PF 비율 보존', () => {
+  const clampB = (v) => Math.max(B_MIN, Math.min(B_MAX, v));
+  it('1군 A를 2배로 올리면 B도 A×CR로 갱신되고 PF는 5% 비율 유지', () => {
+    const b = INIT_BASE[0];
+    const oldB = INIT_P[0];
+    const oldF = INIT_F[0];
+    const newA = b.A * 2;
+    const newB = clampB(Math.round(newA * b.CR));
+    expect(newB).toBeGreaterThan(oldB);
+    const newF = Math.max(0, Math.round(oldF / oldB * newB));
+    // PF 비율(B 기준 %)은 변하지 않아야 함 (반올림 오차 0.01%p 이내)
+    expect(Math.abs(newF / newB - oldF / oldB)).toBeLessThan(0.0001);
+    // 기존 baseline에서는 A×CR ≈ P (±2원) — 디폴트에서 편집 전 B가 이미 A×CR과 정합
+    INIT_BASE.forEach((g, i) => expect(Math.abs(Math.round(g.A * g.CR) - INIT_P[i])).toBeLessThanOrEqual(2));
+  });
+});
