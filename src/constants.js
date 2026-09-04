@@ -108,6 +108,7 @@ export const CLINIC_COUNT_PRESETS = [
   { value: 100,             label: "100",                    title: "1차년도 시범사업" },
   { value: 1000,            label: "1,000",                  title: "확장" },
   { value: 3000,            label: "3,000",                  title: "확장" },
+  { value: 10000,           label: "10,000",                 title: "확장 (v7.7.4)" },
   { value: INIT_M_CLINICS,  label: `일만시 ${INIT_M_CLINICS.toLocaleString("ko-KR")}`, title: "만성질환관리 시범사업 참여의원 전체 (2,923개)" },
 ];
 
