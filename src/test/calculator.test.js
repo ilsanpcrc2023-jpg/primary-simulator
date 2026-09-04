@@ -105,8 +105,16 @@ describe('calculation engine', () => {
 });
 
 describe('v6.6 / v7.2.0 upload schema', () => {
-  it('COL_ALIASES includes 7 fields: N, M1, L, HCC, CR, RR, RO (v7.2.0)', () => {
-    expect(Object.keys(COL_ALIASES).sort()).toEqual(['CR', 'HCC', 'L', 'M1', 'N', 'RO', 'RR']);
+  it('COL_ALIASES includes 12 fields: N, M1, L, HCC, CR, RR, RO (v7.2.0) + NT, C1, F, PF, COPAY (v7.7.0)', () => {
+    expect(Object.keys(COL_ALIASES).sort()).toEqual(['C1', 'COPAY', 'CR', 'F', 'HCC', 'L', 'M1', 'N', 'NT', 'PF', 'RO', 'RR']);
+    // v7.7.0: 내보내기 헤더가 그대로 인식되어야 함 (라운드트립)
+    expect(COL_ALIASES.HCC).toContain('A');
+    expect(COL_ALIASES.CR).toContain('CR');
+    expect(COL_ALIASES.NT).toContain('NT');
+    expect(COL_ALIASES.C1).toContain('C1');
+    expect(COL_ALIASES.F).toContain('F');
+    expect(COL_ALIASES.PF).toContain('PF');
+    expect(COL_ALIASES.COPAY).toContain('본인부담비');
   });
 
   it('v7.2.0: COL_ALIASES.N includes RN (이전 NC 명칭 변경)', () => {
@@ -822,5 +830,24 @@ describe('v7.6.8 · 군별 L2_g = L1_g − Δ (Δ = L1avg − L2)', () => {
       const L2_g = Math.max(0, Math.min(0.999, INIT_L1[i] - dL2));
       expect(INIT_L1[i] - L2_g).toBeCloseTo(0.05, 10);
     });
+  });
+});
+
+describe('v7.7.0 · 엑셀 내보내기 헤더 ↔ 업로드 alias 라운드트립', () => {
+  const EXPORT_HEADERS = ["환자군", "NT", "RN", "A", "CR", "B", "C1", "PB", "F", "PF", "P", "분포비", "본인부담비", "RR", "M1", "L"];
+  const REFERENCE_ONLY = ["환자군", "B", "PB", "P", "분포비"];   // 산출·참고 열 — 업로드 시 무시
+  it('수기 입력 열(NT·RN·A·CR·C1·F·PF·본인부담비·RR·M1·L)은 모두 COL_ALIASES에 정확 일치 alias가 있다', () => {
+    const all = Object.values(COL_ALIASES).flat();
+    EXPORT_HEADERS.filter(h => !REFERENCE_ONLY.includes(h)).forEach(h => expect(all).toContain(h));
+  });
+  it('단문자 헤더 F·NT·C1·PF는 정확 일치 전용 키에 등록 (부분일치로 PF↔F, N↔NT 혼동 방지)', async () => {
+    const { COL_ALIASES_EXACT_ONLY } = await import('../constants');
+    expect(COL_ALIASES_EXACT_ONLY).toEqual(expect.arrayContaining(['NT', 'C1', 'F', 'PF', 'COPAY']));
+  });
+  it('F(%) → F_g = round(B × F/100), 본인부담비 % → 0~1, C1 % → L = 1 − C1 (handleFile 명세)', () => {
+    const B = 300000, Fpct = 7, copayPct = 20, C1pct = 30;
+    expect(Math.round(B * Fpct / 100)).toBe(21000);
+    expect(copayPct / 100).toBeCloseTo(0.2, 10);
+    expect(1 - C1pct / 100).toBeCloseTo(0.7, 10);
   });
 });
