@@ -688,6 +688,7 @@ export default function useSimulator() {
       // v7.7.0: 상세 편집 테이블 수기 입력 열 라운드트립 — NT · RN(N) · A · CR · C1(→ L = 1 − C1) · F(%) 또는 PF(원) · 본인부담비(%).
       //   내보내기(handleExport)가 같은 헤더로 쓰므로 내보낸 파일을 그대로 올리면 테이블이 동일하게 복원된다.
       const prevBase = state.base;
+      // v7.7.1: 내보내기 열 = A · CR · C1 · F · NT · RN · 본인부담비 (수기 입력 + 계산 사용 열만). 아래 N/M1/L/RR/RO 인식은 구 템플릿·NHIS 엑셀 호환용.
       const rows = data.slice(0, 4).map((row, i) => {
         let N = findCol(row, COL_ALIASES.N, 0);
         let M1 = findCol(row, COL_ALIASES.M1, 0);
@@ -713,7 +714,7 @@ export default function useSimulator() {
         if (!M1 && RO > 0 && N > 0) M1 = Math.round(RO / N);
         return {
           N: Math.round(N) || INIT_BASE[i].N,
-          M1: M1 || INIT_BASE[i].M1,
+          M1: M1 || prevBase?.[i]?.M1 || INIT_BASE[i].M1,   // v7.7.1: 엑셀에 M1 없으면 현재 값 보존 (계산 미사용 데이터 필드)
           L: L || INIT_BASE[i].L,
           HCC,
           CR,
@@ -804,55 +805,43 @@ export default function useSimulator() {
   const handleExport = useCallback(async () => {
     try {
       const SH = ["1군", "2군", "3군", "4군"];
-      // v7.7.0: 상세 편집 테이블 전체 열 내보내기 (수기 입력 열 + 산출 열 참고).
-      //   수기 입력(업로드 시 반영): NT · RN · A · CR · C1(%) · F(%) · 본인부담비(%)  (+ 호환용 M1 · L · RR)
-      //   산출(참고, 업로드 시 무시): B · PB · PF · P · 분포비(%)
-      //   헤더는 COL_ALIASES와 동일 → 내보낸 파일을 그대로 업로드하면 테이블이 동일하게 복원.
-      const headers = ["환자군", "NT", "RN", "A", "CR", "B", "C1", "PB", "F", "PF", "P", "분포비", "본인부담비", "RR", "M1", "L"];
+      // v7.7.1 (사용자 결정): 수기 입력 가능 + 계산에 쓰이는 열만 — 열 순서 A · CR · C1 · F · NT · RN · 본인부담비.
+      //   산출 열(B·PB·PF·P·분포비)과 미사용/파생 필드(M1·L·RR)는 내보내지 않음.
+      //   업로드 시 L = 1 − C1, PF = round(A×CR × F/100), 분포비·regDist = RN 비율로 재산출, M1은 현재 값 보존.
+      const headers = ["환자군", "A", "CR", "C1", "F", "NT", "RN", "본인부담비"];
       const ws = {};
       const put = (r, c, cell) => { ws[XLSX.utils.encode_cell({ r, c })] = cell; };
       headers.forEach((h, c) => put(0, c, { t: "s", v: h }));
       const num = v => ({ t: "n", v });
+      const blank = { t: "s", v: "" };
 
       base.forEach((b, idx) => {
         const r = idx + 1;
         const A = typeof b.A === "number" ? b.A : null;
         const CR = typeof b.CR === "number" ? b.CR : null;
         const Bv = (A > 0 && CR > 0) ? Math.round(A * CR) : P[idx];
-        const L1_i = L1[idx] ?? b.L;
-        const C1 = 1 - L1_i;
-        const PB = Math.round(Bv * C1);
+        const C1 = 1 - (L1[idx] ?? b.L);
         const Fi = F_g[idx] ?? 0;
         const Fpct = Bv > 0 ? Fi / Bv * 100 : 0;
         const cp = copayRates?.[idx] ?? INIT_COPAY_RATES[idx];
         put(r, 0, { t: "s", v: SH[idx] });
-        put(r, 1, typeof b.NT === "number" ? num(b.NT) : { t: "s", v: "" });
-        put(r, 2, num(b.N));
-        put(r, 3, A !== null ? num(A) : { t: "s", v: "" });
-        put(r, 4, CR !== null ? num(Number(CR.toFixed(6))) : { t: "s", v: "" });
-        put(r, 5, num(Bv));
-        put(r, 6, num(Number((C1 * 100).toFixed(4))));
-        put(r, 7, num(PB));
-        put(r, 8, num(Number(Fpct.toFixed(4))));
-        put(r, 9, num(Fi));
-        put(r, 10, num(PB + Fi));
-        put(r, 11, num(Number(((ratios[idx] ?? 0) * 100).toFixed(4))));
-        put(r, 12, num(Number((cp * 100).toFixed(4))));
-        put(r, 13, num(regDist[idx] ?? 0));
-        put(r, 14, num(b.M1));
-        put(r, 15, num(Number(b.L.toFixed(6))));
+        put(r, 1, A !== null ? num(A) : blank);
+        put(r, 2, CR !== null ? num(Number(CR.toFixed(6))) : blank);
+        put(r, 3, num(Number((C1 * 100).toFixed(4))));
+        put(r, 4, num(Number(Fpct.toFixed(4))));
+        put(r, 5, typeof b.NT === "number" ? num(b.NT) : blank);
+        put(r, 6, num(b.N));
+        put(r, 7, num(Number((cp * 100).toFixed(4))));
       });
 
-      // 합계 행 (r=5): NT·RN·RR 합계, 분포비 합계
+      // 합계 행 (r=5): NT·RN 합계
       const SR = 5;
       put(SR, 0, { t: "s", v: "합계" });
-      put(SR, 1, { t: "n", f: "SUM(B2:B5)", v: base.reduce((s, b) => s + (typeof b.NT === "number" ? b.NT : 0), 0) });
-      put(SR, 2, { t: "n", f: "SUM(C2:C5)", v: base.reduce((s, b) => s + b.N, 0) });
-      put(SR, 11, { t: "n", f: "SUM(L2:L5)", v: Number((ratios.reduce((s, v) => s + v, 0) * 100).toFixed(4)) });
-      put(SR, 13, { t: "n", f: "SUM(N2:N5)", v: regDist.reduce((s, v) => s + v, 0) });
+      put(SR, 5, { t: "n", f: "SUM(F2:F5)", v: base.reduce((s, b) => s + (typeof b.NT === "number" ? b.NT : 0), 0) });
+      put(SR, 6, { t: "n", f: "SUM(G2:G5)", v: base.reduce((s, b) => s + b.N, 0) });
 
       ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: SR, c: headers.length - 1 } });
-      ws["!cols"] = [{ wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 11 }, { wch: 8 }, { wch: 11 }, { wch: 8 }, { wch: 10 }, { wch: 7 }, { wch: 9 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 9 }];
+      ws["!cols"] = [{ wch: 8 }, { wch: 11 }, { wch: 9 }, { wch: 9 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 11 }];
 
       const wb_new = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb_new, ws, "시뮬레이터_업로드");
@@ -860,7 +849,7 @@ export default function useSimulator() {
     } catch (err) {
       alert("내보내기 실패: " + err.message);
     }
-  }, [base, P, L1, F_g, copayRates, ratios, regDist]);
+  }, [base, P, L1, F_g, copayRates]);
 
   // v6.6: 관리자 "공식 baseline으로 등록" — /api/commit-baseline로 POST.
   // 서버리스 함수가 GitHub API로 src/data/presets/official_baseline.json 갱신 → Vercel 재배포.

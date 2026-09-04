@@ -833,12 +833,15 @@ describe('v7.6.8 · 군별 L2_g = L1_g − Δ (Δ = L1avg − L2)', () => {
   });
 });
 
-describe('v7.7.0 · 엑셀 내보내기 헤더 ↔ 업로드 alias 라운드트립', () => {
-  const EXPORT_HEADERS = ["환자군", "NT", "RN", "A", "CR", "B", "C1", "PB", "F", "PF", "P", "분포비", "본인부담비", "RR", "M1", "L"];
-  const REFERENCE_ONLY = ["환자군", "B", "PB", "P", "분포비"];   // 산출·참고 열 — 업로드 시 무시
-  it('수기 입력 열(NT·RN·A·CR·C1·F·PF·본인부담비·RR·M1·L)은 모두 COL_ALIASES에 정확 일치 alias가 있다', () => {
+describe('v7.7.0/v7.7.1 · 엑셀 내보내기 헤더 ↔ 업로드 alias 라운드트립', () => {
+  // v7.7.1 (사용자 결정): 수기 입력 + 계산 사용 열만, 순서 A · CR · C1 · F · NT · RN · 본인부담비
+  const EXPORT_HEADERS = ["환자군", "A", "CR", "C1", "F", "NT", "RN", "본인부담비"];
+  it('내보내기 열 7개(A·CR·C1·F·NT·RN·본인부담비)는 모두 COL_ALIASES에 정확 일치 alias가 있다', () => {
     const all = Object.values(COL_ALIASES).flat();
-    EXPORT_HEADERS.filter(h => !REFERENCE_ONLY.includes(h)).forEach(h => expect(all).toContain(h));
+    EXPORT_HEADERS.filter(h => h !== "환자군").forEach(h => expect(all).toContain(h));
+  });
+  it('산출 열(B·PB·PF·P·분포비)과 파생/미사용 필드(L·M1·RR)는 내보내기 헤더에 없다', () => {
+    ["B", "PB", "PF", "P", "분포비", "L", "M1", "RR"].forEach(h => expect(EXPORT_HEADERS).not.toContain(h));
   });
   it('단문자 헤더 F·NT·C1·PF는 정확 일치 전용 키에 등록 (부분일치로 PF↔F, N↔NT 혼동 방지)', async () => {
     const { COL_ALIASES_EXACT_ONLY } = await import('../constants');
