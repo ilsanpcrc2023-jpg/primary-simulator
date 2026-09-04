@@ -350,7 +350,7 @@ export default function useSimulator() {
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
     ssCostBase, ssProjectCost,
     F_g, M_clinics, regDist, baseN_per_clinic,
-    baseRatios,
+    baseRatios, copayRates,
   } = state;
 
   const ffsPct = 100 - hccPct;
@@ -424,7 +424,10 @@ export default function useSimulator() {
       const inc = ab_reg * n_reg_g + PB_g * n_unreg_g;    // 참여 후 선지급 수입
 
       // 공단 의원급 외래 지출 — 등록환자는 L2 기반 타원비, 비등록은 기존 L 유지
-      const nhi0 = C1 * N;                                // baseline
+      // v7.6.3 (사용자 결정): 참여 전 공단 지출 = 총 외래비 × (1 − 본인부담비). 참여 전(FFS)에는 본인부담이 있으므로
+      //   공단 부담분만 baseline으로 잡는다. 참여 후(nhi)는 공단지급 P 단일화(본인부담 항 없음 · v7.6.1)라 변경 없음.
+      const copay_i = Math.max(0, Math.min(1, copayRates?.[i] ?? INIT_COPAY_RATES[i]));
+      const nhi0 = C1 * N * (1 - copay_i);                // baseline (공단 부담분)
       const nhi = (ab_reg + D1_L2) * n_reg_g + C1 * n_unreg_g;
 
       // Track (1인당 등록환자 실지불액 · 선지급만, 성과급은 T 레벨)
@@ -442,7 +445,7 @@ export default function useSimulator() {
         tA, tB, tC, tS,
       };
     });
-  }, [base, P, L1, L2eff, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g]);
+  }, [base, P, L1, L2eff, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g, copayRates]);
 
   const T = useMemo(() => {
     const s = { inc0: 0, inc: 0, nhi0: 0, nhi: 0, tA: 0, tB: 0, tC: 0, tS: 0 };

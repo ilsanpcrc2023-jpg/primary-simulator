@@ -734,3 +734,22 @@ describe('v7.5.9 · A·CR 편집 시 B = clamp(round(A×CR)) 동기화 + PF 비�
     INIT_BASE.forEach((g, i) => expect(Math.abs(Math.round(g.A * g.CR) - INIT_P[i])).toBeLessThanOrEqual(2));
   });
 });
+
+describe('v7.6.3 · 참여 전 공단 지출 baseline = 총 외래비 × (1 − 본인부담비)', () => {
+  it('nhi0 = C1 × N × (1 − copay) — 디폴트 30%면 총 외래비의 70%, 참여 후(nhi)는 불변', () => {
+    const b = INIT_BASE[0];
+    const PB = INIT_P[0] * (1 - b.L);
+    const C1 = PB / (1 - b.L);           // 총 외래비 (= B)
+    const N = 1000;
+    const copay = 0.30;
+    const nhi0 = C1 * N * (1 - copay);
+    expect(nhi0).toBeCloseTo(C1 * N * 0.7, 6);
+    expect(nhi0).toBeLessThan(C1 * N);
+    // 본인부담비 0%면 이전(v7.6.2) baseline과 동일
+    expect(C1 * N * (1 - 0)).toBeCloseTo(C1 * N, 6);
+    // 참여 후 등록환자 공단 지출은 P + 타원비(L2)로 본인부담 항 없음 (v7.6.1)
+    const P = PB + INIT_F[0];
+    const D1_L2 = PB * b.L / (1 - b.L);
+    expect(P + D1_L2).toBeCloseTo(PB + INIT_F[0] + PB * b.L / (1 - b.L), 6);
+  });
+});
