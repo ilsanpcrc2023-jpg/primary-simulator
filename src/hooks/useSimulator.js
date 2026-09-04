@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX, INIT_COPAY_RATES } from "../constants";
 import { roundRegDist, refRatiosFromBase, regDistFromRatios } from "../utils";
 
 // v7.5.8: 등록 기준 총량 (분포비를 곱하기 전 base) = Σ regDist ÷ Σ 현재 분포비. 디폴트 1,000명.
@@ -58,6 +58,8 @@ const initialState = {
   // v7.5.3: 기준 군별 분포비(ratio_i) 수기 override. null이면 base.N에서 산출 (N_i / ΣN).
   //   자유 입력 (합 100% 강제 없음). LOAD_DATA 시 null로 복귀 (새 데이터 실측 비율).
   baseRatios: null,
+  // v7.6.2: 환자군별 본인부담비 (참고 항목 · 상세 편집 테이블 표시/편집만, 산식 미반영). 디폴트 30%.
+  copayRates: [...INIT_COPAY_RATES],
   // v7.1.1: 초기 디폴트 = 100개 의원 (1차년도 시범사업).
   M_clinics: INIT_DEFAULT_M,
   // 의원당 환자군별 등록환자수 (부록 추정치 100/600/200/100)
@@ -146,6 +148,12 @@ function reducer(state, action) {
       return { ...state, baseRatios, regDist: regDistFromRatios(baseRatios, regBaseOf(state)) };
     }
     // v7.5.8: 실측 복귀 — 기준 분포비 override 폐기 + 등록 분포비도 실측 비율로 재산출 ("데이터 비례").
+    // v7.6.2: 본인부담비 참고값 편집 (0~1 clamp) — 산식에는 쓰이지 않음.
+    case "SET_COPAY_AT": {
+      const copayRates = [...(state.copayRates ?? INIT_COPAY_RATES)];
+      copayRates[action.i] = Math.max(0, Math.min(1, action.value));
+      return { ...state, copayRates };
+    }
     case "RESET_BASE_RATIOS":
       return { ...state, baseRatios: null, regDist: regDistFromRatios(refRatiosFromBase(state.base), regBaseOf(state)) };
     case "SET_F_AT": {
@@ -592,6 +600,7 @@ export default function useSimulator() {
   const updBaseRatio = useCallback((i, ratio) => dispatch({ type: "SET_BASE_RATIO_AT", i, ratio }), []);
   const resetBaseRatios = useCallback(() => dispatch({ type: "RESET_BASE_RATIOS" }), []);
   const setDistAll = useCallback((ratios) => dispatch({ type: "SET_DIST_ALL", ratios }), []);
+  const updCopay = useCallback((i, value) => dispatch({ type: "SET_COPAY_AT", i, value }), []);   // v7.6.2 참고값
   const updF = useCallback((i, value) => dispatch({ type: "SET_F_AT", i, value }), []);
   const setFAll = useCallback((values) => dispatch({ type: "SET_F_ALL", values }), []);
   const setPfRule = useCallback((value) => dispatch({ type: "SET_PF_RULE", value }), []);
@@ -808,7 +817,7 @@ export default function useSimulator() {
 
   return {
     state, set, updP, updBase, updF, setFAll, setPfRule,
-    updBaseRatio, resetBaseRatios, setDistAll,
+    updBaseRatio, resetBaseRatios, setDistAll, updCopay,
     resetF, resetP, resetReg,
     // v6.7 L1·L2 (α 제거)
     updL1, setL1All, resetL1,

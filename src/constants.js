@@ -68,8 +68,11 @@ export const INIT_REG_DIST = _sumN > 0
   ? INIT_BASE.map(g => Math.round((g.N / _sumN) * 1000 * 10) / 10)
   : [201.6, 197.7, 293.8, 306.8];
 
-// v7.6.1: 본인부담 항(COPAY_RATE·copayRates) 완전 제거 (사용자 결정 — 참여 후 수입·공단 지출에 잘못 더해지던 값).
+// v7.6.1: 본인부담 항은 산식에서 완전 제거 (사용자 결정 — 참여 후 수입·공단 지출에 잘못 더해지던 값).
 //   등록환자 1인당 의원수입 = P = PB + PF. 본인부담은 시뮬레이터 산식에 없음.
+// v7.6.2: 상세 편집 테이블 본인부담비 열은 참고 항목으로 복원 (편집·보존만, 계산 미반영). 디폴트 30%.
+export const COPAY_RATE = 0.30;
+export const INIT_COPAY_RATES = [COPAY_RATE, COPAY_RATE, COPAY_RATE, COPAY_RATE];
 
 // v6.9.4: 데이터 기반 디폴트로 전환.
 //   INIT_TOTAL_N = sum(INIT_BASE.N) — 파일럿(2023)이면 69,604명
