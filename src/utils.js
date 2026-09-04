@@ -83,10 +83,19 @@ export function calcPFfromPct(pfPct, rule, B, n_reg_g) {
 
 // v7.5.1: 기준 군별 분포비 ratio_i = N_i / ΣN (base 실측 환자수 비율).
 //   useSimulator.js의 ratios 메모와 동일 산식 — 상세 편집 테이블 "기준 군별 분포비(%)" 표시용.
-export function ratiosFromBase(base) {
-  const t = base.reduce((s, g) => s + (g?.N || 0), 0);
+export function ratiosFromBase(base, key = "N") {
+  const t = base.reduce((s, g) => s + (g?.[key] || 0), 0);
   if (t <= 0) return base.map(() => 1 / Math.max(1, base.length));
-  return base.map(g => (g?.N || 0) / t);
+  return base.map(g => (g?.[key] || 0) / t);
+}
+
+// v7.5.4: 기준 군별 분포비 = NT(전체 환자수) 기준 (사용자 결정).
+//   ratio_i = NT_i / ΣNT. NT가 없거나 0인 군이 있으면 RN(N) 기준으로 fallback.
+//   ※ 엔진의 참여의원 환자 배분(N_g = totalN × N_i/ΣN)은 RN 기준 그대로 — 기준 분포비는
+//     등록 분포비의 디폴트("데이터 비례" 프리셋)와 표시에만 쓰인다.
+export function refRatiosFromBase(base) {
+  const ntOk = base.length > 0 && base.every(g => typeof g?.NT === "number" && g.NT > 0);
+  return ratiosFromBase(base, ntOk ? "NT" : "N");
 }
 
 // v7.5.1 → v7.5.3: 등록 군별 분포비 디폴트 = ratio_i.

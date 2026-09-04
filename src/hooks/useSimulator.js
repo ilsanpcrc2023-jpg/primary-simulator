@@ -1,7 +1,7 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
 import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX, COPAY_RATE, INIT_COPAY_RATES } from "../constants";
-import { roundRegDist } from "../utils";
+import { roundRegDist, refRatiosFromBase } from "../utils";
 
 const initialState = {
   base: INIT_BASE,
@@ -93,12 +93,13 @@ function reducer(state, action) {
     case "SET_BASE": {
       const base = [...state.base];
       base[action.i] = { ...base[action.i], [action.key]: action.value };
-      return { ...state, base };
+      // v7.5.4: NT(기준 분포비 재료) 편집 시 수기 override는 폐기 → NT 실측 비율로 재산출
+      return action.key === "NT" ? { ...state, base, baseRatios: null } : { ...state, base };
     }
     // v7.5.3: 기준 군별 분포비(ratio_i) 수기 편집 — 자유 입력 override (다른 군 불변, 합 100% 강제 없음).
+    // v7.5.4: 디폴트(override 없을 때) = NT 기준 (refRatiosFromBase).
     case "SET_BASE_RATIO_AT": {
-      const t = state.base.reduce((s, g) => s + (g?.N || 0), 0);
-      const cur = state.baseRatios ?? state.base.map(g => (t > 0 ? (g?.N || 0) / t : 0.25));
+      const cur = state.baseRatios ?? refRatiosFromBase(state.base);
       const baseRatios = [...cur];
       baseRatios[action.i] = Math.max(0, Math.min(1, action.ratio));
       return { ...state, baseRatios };
@@ -297,12 +298,13 @@ export default function useSimulator() {
 
   const ffsPct = 100 - hccPct;
 
-  // v7.5.3: 기준 군별 분포비 — 수기 override(baseRatios)가 있으면 우선, 없으면 N_i / ΣN 실측.
+  // 참여의원 환자 분포 (RN 기준) — N_g = totalN × ratios[i], baseN_g, ffsPerPerson 가중치.
+  // v7.5.4: 기준 분포비(NT 기준 · state.baseRatios override)는 여기에 연결하지 않는다.
+  //   기준 분포비는 등록 분포비 디폴트("데이터 비례")와 표시용. 참여의원 실제 환자 구성은 RN 실측 그대로.
   const ratios = useMemo(() => {
-    if (Array.isArray(baseRatios) && baseRatios.length === base.length) return baseRatios;
     const t = base.reduce((s, g) => s + g.N, 0);
     return base.map(g => g.N / t);
-  }, [base, baseRatios]);
+  }, [base]);
 
   // v2.7: 등록환자 분포 (의원당 환자군별 절대 등록수 regDist에서 직접 산출)
   const regRatios = useMemo(() => {

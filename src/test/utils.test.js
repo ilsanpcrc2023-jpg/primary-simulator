@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { f, fE, fSv, pct, diffE, calcPB, PBtoB, ratiosFromBase, regDistFromRatios, roundRegDist } from '../utils';
+import { f, fE, fSv, pct, diffE, calcPB, PBtoB, ratiosFromBase, refRatiosFromBase, regDistFromRatios, roundRegDist } from '../utils';
 import { INIT_BASE, INIT_REG_DIST, COPAY_RATE, INIT_COPAY_RATES } from '../constants';
 
 describe('format utilities', () => {
@@ -97,22 +97,34 @@ describe('v7.5.1 ratiosFromBase / regDistFromRatios', () => {
     expect(Math.abs(out2.reduce((s, v) => s + v, 0) - 1000)).toBeLessThan(0.3);
   });
 
-  it('regDistFromRatios: INIT_BASE(v7.5 exc_zero)에 적용하면 INIT_REG_DIST와 일치 (등록 분포비 디폴트 = ratio_i)', () => {
-    const ratios = ratiosFromBase(INIT_BASE);
-    expect(regDistFromRatios(ratios, 1000)).toEqual(INIT_REG_DIST);
+  it('v7.5.4: refRatiosFromBase = NT 기준 (NT_i / ΣNT), NT 없으면 RN(N) fallback', () => {
+    const nt = refRatiosFromBase(INIT_BASE);
+    const sumNT = INIT_BASE.reduce((s, g) => s + g.NT, 0);
+    expect(sumNT).toBe(48874201);
+    nt.forEach((r, i) => expect(r).toBeCloseTo(INIT_BASE[i].NT / sumNT, 12));
+    expect(nt.map(r => (r * 100).toFixed(2))).toEqual(['28.78', '21.10', '25.12', '25.00']);
+    // NT 누락 → N 기준
+    const noNT = INIT_BASE.map(({ N, M1, L }) => ({ N, M1, L }));
+    expect(refRatiosFromBase(noNT)).toEqual(ratiosFromBase(noNT, 'N'));
   });
 
-  it('v7.5.3: 디폴트 등록 분포비(%)는 기준 분포비(%)와 소수점 2자리까지 동일', () => {
-    const ratios = ratiosFromBase(INIT_BASE);
+  it('regDistFromRatios: INIT_BASE(v7.5 exc_zero) NT 기준에 적용하면 INIT_REG_DIST와 일치 (등록 분포비 디폴트 = 기준 분포비)', () => {
+    const ratios = refRatiosFromBase(INIT_BASE);
+    expect(regDistFromRatios(ratios, 1000)).toEqual(INIT_REG_DIST);
+    expect(INIT_REG_DIST).toEqual([287.8, 211.0, 251.2, 250.0]);
+  });
+
+  it('v7.5.3/v7.5.4: 디폴트 등록 분포비(%)는 기준 분포비(%, NT 기준)와 소수점 2자리까지 동일', () => {
+    const ratios = refRatiosFromBase(INIT_BASE);
     INIT_REG_DIST.forEach((rr, i) => {
       expect((rr / 10).toFixed(2)).toBe((ratios[i] * 100).toFixed(2));
     });
-    // exc_zero 기준값: 20.16 / 19.77 / 29.38 / 30.68 %
-    expect(INIT_REG_DIST.map(rr => (rr / 10).toFixed(2))).toEqual(['20.16', '19.77', '29.38', '30.68']);
+    // exc_zero NT 기준값: 28.78 / 21.10 / 25.12 / 25.00 %
+    expect(INIT_REG_DIST.map(rr => (rr / 10).toFixed(2))).toEqual(['28.78', '21.10', '25.12', '25.00']);
   });
 
   it('regDistFromRatios: total 스케일(1,500명)에서도 0.1 단위·근사 합 보존', () => {
-    const out = regDistFromRatios(ratiosFromBase(INIT_BASE), 1500);
+    const out = regDistFromRatios(refRatiosFromBase(INIT_BASE), 1500);
     expect(Math.abs(out.reduce((s, v) => s + v, 0) - 1500)).toBeLessThan(0.3);
     out.forEach(v => expect(Math.round(v * 10) / 10).toBe(v));
   });

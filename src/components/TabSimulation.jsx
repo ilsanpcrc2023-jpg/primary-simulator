@@ -5,7 +5,7 @@ import WinWinWin from "./WinWinWin";
 import { FCard, TCard, ClinicSummaryStrip, ClinicCountControls } from "./RegistrationPanel";
 import { SH, CL, COPAY_RATE, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
-import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB, ratiosFromBase, regDistFromRatios } from "../utils";
+import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB, refRatiosFromBase, regDistFromRatios } from "../utils";
 
 const TRACK_LABELS = { 0: "Track A 유지", 50: "Track B 혼합", 100: "Track C 환자군" };
 
@@ -68,7 +68,8 @@ export default memo(function TabSimulation({
   //   regDist_i / 1000               → "등록 군별 분포비(%)" (= RR/1000, 자유 입력, 합 100% 강제 없음)
   //   등록 분포비 디폴트("데이터 비례" 프리셋) = ratio_i × 1000을 0.1명 단위로 반올림 (= INIT_REG_DIST)
   //   → 등록 분포비(%)가 기준 분포비(%)와 소수 2자리까지 동일 (v7.5.3 사용자 결정).
-  const ratiosMeasured = ratiosFromBase(base);
+  // v7.5.4: 기준 분포비 = NT(전체 환자수) 기준 (NT 없으면 RN fallback). 엔진 환자 배분(N_g)은 RN 기준 그대로.
+  const ratiosMeasured = refRatiosFromBase(base);
   const ratiosOverridden = Array.isArray(state.baseRatios) && state.baseRatios.length === base.length;
   const ratios = ratiosOverridden ? state.baseRatios : ratiosMeasured;
   const regSum = state.regDist.reduce((s, v) => s + v, 0);
@@ -444,7 +445,7 @@ export default memo(function TabSimulation({
             </div>
             <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
               onClick={() => {
-                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,246명\n· 의원당 등록환자수: 약 1,000명 (데이터 비례 = 기준 분포비 20.16/19.77/29.38/30.68% → RR 201.6/197.7/293.8/306.8명, 합 999.9)\n· 사업 전체 등록: 약 100,000명 (99,990명)\n\n환자군별 RN · M1 · L · RR(등록 분포)만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
+                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,246명\n· 의원당 등록환자수: 1,000명 (데이터 비례 = 기준 분포비 [NT 기준] 28.78/21.10/25.12/25.00% → RR 287.8/211.0/251.2/250.0명)\n· 사업 전체 등록: 100,000명\n\n환자군별 RN · M1 · L · RR(등록 분포)만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
                 if (confirm(msg)) resetReg?.();
               }}>
               <div className="text-amber-500 text-xl mb-0.5">↩</div>
@@ -493,7 +494,7 @@ export default memo(function TabSimulation({
             <div className="flex items-center justify-between gap-2 py-1.5 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-600">📋 환자군별 상세 편집 테이블</span>
-                <span className="text-[10px] font-normal text-gray-400">A → B = A×CR → PB = B×C1 → PF = B×F → P = PB+PF · 입력: A · CR · C1 · F · 등록 분포비</span>
+                <span className="text-[10px] font-normal text-gray-400">A → B = A×CR → PB = B×C1 → PF = B×F → P = PB+PF · 입력: A · CR · C1 · F · 본인부담비 · NT · RN · 기준/등록 분포비</span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-[10px] text-gray-500">등록 분포 프리셋:</span>
@@ -541,7 +542,9 @@ export default memo(function TabSimulation({
                     <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF = B × F (산출)">PF<br /><span className="font-normal text-[9px]">=B×F · 기능보정</span></th>
                     <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF (산출)">P<br /><span className="font-normal text-[9px]">=PB+PF · 일차의료수가</span></th>
                     <th className="text-center px-1" title="환자 본인부담비 (현행 외래비 M1 대비, 디폴트 30% · 편집 가능)">본인부담비<br /><span className="font-normal text-[9px]">% · 디폴트 30</span></th>
-                    <th className="text-center px-1" title="기준 군별 분포비 ratio_i = N_i ÷ ΣN (자유 입력 · 다른 군 불변)">기준 분포비<br /><span className="font-normal text-[9px]">% · ratio_i</span></th>
+                    <th className="text-center px-1" title="환자군별 전체 환자수 NT (건보 전수 · 기준 분포비 재료 · 편집 가능)">NT<br /><span className="font-normal text-[9px]">전체 환자수</span></th>
+                    <th className="text-center px-1" title="참여의원(일만시) 환자수 RN (엔진 환자 배분 재료 · 편집 가능)">RN<br /><span className="font-normal text-[9px]">일만시 환자수</span></th>
+                    <th className="text-center px-1" title="기준 군별 분포비 ratio_i = NT_i ÷ ΣNT (자유 입력 · 다른 군 불변)">기준 분포비<br /><span className="font-normal text-[9px]">% · NT 기준</span></th>
                     <th className="text-center px-1 text-blue-700" title="등록 군별 분포비 = RR ÷ 1,000 (자유 입력 · 디폴트 = 기준 분포비)">등록 분포비<br /><span className="font-normal text-[9px]">% · RR/1000</span></th>
                   </tr>
                 </thead>
@@ -597,6 +600,15 @@ export default memo(function TabSimulation({
                             onCommit={v => updCopay(i, v / 100)} />
                         </td>
                         <td className="text-center px-1">
+                          <DraftInput value={typeof base[i].NT === "number" ? base[i].NT : undefined} decimals={0} grouping placeholder="—"
+                            className="w-24 text-gray-700" min={0}
+                            onCommit={v => updBase(i, "NT", Math.round(v))} />
+                        </td>
+                        <td className="text-center px-1">
+                          <DraftInput value={base[i].N} decimals={0} grouping className="w-24 text-gray-700" min={1}
+                            onCommit={v => updBase(i, "N", Math.round(v))} />
+                        </td>
+                        <td className="text-center px-1">
                           <DraftInput value={ratios[i] * 100} decimals={2} className="w-16 text-gray-700" min={0} max={100}
                             onCommit={v => updBaseRatio(i, v / 100)} />
                         </td>
@@ -613,6 +625,8 @@ export default memo(function TabSimulation({
                   <tr className="border-t border-gray-200 bg-gray-50 text-[10px] text-gray-500">
                     <td className="px-2 py-1 font-semibold">합계</td>
                     <td colSpan={9}></td>
+                    <td className="text-center px-1">{f(base.reduce((s, g) => s + (typeof g.NT === "number" ? g.NT : 0), 0))}</td>
+                    <td className="text-center px-1">{f(base.reduce((s, g) => s + (g.N || 0), 0))}</td>
                     <td className="text-center px-1">{(ratios.reduce((s, v) => s + v, 0) * 100).toFixed(2)}%{ratiosOverridden && <span className="block text-[9px] text-amber-600">수기</span>}</td>
                     <td className="text-center px-1 text-blue-600">{(regSum / REG_DENOM * 100).toFixed(2)}%<span className="block text-[9px]">RR {fRR(regSum)}명</span></td>
                   </tr>
@@ -622,9 +636,10 @@ export default memo(function TabSimulation({
                 ※ 직접 편집: A · CR · C1 · F · 본인부담비 · 기준 분포비 · 등록 분포비 (셀 클릭 후 입력, Enter 또는 포커스 이동 시 반영 · Esc 취소).
                 C1 편집 시 L1(=1−C1)과 실측 L이 함께 갱신되어 PB에 즉시 반영. F 편집 시 PF = B × F로 재산출 (상단 PF 슬라이더와 연동).
                 B는 A × CR 산출값 (정책 슬라이더 B와 다르면 노란색 ⚠ 안내). 본인부담비는 환자군별 M1 × 본인부담비(디폴트 30%).
-                기준 분포비(ratio_i = N_i ÷ ΣN)는 자유 입력(다른 군 불변, 합 100% 강제 없음) — 수기 입력 시 "↩ 기준 분포비 실측 복귀" 버튼으로 되돌릴 수 있음.
+                기준 분포비 = NT 기준(ratio_i = NT_i ÷ ΣNT, 전체 환자수 48,874,201명) — 자유 입력(다른 군 불변, 합 100% 강제 없음), 수기 입력 시 "↩ 기준 분포비 실측 복귀" 버튼으로 되돌릴 수 있음.
+                NT 편집 시 기준 분포비는 NT 실측 비율로 재산출. RN(일만시 참여의원 환자수)은 엔진의 참여의원 환자 배분(N_g)에 쓰이며 기준 분포비와는 별개.
                 등록 분포비 = 의원당 등록환자수 RR ÷ 1,000 — 자유 입력(합 100% 강제 없음, 합계 행 참고), 디폴트("데이터 비례")는 기준 분포비와 소수점 2자리까지 동일 (RR은 0.1명 단위).
-                RN · M1 · NT 절대값은 데이터 관리(엑셀 업로드·baseline)에서 관리.
+                M1 절대값은 데이터 관리(엑셀 업로드·baseline)에서 관리.
               </div>
             </div>
           </div>

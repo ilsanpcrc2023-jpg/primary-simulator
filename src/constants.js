@@ -59,12 +59,18 @@ export const INIT_R = INIT_F;                // 하위 호환 alias (v6.9.x까�
 //   의료비 0원 제외 baseline으로 갱신 시 함께 변경.
 // v7.5.3: 등록 분포비 디폴트 = 기준 분포비(ratio_i)와 소수점 2자리(%)까지 동일 (사용자 결정).
 //   regDist를 0.1명 단위로 보관 → 등록 분포비(%) = regDist / 10 이 ratio_i × 100 의 2자리 반올림과 일치.
-//   exc_zero baseline: [201.6, 197.7, 293.8, 306.8] (합 999.9 — 군별 독립 반올림) ↔ 기준 분포비 20.16 / 19.77 / 29.38 / 30.68 %
-//   (이전 정수 largest-remainder [201, 198, 294, 307]은 20.10/19.80/29.40/30.70으로 2자리 불일치 → 폐기)
-const _sumN = INIT_BASE.reduce((s, g) => s + (g?.N || 0), 0);
-export const INIT_REG_DIST = _sumN > 0
-  ? INIT_BASE.map(g => Math.round((g.N / _sumN) * 1000 * 10) / 10)
-  : [201.6, 197.7, 293.8, 306.8];
+//   (이전 정수 largest-remainder [201, 198, 294, 307]은 2자리 불일치 → 폐기)
+// v7.5.4: 기준 분포비 = NT(전체 환자수 48,874,201명) 기준 (사용자 결정). RN(참여의원) 기준 → NT 기준.
+//   exc_zero baseline NT [14,067,441 · 10,312,515 · 12,275,798 · 12,218,447]
+//   → ratio_i 28.78 / 21.10 / 25.12 / 25.00 % → INIT_REG_DIST [287.8, 211.0, 251.2, 250.0] (합 1,000.0)
+//   (v7.5.3 RN 기준 [201.6, 197.7, 293.8, 306.8] ↔ 20.16/19.77/29.38/30.68 %는 폐기)
+//   NT가 없는 baseline(FALLBACK 등)은 RN(N) 기준으로 fallback.
+const _ntOk = INIT_BASE.every(g => typeof g?.NT === "number" && g.NT > 0);
+const _refKey = _ntOk ? "NT" : "N";
+const _sumRef = INIT_BASE.reduce((s, g) => s + (g?.[_refKey] || 0), 0);
+export const INIT_REG_DIST = _sumRef > 0
+  ? INIT_BASE.map(g => Math.round((g[_refKey] / _sumRef) * 1000 * 10) / 10)
+  : [287.8, 211.0, 251.2, 250.0];
 
 // v7.5.1: 환자 본인부담비 (현행 등록의원 외래비 M1 대비, 디폴트 30%).
 //   본인부담 = M1 × copayRates[i]. 디폴트는 4군 모두 COPAY_RATE(30%).
