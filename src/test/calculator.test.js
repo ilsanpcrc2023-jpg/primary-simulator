@@ -592,10 +592,10 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     expect(INIT_PER_CLINIC).toBe(4246);
   });
 
-  it('CLINIC_COUNT_PRESETS는 4개 (100/1000/3000/2923 일만시)', () => {
-    expect(CLINIC_COUNT_PRESETS).toHaveLength(4);
+  it('CLINIC_COUNT_PRESETS는 5개 (100/1000/3000/10000/2923 일만시 · v7.7.4 10,000 추가)', () => {
+    expect(CLINIC_COUNT_PRESETS).toHaveLength(5);
     const values = CLINIC_COUNT_PRESETS.map(p => p.value);
-    expect(values).toEqual([100, 1000, 3000, 2923]);
+    expect(values).toEqual([100, 1000, 3000, 10000, 2923]);
     // 일만시 라벨에 "일만시" 단어 포함
     const ilmansi = CLINIC_COUNT_PRESETS.find(p => p.value === 2923);
     expect(ilmansi.label).toMatch(/일만시/);
