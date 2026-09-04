@@ -443,7 +443,7 @@ export default memo(function TabSimulation({
             </div>
             <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
               onClick={() => {
-                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,246명\n· 의원당 등록환자수: 약 1,000명 (분포비 = 일만시 실측 20.2/19.8/29.4/30.7%)\n· 사업 전체 등록: 약 100,000명\n\n환자군별 RN · M1 · L · 분포비만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
+                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,246명\n· 의원당 등록환자수: 약 1,000명 (분포비 = 일만시 실측 20.2/19.8/29.4/30.7%)\n· 사업 전체 등록: 약 100,000명\n\n환자군별 RN · L · 분포비만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
                 if (confirm(msg)) resetReg?.();
               }}>
               <div className="text-amber-500 text-xl mb-0.5">↩</div>
@@ -546,7 +546,7 @@ export default memo(function TabSimulation({
                     {/* v7.5.11: 분포비 열 표시 전용 (수기 입력 불가, 사용자 결정). 변경은 프리셋 버튼으로만. */}
                     <th className="text-center px-1 text-blue-700" title="환자군별 분포비 (기준 = 등록) · 디폴트 = 일만시 실측 RN_i ÷ ΣRN · 표시 전용 — 변경은 분포비 프리셋 버튼으로">분포비<br /><span className="font-normal text-[9px]">% · 기준 = 등록</span></th>
                     {/* v7.5.12: 본인부담비 열을 맨 오른쪽으로 이동 (사용자 결정). */}
-                    <th className="text-center px-1" title="환자 본인부담비 (현행 외래비 M1 대비, 디폴트 30% · 편집 가능)">본인부담비<br /><span className="font-normal text-[9px]">% · 디폴트 30</span></th>
+                    <th className="text-center px-1" title="환자 본인부담비 (일차의료 기본수가 PB 대비, 디폴트 30% · 편집 가능) — 본인부담 = PB × 본인부담비">본인부담비<br /><span className="font-normal text-[9px]">% · PB 대비 · 디폴트 30</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -627,9 +627,9 @@ export default memo(function TabSimulation({
               <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
                 ※ 직접 편집: A · CR · C1 · F · 본인부담비 · NT · RN (셀 클릭 후 입력, Enter 또는 포커스 이동 시 반영 · Esc 취소).
                 C1 편집 시 L1(=1−C1)과 실측 L이 함께 갱신되어 PB에 즉시 반영. F 편집 시 PF = B × F로 재산출 (상단 PF 슬라이더와 연동).
-                B는 A × CR 산출값 — A·CR 편집 시 엔진 B(상단 PB 카드·KPI)도 즉시 동기화되고 PF는 기존 비율(B의 X%)을 유지해 재산출. (PB 카드 "↩ 초기화" 등으로 B가 A×CR과 달라지면 노란색 ⚠ 안내.) 본인부담비는 환자군별 M1 × 본인부담비(디폴트 30%).
+                B는 A × CR 산출값 — A·CR 편집 시 엔진 B(상단 PB 카드·KPI)도 즉시 동기화되고 PF는 기존 비율(B의 X%)을 유지해 재산출. (PB 카드 "↩ 초기화" 등으로 B가 A×CR과 달라지면 노란색 ⚠ 안내.) 본인부담은 환자군별 PB × 본인부담비(디폴트 30%) — v7.6.0부터 현행 외래비 M1은 계산에 쓰지 않음(baseline FFS·비등록·공단 외래비·Track A 모두 PB 기준).
                 분포비(기준 = 등록)는 표시 전용 — 수기 입력 불가. 디폴트는 일만시 실측 비율(RN_i ÷ ΣRN)이며, 위의 분포비 프리셋(데이터 비례 · 균등 · 건강편중 · 고위험편중)으로만 변경 — 의원당 등록환자 배분에 그대로 적용.
-                RN 편집 시 등록 분포는 RN 실측 비율로 재산출되고 엔진의 참여의원 환자 배분(N_g)에도 반영. NT(전체 환자수)는 참고 표시. M1 절대값은 데이터 관리(엑셀 업로드·baseline)에서 관리.
+                RN 편집 시 등록 분포는 RN 실측 비율로 재산출되고 엔진의 참여의원 환자 배분(N_g)에도 반영. NT(전체 환자수)는 참고 표시. M1은 데이터 필드로만 보존(엑셀 업로드·baseline), 계산 미사용.
               </div>
             </div>
           </div>

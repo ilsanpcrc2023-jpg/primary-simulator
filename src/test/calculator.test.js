@@ -62,9 +62,11 @@ describe('calculation engine', () => {
       const F_i = INIT_F[i];
       const pay_gov = B_i * (1 - L1_i) + F_i;
       expect(pay_gov).toBeGreaterThan(0);
-      // 등록환자 1인당 의원수입 = 공단지급 + 본인부담
-      const ab_reg = pay_gov + b.M1 * 0.30;
+      // 등록환자 1인당 의원수입 = 공단지급 + 본인부담 (v7.6.0: 본인부담 = PB × 30%, M1 미사용)
+      const PB_i = B_i * (1 - L1_i);
+      const ab_reg = pay_gov + PB_i * 0.30;
       expect(ab_reg).toBeGreaterThan(pay_gov);
+      expect(ab_reg).toBeCloseTo(PB_i * 1.30 + F_i, 6);
     });
   });
 
@@ -256,14 +258,15 @@ describe('v6.7 L1·L2 분리 (선지급 vs 사후 성과급)', () => {
     expect(L1avg).toBeLessThan(0.78);
   });
 
-  it('Track A에서는 L1 미적용 (FFS 1인당 수가 = M1 + F)', () => {
+  it('v7.6.0: Track A 1인당 수가 = PB + F (M1 → PB 대체, 본인부담 미포함)', () => {
     INIT_BASE.forEach((b, i) => {
-      const tA = b.M1 + INIT_F[i];
-      expect(tA).toBe(b.M1 + INIT_F[i]);
-      // L1과 무관해야 함
-      const alt_L1 = 0.3;
-      const tA_alt = b.M1 + INIT_F[i];
+      const PB_i = INIT_P[i] * (1 - INIT_L1[i]);
+      const tA = PB_i + INIT_F[i];
+      expect(tA).toBeCloseTo(PB_i + INIT_F[i], 6);
+      // M1과 무관해야 함 (M1을 바꿔도 tA 불변)
+      const tA_alt = PB_i + INIT_F[i];
       expect(tA).toBe(tA_alt);
+      expect(tA).not.toBeCloseTo(b.M1 + INIT_F[i], 0);
     });
   });
 
@@ -272,8 +275,9 @@ describe('v6.7 L1·L2 분리 (선지급 vs 사후 성과급)', () => {
       const B_i = INIT_P[i];
       const F_i = INIT_F[i];
       const L1_i = INIT_L1[i];
-      const tA = b.M1 + F_i;
-      const tC = B_i * (1 - L1_i) + F_i + b.M1 * 0.30;   // 환자군 모형 1인당
+      const PB_i = B_i * (1 - L1_i);
+      const tA = PB_i + F_i;                             // v7.6.0: M1 → PB
+      const tC = PB_i + F_i + PB_i * 0.30;               // 환자군 모형 1인당 (본인부담 = PB × 30%)
       const tB = 0.5 * tA + 0.5 * tC;
       expect(tB).toBeCloseTo((tA + tC) / 2, 5);
     });
@@ -510,28 +514,30 @@ describe('v6.10.0 · 통합 슬라이더 (PF = B의 X%)', () => {
   });
 });
 
-describe('v6.10.0 · pfBaseline 동적 산출 (Σ regDist × M1 × M_clinics)', () => {
-  it('HCC v3.0 디폴트 baseline = Σ regDist × M1 × M = 약 4,182억 (2,923개 의원 기준)', () => {
+describe('v6.10.0 → v7.6.0 · pfBaseline 동적 산출 (Σ regDist × PB × M_clinics, M1 → PB)', () => {
+  const PB = INIT_P.map((b, i) => Math.round(b * (1 - INIT_L1[i])));
+  it('HCC v3.0 디폴트 baseline = Σ regDist × PB × M (2,923개 의원 기준)', () => {
     const regDist = [100, 600, 200, 100];
     const M = INIT_M_CLINICS;   // HCC v3.0: 2923
-    const baseline = INIT_BASE.reduce((s, b, i) => s + regDist[i] * b.M1 * M, 0);
-    // 등록환자 의원급 외래 FFS 기준선 (M1 = 등록의원 외래 1인당 의료비)
-    expect(baseline).toBeGreaterThan(3e11);
-    expect(baseline).toBeLessThan(5e11);   // 대략 4,182억 ≈ 4.18e11
+    const baseline = PB.reduce((s, pb, i) => s + regDist[i] * pb * M, 0);
+    // 등록환자 기본수가 기준선 (PB = B × (1−L1) ≈ 67,618 / 105,438 / 158,646 / 261,562)
+    expect(baseline).toBeGreaterThan(2e11);
+    expect(baseline).toBeLessThan(5e11);
+    // M1 기준 baseline과는 달라야 함 (M1 미사용 확인)
+    const baselineM1 = INIT_BASE.reduce((s, b, i) => s + regDist[i] * b.M1 * M, 0);
+    expect(baseline).not.toBeCloseTo(baselineM1, -6);
   });
 
   it('의원 수 M 변경 시 baseline 비례 (선형)', () => {
     const regDist = [100, 600, 200, 100];
-    const baselineM10 = INIT_BASE.reduce((s, b, i) => s + regDist[i] * b.M1 * 10, 0);
-    const baselineM100 = INIT_BASE.reduce((s, b, i) => s + regDist[i] * b.M1 * 100, 0);
+    const baselineM10 = PB.reduce((s, pb, i) => s + regDist[i] * pb * 10, 0);
+    const baselineM100 = PB.reduce((s, pb, i) => s + regDist[i] * pb * 100, 0);
     expect(baselineM100 / baselineM10).toBeCloseTo(10, 5);
   });
 
   it('하드코딩 2064.4억 fixture 폐기 (균형추 모듈 삭제로 회귀 방지)', () => {
-    // v6.9.x fBalance.test.js에 있던 가상 baseline 2,064.4억은 삭제됨.
-    // 실제 baseline은 항상 동적 산출 (regDist × M1 × M).
-    const regDist = INIT_BASE.map((b, i) => i === 0 ? 100 : i === 1 ? 600 : i === 2 ? 200 : 100);
-    const baseline = INIT_BASE.reduce((s, b, i) => s + regDist[i] * b.M1 * INIT_M_CLINICS, 0);
+    const regDist = [100, 600, 200, 100];
+    const baseline = PB.reduce((s, pb, i) => s + regDist[i] * pb * INIT_M_CLINICS, 0);
     expect(baseline).not.toBe(2064.4e8);
   });
 });

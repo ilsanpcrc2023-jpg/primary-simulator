@@ -401,14 +401,17 @@ export default function useSimulator() {
       const p = P[i];                                    // B value (state.P = B 기호 유지)
       const L1_g = L1[i] ?? 0.7;
       const F_i = F_g[i] ?? 0;
-      const pay_gov = p * (1 - L1_g) + F_i;              // 공단지급 = P_g
+      // v7.6.0 (사용자 결정): 현행 1인당 외래비 M1을 더 이상 사용하지 않고 PB(= B × (1−L1))로 대체.
+      //   baseline FFS·비등록 FFS·본인부담·공단 외래비·Track A 모두 PB 기준. base.M1은 데이터 필드로만 보존.
+      const PB_g = p * (1 - L1_g);                       // 일차의료 기본수가 (M1 대체)
+      const pay_gov = PB_g + F_i;                        // 공단지급 = P_g
       const copay_i = copayRates?.[i] ?? COPAY_RATE;     // v7.5.2: 환자군별 본인부담비 (디폴트 30%)
-      const ab_reg = pay_gov + b.M1 * copay_i;           // 등록환자 1인당 의원수입 (본인부담 = M1 × 본인부담비)
+      const ab_reg = pay_gov + PB_g * copay_i;           // 등록환자 1인당 의원수입 (본인부담 = PB × 본인부담비)
 
-      // 외래비 상수
-      const C1 = b.M1 / (1 - b.L);                       // 기존 L 기반 총 외래비 (비등록·baseline)
-      const D1_base = C1 - b.M1;                         // 비등록환자 타원 외래비 (기존 L)
-      const D1_L2 = b.M1 * safeL2 / (1 - safeL2);        // 등록환자 타원 외래비 (L2 반영 · L2 슬라이더 연동)
+      // 외래비 상수 (PB 기준)
+      const C1 = PB_g / (1 - b.L);                       // 기존 L 기반 총 외래비 (비등록·baseline)
+      const D1_base = C1 - PB_g;                         // 비등록환자 타원 외래비 (기존 L)
+      const D1_L2 = PB_g * safeL2 / (1 - safeL2);        // 등록환자 타원 외래비 (L2 반영 · L2 슬라이더 연동)
 
       // 등록/비등록 (등록 ⊆ 이용 clamp)
       const n_reg_g_raw = reg.n_reg_total * regRatios[i];
@@ -416,23 +419,23 @@ export default function useSimulator() {
       const n_unreg_g = Math.max(0, N - n_reg_g);
 
       // 의원 수입 (선지급만 · 성과급은 T 레벨에서 합산)
-      const inc0 = b.M1 * N;                              // baseline: 전원 FFS
-      const inc = ab_reg * n_reg_g + b.M1 * n_unreg_g;    // 참여 후 선지급 수입
+      const inc0 = PB_g * N;                              // baseline: 전원 FFS (PB 기준)
+      const inc = ab_reg * n_reg_g + PB_g * n_unreg_g;    // 참여 후 선지급 수입
 
       // 공단 의원급 외래 지출 — 등록환자는 L2 기반 타원비, 비등록은 기존 L 유지
       const nhi0 = C1 * N;                                // baseline
       const nhi = (ab_reg + D1_L2) * n_reg_g + C1 * n_unreg_g;
 
       // Track (1인당 등록환자 실지불액 · 선지급만, 성과급은 T 레벨)
-      const tA = b.M1 + F_i;
+      const tA = PB_g + F_i;
       const tC = ab_reg;
       const tB = 0.5 * tA + 0.5 * tC;
       const tS = tA * (ffsPct / 100) + tC * (hccPct / 100);
 
       return {
-        N, p, b, L1_g,
+        N, p, b, L1_g, PB: PB_g,
         pay_gov, ab_reg,
-        B: b.M1 * copay_i,
+        B: PB_g * copay_i,
         F_per_pt: F_i,
         n_reg: n_reg_g, n_unreg: n_unreg_g,
         inc0, inc, nhi0, nhi,
@@ -446,7 +449,7 @@ export default function useSimulator() {
     G.forEach(r => {
       s.inc0 += r.inc0; s.inc += r.inc;
       s.nhi0 += r.nhi0; s.nhi += r.nhi;
-      const unregFFS = r.b.M1 * r.n_unreg;
+      const unregFFS = r.PB * r.n_unreg;                 // v7.6.0: 비등록 FFS = PB 기준
       s.tA += r.tA * r.n_reg + unregFFS;
       s.tB += r.tB * r.n_reg + unregFFS;
       s.tC += r.tC * r.n_reg + unregFFS;
@@ -492,18 +495,18 @@ export default function useSimulator() {
 
   // v6.7 패널 분해 (L2 반응):
   //   baselineIncome = baseN × ffsPerPerson × M       (참여 전 전원 FFS)
-  //   panelEffect    = Σ M1 × (N_after − baseN)       (패널 변화 · FFS 유지)
-  //   modelEffect    = Σ n_reg × (ab_reg − M1)        (지불방식 전환 · 선지급)
+  //   panelEffect    = Σ PB × (N_after − baseN)       (패널 변화 · FFS 유지)   ※ v7.6.0: M1 → PB
+  //   modelEffect    = Σ n_reg × (ab_reg − PB)        (지불방식 전환 · 선지급 = PF + PB×본인부담비)
   //   performanceEffect = perf_blended                 (L2 성과급 · Track 배수 반영)
   //   afterIncome = 선지급 + 성과급 (의원 수입 KPI)
   const decomp = useMemo(() => {
     const M = Math.max(1, M_clinics);
     const baseN_total = Math.max(0, baseN_per_clinic) * M;
-    const ffsPerPerson = base.reduce((s, b, i) => s + b.M1 * ratios[i], 0);
+    const ffsPerPerson = G.reduce((s, r, i) => s + r.PB * ratios[i], 0);
     const baselineIncome = baseN_total * ffsPerPerson;
     const baseN_g = base.map((_, i) => baseN_total * ratios[i]);
-    const panelEffect = G.reduce((s, r, i) => s + r.b.M1 * (r.N - baseN_g[i]), 0);
-    const modelEffect = G.reduce((s, r) => s + r.n_reg * (r.ab_reg - r.b.M1), 0);
+    const panelEffect = G.reduce((s, r, i) => s + r.PB * (r.N - baseN_g[i]), 0);
+    const modelEffect = G.reduce((s, r) => s + r.n_reg * (r.ab_reg - r.PB), 0);
     const performanceEffect = performance.perf_blended;
     const afterIncome = T.inc + performanceEffect;
     const netChange = afterIncome - baselineIncome;

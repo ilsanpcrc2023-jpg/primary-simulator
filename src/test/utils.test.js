@@ -139,7 +139,7 @@ describe('v7.5.1 ratiosFromBase / regDistFromRatios', () => {
 
 // v7.5.1: 본인부담비 고정 30% 상수
 describe('v7.5.1 COPAY_RATE', () => {
-  it('COPAY_RATE = 0.30 (본인부담 = M1 × 30% 고정)', () => {
+  it('COPAY_RATE = 0.30 (본인부담 = PB × 30% 디폴트, v7.6.0 M1 → PB)', () => {
     expect(COPAY_RATE).toBe(0.30);
   });
 });

@@ -1,7 +1,7 @@
 import { memo } from "react";
 import NumBox from "./shared/NumBox";
 import { SH, CL, ON, INIT_F, CLINIC_PRESETS, POLICY_SCENARIOS, CLINIC_COUNT_PRESETS, REG_PER_CLINIC_PRESETS } from "../constants";
-import { f, fE, calcPFfromPct, inferPFpct } from "../utils";
+import { f, fE, calcPFfromPct, inferPFpct, calcPB } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 const H2 = "font-bold text-base text-gray-900";
@@ -25,8 +25,9 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
   // 통합 슬라이더 % — 현재 F_g에서 역산 (개별 슬라이더 조정 후 표시 정합)
   const pfPctImplied = inferPFpct(F_g, B_g, n_reg_g);
 
-  // 동적 baseline — Σ regDist × M1 × M_clinics (등록환자 의원급 외래 FFS, 동적)
-  const pfBaseline = state.base.reduce((s, b, i) => s + (regDist[i] || 0) * b.M1 * M, 0);
+  // 동적 baseline — Σ regDist × PB × M_clinics (등록환자 기본수가 기준, 동적) · v7.6.0: M1 → PB
+  const PB_g = calcPB(B_g, state.L1);
+  const pfBaseline = PB_g.reduce((s, pb, i) => s + (regDist[i] || 0) * pb * M, 0);
   // 현재 PF로 인한 공단지출 추가 = Σ F_g × n_reg_g
   const pfExpenditure = F_g.reduce((s, v, i) => s + (v || 0) * (n_reg_g[i] || 0), 0);
   const pfPctOfBaseline = pfBaseline > 0 ? (pfExpenditure / pfBaseline) * 100 : 0;
