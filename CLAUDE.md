@@ -27,6 +27,14 @@
     - **기준 군별 분포비 = ratio_i = N_i / ΣN** (실측, 편집 불가) · **등록 군별 분포비 = regDist_i / Σ regDist** (Σ=1,000이면 RR/1000). **등록 분포비 디폴트 = ratio_i** — "데이터 비례" 프리셋이 상수 `INIT_REG_DIST` 대신 `regDistFromRatios(ratiosFromBase(base), Σ regDist)` (largest-remainder)로 동적 산출. 현 baseline에서 [201,198,294,307] = INIT_REG_DIST 일치 (테스트 보장).
     - 신규: `constants.COPAY_RATE=0.30` (useSimulator.js:319·348 리터럴 0.30 치환) · `utils.ratiosFromBase(base)` · `utils.regDistFromRatios(ratios, total)`. 단위 테스트 +6 (90/90 통과).
 
+  · **v7.5.2 — 상세 편집 테이블 입력 보강 (2026-09-04, 사용자 결정)** — UI·state만.
+    - **표시 자릿수**: %는 소수 2자리(C1·F·본인부담비·기준/등록 분포비), 비중(CR)은 소수 4자리(0.XXXX), 금액은 정수.
+    - **본인부담비 환자군별 수기 편집** — `state.copayRates[4]` 신규 (디폴트 `INIT_COPAY_RATES` = 4군 모두 30%). 엔진 `ab_reg = P + M1 × copayRates[i]` (`SET_COPAY_AT`, `updCopay`). 디폴트에서는 v7.5.1과 동일 값.
+    - **기준 분포비(ratio_i) 수기 편집** — `utils.rescaleBaseN(base, i, ratio)`: i군 비율 고정 + ΣN 보존 + 나머지 군 비례 재배분 (합 100% 유지). `SET_BASE_RATIO_AT`, `updBaseRatio`.
+    - **등록 분포비 자유 입력** — 분모를 Σ regDist → **1,000 고정**(RR/1000, 사용자 정의)으로 변경. 합 100% 강제 없음 (tfoot 합계 행에 합계 % · RR 표시).
+    - **`DraftInput` 컴포넌트** (TabSimulation.jsx 내부) — 포커스 중 로컬 텍스트 유지, blur/Enter 시 commit, Esc 취소. 이전 controlled input이 키 입력마다 parse→dispatch→toFixed 재포맷을 돌려 "."·부분 입력이 막히던 문제("입력 제한") 해소. A·CR·C1·F·본인부담비·기준/등록 분포비 모두 적용.
+    - 단위 테스트 +6 (96/96 통과).
+
   · **v7.3.0/v7.4 산식 보류** — archive/v7.4-prerevert-260520 브랜치에 보존. C 슬라이더 큰 값(예 +24.5%p) 시 환자 본인부담 30% 처리 누락이 발견되어 옵션 C(perf_blended를 메인 KPI에서 분리, 별도 카드로 노출) 적용 후 재시도 예정.
 
   · **TCard 안내 문구 삭제 (v7.2.3 누적)** — 사용자 결정 유지.
@@ -189,7 +197,7 @@ npm test          # 단위 테스트 (vitest run)
 | **F** | **일차의료 기능보정** (환자군별 배열 F_g[4]) — 등록 관리 업무 + 저평가된 본연 기능 상대가치 보정 | 원/년/환자 |
 | **P** | **일차의료수가 = B × (1 − L1) + F (공단 선지급 본체)** | 원/년/환자 |
 | **공단지급** | **= P (단일화, v6.7부터)** | 원/년/환자 |
-| 본인부담 | M1 × 30% (고정) — 기호 없음 | 원/년/환자 |
+| 본인부담 | M1 × 본인부담비 (환자군별, 디폴트 30% · v7.5.2 테이블에서 편집 가능) — 기호 없음 | 원/년/환자 |
 | **L1** | **선지급 기준 타원이용비중 (환자군별 4개, 데이터 실측 = base.L 자동 산출 · v6.9.5)** | 0~1 |
 | **L2** | **실측 타원이용비중 (단일 스칼라, 사업 중 관측치 · 성과급 산정)** | 0~1 |
 | M1 | 1인당 현행 등록의원 외래비 | 원/년 |

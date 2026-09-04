@@ -104,6 +104,25 @@ export function regDistFromRatios(ratios, total = 1000) {
   return out;
 }
 
+// v7.5.2: 기준 군별 분포비(ratio_i) 수기 편집 — i군 비율을 ratio로 고정하고
+//   나머지 군의 N을 비례 축소/확대해 ΣN을 보존한다 (분포비 합 100% 유지).
+//   returns 새 base 배열 (N만 갱신, 다른 필드는 그대로).
+export function rescaleBaseN(base, i, ratio) {
+  const r = Math.max(0, Math.min(1, ratio));
+  const total = base.reduce((s, g) => s + (g?.N || 0), 0);
+  if (total <= 0 || base.length < 2) return base;
+  const othersOld = total - (base[i]?.N || 0);
+  const othersNew = total * (1 - r);
+  const k = othersOld > 0 ? othersNew / othersOld : 0;
+  const out = base.map((g, j) => {
+    if (j === i) return { ...g, N: Math.round(total * r) };
+    if (othersOld > 0) return { ...g, N: Math.round((g?.N || 0) * k) };
+    // 다른 군이 모두 0이면 균등 분배
+    return { ...g, N: Math.round(othersNew / (base.length - 1)) };
+  });
+  return out;
+}
+
 // v6.10.0: 현재 F_g에서 통합 슬라이더 % 역산 (사용자가 개별 슬라이더 조정 후 표시용).
 //   pfPct_implied = (Σ F_g[i] × n_reg_g[i]) / (Σ B[i] × n_reg_g[i]) × 100
 export function inferPFpct(F_g, B, n_reg_g) {

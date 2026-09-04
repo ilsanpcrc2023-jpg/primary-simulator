@@ -1,6 +1,7 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX, COPAY_RATE } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX, COPAY_RATE, INIT_COPAY_RATES } from "../constants";
+import { rescaleBaseN } from "../utils";
 
 const initialState = {
   base: INIT_BASE,
@@ -41,6 +42,8 @@ const initialState = {
   F_g: [...INIT_F],
   // v6.10.0: PF 분배 규칙 (hcc|equal|inverse) — PF 카드 분배 토글에서 사용.
   pfRule: INIT_PF_RULE,
+  // v7.5.2: 환자군별 본인부담비 (0~1). 디폴트 4군 모두 30%. 상세 편집 테이블에서 수기 수정.
+  copayRates: [...INIT_COPAY_RATES],
   // v7.1.1: 초기 디폴트 = 100개 의원 (1차년도 시범사업).
   M_clinics: INIT_DEFAULT_M,
   // 의원당 환자군별 등록환자수 (부록 추정치 100/600/200/100)
@@ -88,6 +91,15 @@ function reducer(state, action) {
       const base = [...state.base];
       base[action.i] = { ...base[action.i], [action.key]: action.value };
       return { ...state, base };
+    }
+    // v7.5.2: 기준 군별 분포비(ratio_i) 수기 편집 — ΣN 보존하며 다른 군 비례 재배분.
+    case "SET_BASE_RATIO_AT":
+      return { ...state, base: rescaleBaseN(state.base, action.i, action.ratio) };
+    // v7.5.2: 환자군별 본인부담비 수기 편집 (0~1 clamp).
+    case "SET_COPAY_AT": {
+      const copayRates = [...(state.copayRates ?? INIT_COPAY_RATES)];
+      copayRates[action.i] = Math.max(0, Math.min(1, action.value));
+      return { ...state, copayRates };
     }
     case "SET_F_AT": {
       // v6.9.6: PF 음수 금지 (사용자 결정). 0 floor.
@@ -268,6 +280,7 @@ export default function useSimulator() {
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
     ssCostBase, ssProjectCost,
     F_g, M_clinics, regDist, baseN_per_clinic,
+    copayRates,
   } = state;
 
   const ffsPct = 100 - hccPct;
@@ -316,7 +329,8 @@ export default function useSimulator() {
       const L1_g = L1[i] ?? 0.7;
       const F_i = F_g[i] ?? 0;
       const pay_gov = p * (1 - L1_g) + F_i;              // 공단지급 = P_g
-      const ab_reg = pay_gov + b.M1 * COPAY_RATE;        // 등록환자 1인당 의원수입 (본인부담 = M1 × 30%)
+      const copay_i = copayRates?.[i] ?? COPAY_RATE;     // v7.5.2: 환자군별 본인부담비 (디폴트 30%)
+      const ab_reg = pay_gov + b.M1 * copay_i;           // 등록환자 1인당 의원수입 (본인부담 = M1 × 본인부담비)
 
       // 외래비 상수
       const C1 = b.M1 / (1 - b.L);                       // 기존 L 기반 총 외래비 (비등록·baseline)
@@ -345,14 +359,14 @@ export default function useSimulator() {
       return {
         N, p, b, L1_g,
         pay_gov, ab_reg,
-        B: b.M1 * COPAY_RATE,
+        B: b.M1 * copay_i,
         F_per_pt: F_i,
         n_reg: n_reg_g, n_unreg: n_unreg_g,
         inc0, inc, nhi0, nhi,
         tA, tB, tC, tS,
       };
     });
-  }, [base, P, L1, L2eff, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g]);
+  }, [base, P, L1, L2eff, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g, copayRates]);
 
   const T = useMemo(() => {
     const s = { inc0: 0, inc: 0, nhi0: 0, nhi: 0, tA: 0, tB: 0, tC: 0, tS: 0 };
@@ -506,6 +520,9 @@ export default function useSimulator() {
   const set = useCallback((key, value) => dispatch({ type: "SET", key, value }), []);
   const updP = useCallback((i, value) => dispatch({ type: "SET_P", i, value }), []);
   const updBase = useCallback((i, key, value) => dispatch({ type: "SET_BASE", i, key, value }), []);
+  // v7.5.2: 상세 편집 테이블 — 기준 분포비(ratio_i) · 본인부담비 수기 편집
+  const updBaseRatio = useCallback((i, ratio) => dispatch({ type: "SET_BASE_RATIO_AT", i, ratio }), []);
+  const updCopay = useCallback((i, value) => dispatch({ type: "SET_COPAY_AT", i, value }), []);
   const updF = useCallback((i, value) => dispatch({ type: "SET_F_AT", i, value }), []);
   const setFAll = useCallback((values) => dispatch({ type: "SET_F_ALL", values }), []);
   const setPfRule = useCallback((value) => dispatch({ type: "SET_PF_RULE", value }), []);
@@ -722,6 +739,7 @@ export default function useSimulator() {
 
   return {
     state, set, updP, updBase, updF, setFAll, setPfRule,
+    updBaseRatio, updCopay,
     resetF, resetP, resetReg,
     // v6.7 L1·L2 (α 제거)
     updL1, setL1All, resetL1,

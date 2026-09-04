@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { f, fE, fSv, pct, diffE, calcPB, PBtoB, ratiosFromBase, regDistFromRatios } from '../utils';
-import { INIT_BASE, INIT_REG_DIST, COPAY_RATE } from '../constants';
+import { f, fE, fSv, pct, diffE, calcPB, PBtoB, ratiosFromBase, regDistFromRatios, rescaleBaseN } from '../utils';
+import { INIT_BASE, INIT_REG_DIST, COPAY_RATE, INIT_COPAY_RATES } from '../constants';
 
 describe('format utilities', () => {
   it('f: formats numbers with Korean locale', () => {
@@ -109,5 +109,48 @@ describe('v7.5.1 ratiosFromBase / regDistFromRatios', () => {
 describe('v7.5.1 COPAY_RATE', () => {
   it('COPAY_RATE = 0.30 (본인부담 = M1 × 30% 고정)', () => {
     expect(COPAY_RATE).toBe(0.30);
+  });
+});
+
+// v7.5.2: 기준 분포비 수기 편집 — ΣN 보존 재배분
+describe('v7.5.2 rescaleBaseN', () => {
+  const base = [{ N: 100, M1: 1 }, { N: 300, M1: 2 }, { N: 400, M1: 3 }, { N: 200, M1: 4 }];
+
+  it('i군 비율을 고정하고 ΣN을 보존한다', () => {
+    const out = rescaleBaseN(base, 0, 0.25);
+    expect(out.reduce((s, g) => s + g.N, 0)).toBe(1000);
+    expect(out[0].N).toBe(250);
+  });
+
+  it('나머지 군은 기존 비율대로 비례 재배분 (3:4:2 유지)', () => {
+    const out = rescaleBaseN(base, 0, 0.25);
+    // 나머지 750을 300:400:200 = 3:4:2로 분배 → 250 / 333 / 167
+    expect(out[1].N).toBe(250);
+    expect(out[2].N).toBe(333);
+    expect(out[3].N).toBe(167);
+  });
+
+  it('N 외 필드(M1 등)는 보존, 원본 배열은 불변', () => {
+    const out = rescaleBaseN(base, 2, 0.5);
+    expect(out.map(g => g.M1)).toEqual([1, 2, 3, 4]);
+    expect(base[2].N).toBe(400);
+  });
+
+  it('ratio는 0~1로 clamp', () => {
+    expect(rescaleBaseN(base, 1, 1.5)[1].N).toBe(1000);
+    expect(rescaleBaseN(base, 1, -1)[1].N).toBe(0);
+  });
+
+  it('INIT_BASE에서 ratio_i를 그대로 다시 넣으면 N이 (반올림 내에서) 유지', () => {
+    const ratios = ratiosFromBase(INIT_BASE);
+    const out = rescaleBaseN(INIT_BASE, 0, ratios[0]);
+    out.forEach((g, i) => expect(Math.abs(g.N - INIT_BASE[i].N)).toBeLessThanOrEqual(1));
+  });
+});
+
+// v7.5.2: 본인부담비 디폴트 배열
+describe('v7.5.2 INIT_COPAY_RATES', () => {
+  it('4군 모두 COPAY_RATE(30%)', () => {
+    expect(INIT_COPAY_RATES).toEqual([0.30, 0.30, 0.30, 0.30]);
   });
 });

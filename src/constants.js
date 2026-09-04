@@ -59,9 +59,11 @@ export const INIT_R = INIT_F;                // 하위 호환 alias (v6.9.x까�
 //   의료비 0원 제외 baseline으로 갱신 시 함께 변경.
 export const INIT_REG_DIST = [201, 198, 294, 307];
 
-// v7.5.1: 환자 본인부담비 (현행 등록의원 외래비 M1 대비, 고정 30%).
-//   본인부담 = M1 × COPAY_RATE. 핵심 수식 고정값 — 상세 편집 테이블에는 표시만 (편집 불가).
+// v7.5.1: 환자 본인부담비 (현행 등록의원 외래비 M1 대비, 디폴트 30%).
+//   본인부담 = M1 × copayRates[i]. 디폴트는 4군 모두 COPAY_RATE(30%).
+//   v7.5.2: 상세 편집 테이블에서 환자군별 수기 수정 가능 (state.copayRates).
 export const COPAY_RATE = 0.30;
+export const INIT_COPAY_RATES = [COPAY_RATE, COPAY_RATE, COPAY_RATE, COPAY_RATE];
 
 // v6.9.4: 데이터 기반 디폴트로 전환.
 //   INIT_TOTAL_N = sum(INIT_BASE.N) — 파일럿(2023)이면 69,604명
