@@ -298,14 +298,13 @@ export default function useSimulator() {
 
   const ffsPct = 100 - hccPct;
 
-  // 참여의원 환자 분포 — N_g = totalN × ratios[i], baseN_g, ffsPerPerson 가중치.
-  // v7.5.6 (사용자 결정): 기준 분포비 수기 입력값(state.baseRatios)이 있으면 그대로 적용,
-  //   없으면 RN 실측 비율(N_i / ΣN = 20.16/19.77/29.38/30.68%). 합 100% 강제 없음 (수기값 그대로).
+  // 참여의원 환자 분포 (RN 기준) — N_g = totalN × ratios[i], baseN_g, ffsPerPerson 가중치.
+  // v7.5.4/v7.5.5: 기준 분포비의 수기 override(state.baseRatios)는 여기에 연결하지 않는다.
+  //   기준 분포비(RN 기준)는 등록 분포비 디폴트("데이터 비례")와 표시용. 참여의원 환자 구성은 RN 실측 그대로.
   const ratios = useMemo(() => {
-    if (Array.isArray(baseRatios) && baseRatios.length === base.length) return baseRatios;
     const t = base.reduce((s, g) => s + g.N, 0);
     return base.map(g => g.N / t);
-  }, [base, baseRatios]);
+  }, [base]);
 
   // v2.7: 등록환자 분포 (의원당 환자군별 절대 등록수 regDist에서 직접 산출)
   const regRatios = useMemo(() => {
