@@ -81,6 +81,34 @@ export function calcPFfromPct(pfPct, rule, B, n_reg_g) {
   return distribute(totalTarget, rule, B, n_reg_g).map(v => Math.max(0, Math.round(v)));
 }
 
+// v7.5.1: 기준 군별 분포비 ratio_i = N_i / ΣN (base 실측 환자수 비율).
+//   useSimulator.js의 ratios 메모와 동일 산식 — 상세 편집 테이블 "기준 군별 분포비(%)" 표시용.
+export function ratiosFromBase(base, key = "N") {
+  const t = base.reduce((s, g) => s + (g?.[key] || 0), 0);
+  if (t <= 0) return base.map(() => 1 / Math.max(1, base.length));
+  return base.map(g => (g?.[key] || 0) / t);
+}
+
+// v7.5.4 → v7.5.5: 기준 군별 분포비 = RN(일만시 참여의원 환자수) 기준 (사용자 결정, NT 기준은 v7.5.4 한 번 시도 후 복귀).
+//   ratio_i = N_i / ΣN — 엔진의 참여의원 환자 배분(N_g = totalN × N_i/ΣN)과 동일 비율.
+//   기준 분포비는 등록 분포비의 디폴트("데이터 비례" 프리셋)와 표시에 쓰인다 (수기 override는 엔진 미연결).
+export function refRatiosFromBase(base) {
+  return ratiosFromBase(base, "N");
+}
+
+// v7.5.1 → v7.5.3: 등록 군별 분포비 디폴트 = ratio_i.
+//   ratio_i × total을 0.1명(=% 소수 2자리) 단위로 반올림한 regDist 배열.
+//   등록 분포비(%) = regDist / (total/100) 가 (ratio_i × 100).toFixed(2)와 정확히 일치하도록
+//   각 군을 독립 반올림한다 (largest-remainder 합 보정은 2자리 동일성을 깨뜨리므로 폐기).
+//   INIT_BASE(v7.5 exc_zero) → [201.7, 197.7, 293.8, 306.8] = INIT_REG_DIST.
+export function regDistFromRatios(ratios, total = 1000, decimals = 1) {
+  const k = Math.pow(10, decimals);
+  return ratios.map(r => Math.round(r * total * k) / k);
+}
+
+// v7.5.3: regDist 값 정규화 — 0 floor + 0.1명 단위 반올림 (reducer 공용).
+export const roundRegDist = (v) => Math.max(0, Math.round((Number(v) || 0) * 10) / 10);
+
 // v6.10.0: 현재 F_g에서 통합 슬라이더 % 역산 (사용자가 개별 슬라이더 조정 후 표시용).
 //   pfPct_implied = (Σ F_g[i] × n_reg_g[i]) / (Σ B[i] × n_reg_g[i]) × 100
 export function inferPFpct(F_g, B, n_reg_g) {

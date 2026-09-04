@@ -57,7 +57,22 @@ export const INIT_R = INIT_F;                // 하위 호환 alias (v6.9.x까�
 //     4군 0.30681 × 1000 = 306.81 → 307  (합 1,000)
 //   이전 v7.2.0 값 [160, 224, 298, 318]은 zero 포함 기준의 RD에서 유도된 것이라
 //   의료비 0원 제외 baseline으로 갱신 시 함께 변경.
-export const INIT_REG_DIST = [201, 198, 294, 307];
+// v7.5.3: 등록 분포비 디폴트 = 기준 분포비(ratio_i)와 소수점 2자리(%)까지 동일 (사용자 결정).
+//   regDist를 0.1명 단위로 보관 → 등록 분포비(%) = regDist / 10 이 ratio_i × 100 의 2자리 반올림과 일치.
+//   (이전 정수 largest-remainder [201, 198, 294, 307]은 2자리 불일치 → 폐기)
+// v7.5.5: 기준 분포비 = RN(일만시 참여의원 환자수 12,411,152명) 기준 (사용자 결정 — v7.5.4의 NT 기준은 복귀).
+//   exc_zero baseline RN [2,502,705 · 2,453,897 · 3,646,697 · 3,807,853]
+//   → ratio_i 20.16 / 19.77 / 29.38 / 30.68 % → INIT_REG_DIST [201.6, 197.7, 293.8, 306.8] (합 999.9 — 군별 독립 반올림)
+const _sumN = INIT_BASE.reduce((s, g) => s + (g?.N || 0), 0);
+export const INIT_REG_DIST = _sumN > 0
+  ? INIT_BASE.map(g => Math.round((g.N / _sumN) * 1000 * 10) / 10)
+  : [201.6, 197.7, 293.8, 306.8];
+
+// v7.5.1: 환자 본인부담비 (현행 등록의원 외래비 M1 대비, 디폴트 30%).
+//   본인부담 = M1 × copayRates[i]. 디폴트는 4군 모두 COPAY_RATE(30%).
+//   v7.5.2: 상세 편집 테이블에서 환자군별 수기 수정 가능 (state.copayRates).
+export const COPAY_RATE = 0.30;
+export const INIT_COPAY_RATES = [COPAY_RATE, COPAY_RATE, COPAY_RATE, COPAY_RATE];
 
 // v6.9.4: 데이터 기반 디폴트로 전환.
 //   INIT_TOTAL_N = sum(INIT_BASE.N) — 파일럿(2023)이면 69,604명
@@ -130,7 +145,7 @@ export const B_MAX = 2_000_000;
 //   엑셀 NHIS-HCC v3.0의 참여의원 환자분포 RD (16.0/22.4/29.8/31.8%)를 1,000명에 비례 배분.
 //   이전 임의값 폐기 (사용자 결정).
 export const CLINIC_PRESETS = [
-  { key: "general", label: "데이터 비례",  regDist: [201, 198, 294, 307] },
+  { key: "general", label: "데이터 비례",  regDist: [...INIT_REG_DIST] },
   { key: "elderly", label: "노인 집중",     regDist: [30, 200, 400, 370] },
   { key: "custom",  label: "사용자 지정",   regDist: null },
 ];

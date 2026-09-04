@@ -3,17 +3,48 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { FCard, TCard, ClinicSummaryStrip, ClinicCountControls } from "./RegistrationPanel";
-import { SH, CL, INIT_REG_DIST, OFFICIAL_BASELINE_META } from "../constants";
+import { SH, CL, COPAY_RATE, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
-import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB } from "../utils";
+import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB, refRatiosFromBase } from "../utils";
 
 const TRACK_LABELS = { 0: "Track A 유지", 50: "Track B 혼합", 100: "Track C 환자군" };
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
+/* v7.5.2: DraftInput — 상세 편집 테이블용 자유 입력 셀.
+   포커스 중에는 로컬 텍스트를 그대로 유지(소수점·부분 입력 허용), blur 또는 Enter 시에만 commit.
+   이전 controlled input은 키 입력마다 parse→dispatch→toFixed 재포맷이 돌아 "."·부분 숫자 입력이 막히던 문제 해소.
+   - value: 표시용 숫자 · decimals: 표시 소수 자릿수 · onCommit(num): 유효 숫자일 때만 호출
+   - min/max: commit 시 clamp (입력 자체는 제한 없음) · grouping: 천 단위 콤마 표시 */
+function DraftInput({ value, decimals = 2, onCommit, min = -Infinity, max = Infinity, grouping = false, className = "", placeholder = "" }) {
+  const [draft, setDraft] = useState(null);   // null = 편집 중 아님
+  const fmt = (v) => {
+    if (typeof v !== "number" || !isFinite(v)) return "";
+    return grouping
+      ? v.toLocaleString("ko-KR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+      : v.toFixed(decimals);
+  };
+  const commit = () => {
+    if (draft === null) return;
+    const v = parseFloat(String(draft).replace(/,/g, ""));
+    setDraft(null);
+    if (!isNaN(v)) onCommit(Math.max(min, Math.min(max, v)));
+  };
+  return (
+    <input type="text"
+      value={draft === null ? fmt(value) : draft}
+      placeholder={placeholder}
+      className={"text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5 " + className}
+      onFocus={e => { setDraft(fmt(value).replace(/,/g, "")); e.target.select(); }}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={e => { if (e.key === "Enter") e.target.blur(); if (e.key === "Escape") setDraft(null); }} />
+  );
+}
+
 export default memo(function TabSimulation({
   mode = "policy", setMode,
-  state, set, updP, updBase, updF, setFAll, setPfRule, resetF, resetP, resetReg,
+  state, set, updP, updBase, updBaseRatio, resetBaseRatios, setDistAll, updCopay, updF, setFAll, setPfRule, resetF, resetP, resetReg,
   updL1, setL1All, resetL1, setL2, resetL2,
   updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset,
   G, T, decomp, performance: perfMemo, tracks,
@@ -30,6 +61,20 @@ export default memo(function TabSimulation({
 
   // v6.9.3: PB = B × (1 − L1) — UI 표시값. 슬라이더 onChange는 PBtoB로 B 역산.
   const PB = calcPB(P, L1);
+
+  // v7.5.1: 상세 편집 테이블 분포비 2종.
+  //   ratio_i  = baseRatios[i] (수기 override) ?? N_i / ΣN (실측)
+  //              → "기준 군별 분포비(%)" (v7.5.3: 자유 입력, 다른 군 불변, 합 100% 강제 없음 · ↩ 실측 복귀)
+  //   regDist_i / 1000               → "등록 군별 분포비(%)" (= RR/1000, 자유 입력, 합 100% 강제 없음)
+  //   등록 분포비 디폴트("데이터 비례" 프리셋) = ratio_i × 1000을 0.1명 단위로 반올림 (= INIT_REG_DIST)
+  //   → 등록 분포비(%)가 기준 분포비(%)와 소수 2자리까지 동일 (v7.5.3 사용자 결정).
+  // v7.5.5: 기준 분포비 = RN(일만시 참여의원 환자수) 기준 (v7.5.4 NT 기준은 사용자 결정으로 복귀).
+  // v7.5.8: 분포비 단일화 — 등록 분포비 = 기준 분포비 (사용자 결정). 테이블은 "분포비" 열 하나만 노출,
+  //   RR(등록환자수 명) 표기 제거. 내부 regDist = ratio_i × Σ regDist는 reducer가 자동 동기화 (합 1,000 강제 없음).
+  const ratiosMeasured = refRatiosFromBase(base);
+  const ratiosOverridden = Array.isArray(state.baseRatios) && state.baseRatios.length === base.length;
+  const ratios = ratiosOverridden ? state.baseRatios : ratiosMeasured;
+  const copayRates = state.copayRates ?? [COPAY_RATE, COPAY_RATE, COPAY_RATE, COPAY_RATE];
 
   // L2 기본값 · 표시값 (null이면 L1 가중평균)
   const L2_display = L2 ?? perfMemo.L1avg;
@@ -398,7 +443,7 @@ export default memo(function TabSimulation({
             </div>
             <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
               onClick={() => {
-                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,246명\n· 의원당 등록환자수: 1,000명 (데이터 비례 [201, 198, 294, 307])\n· 사업 전체 등록: 100,000명\n\n환자군별 RN · M1 · L · RR(등록 분포)만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
+                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,246명\n· 의원당 등록환자수: 약 1,000명 (분포비 = 일만시 실측 20.2/19.8/29.4/30.7%)\n· 사업 전체 등록: 약 100,000명\n\n환자군별 RN · M1 · L · 분포비만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
                 if (confirm(msg)) resetReg?.();
               }}>
               <div className="text-amber-500 text-xl mb-0.5">↩</div>
@@ -447,46 +492,59 @@ export default memo(function TabSimulation({
             <div className="flex items-center justify-between gap-2 py-1.5 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-600">📋 환자군별 상세 편집 테이블</span>
-                <span className="text-[10px] font-normal text-gray-400">엑셀 정합 (HCC v3.0 2025) · 입력: RN · M1 · L1 · A · CR · RR (B는 A×CR로 자동 산출, PB·PF는 정책 슬라이더)</span>
+                <span className="text-[10px] font-normal text-gray-400">A → B = A×CR → PB = B×C1 → PF = B×F → P = PB+PF · 입력: A · CR · C1 · F · 본인부담비 · NT · RN · 분포비</span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
-                <span className="text-[10px] text-gray-500">등록 분포 프리셋:</span>
+                <span className="text-[10px] text-gray-500">분포비 프리셋:</span>
                 {[
-                  { label: "데이터 비례", v: INIT_REG_DIST },
-                  { label: "균등", v: [250, 250, 250, 250] },
-                  { label: "건강편중", v: [400, 400, 150, 50] },
-                  { label: "고위험편중", v: [50, 350, 300, 300] },
+                  { label: "데이터 비례", r: ratiosMeasured, reset: true },
+                  { label: "균등", r: [0.25, 0.25, 0.25, 0.25] },
+                  { label: "건강편중", r: [0.40, 0.40, 0.15, 0.05] },
+                  { label: "고위험편중", r: [0.05, 0.35, 0.30, 0.30] },
                 ].map(p => {
-                  const active = state.regDist.every((v, i) => v === p.v[i]);
+                  const active = p.reset
+                    ? !ratiosOverridden
+                    : ratios.every((v, i) => Math.abs(v - p.r[i]) < 0.0005);
                   return (
-                    <button key={p.label} onClick={() => setRegDistAll(p.v)}
+                    <button key={p.label} onClick={() => (p.reset ? resetBaseRatios() : setDistAll(p.r))}
                       className="text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
                       style={active ? { background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" } : { borderColor: "#e5e7eb", color: "#6b7280" }}>
                       {p.label}
                     </button>
                   );
                 })}
+                {ratiosOverridden && (
+                  <button onClick={resetBaseRatios}
+                    title="분포비 수기 입력값을 버리고 실측(RN_i ÷ ΣRN)으로 복귀"
+                    className="ml-2 text-[10px] px-1.5 py-0.5 rounded border font-medium transition"
+                    style={{ borderColor: "#fcd34d", background: "#fffbeb", color: "#b45309" }}>
+                    ↩ 분포비 실측 복귀
+                  </button>
+                )}
               </div>
             </div>
             <div className="overflow-x-auto">
-              {/* v7.2.0: 엑셀 정합 약어 갱신 — NT / RN(이전 NC) / A / CR / B / L1 / C1 / PF / PB / P / RR(이전 등록).
-                  편집: RN, M1, L1, A, CR, RR. 산출: B=A×CR (A·CR 모두 있을 때 표시), C1=1−L1, PB=B(1−L1), P=PB+PF. */}
-              <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1080 }}>
+              {/* v7.5.1: 컬럼 재구성 (사용자 결정) —
+                    A(=T/NT) | CR | B(=A×CR) | C1(=1−L1) | PB(=B×C1) | F(기능보정율) | PF(=B×F) | P(=PB+PF) | 본인부담비 | 기준 분포비 | 등록 분포비
+                  편집: A, CR, C1(→ L1·base.L 동시 갱신), F(→ F_g = B×F), 등록 분포비(→ regDist = 비율 × Σ regDist).
+                  산출: B, PB, PF, P. 표시만: 본인부담비(30% 고정), 기준 분포비(ratio_i = N_i/ΣN).
+                  NT·RN·M1·RR 절대값 컬럼은 제거 (데이터 anchor·엑셀 업로드로 관리). */}
+              <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1040 }}>
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
                     <th className="text-left px-2 py-1.5" title="HCC 4분위 환자군">환자군</th>
-                    <th className="text-center px-1" title="환자군별 전체 환자수 NT (참고)">NT<br /><span className="font-normal text-[9px]">전체</span></th>
-                    <th className="text-center px-1" title="참여의원 전체 환자수 RN (이전 NC, 편집 가능)">RN<br /><span className="font-normal text-[9px]">참여의원</span></th>
-                    <th className="text-center px-1" title="1인당 등록의원 외래의료비 M1 (= RO ÷ RN)">M1<br /><span className="font-normal text-[9px]">RO ÷ RN</span></th>
-                    <th className="text-center px-1" title="환자군 평균 의료비 A (편집 가능)">A<br /><span className="font-normal text-[9px]">평균 의료비</span></th>
+                    <th className="text-center px-1" title="1인당 평균 의료비 A = T ÷ NT (편집 가능)">A<br /><span className="font-normal text-[9px]">=T/NT · 1인당 평균 의료비</span></th>
                     <th className="text-center px-1" title="의원급 외래비중 CR (편집 가능)">CR<br /><span className="font-normal text-[9px]">외래비중</span></th>
-                    <th className="text-center px-1" title="환자군 기준의료비 B = A × CR (산출)">B<br /><span className="font-normal text-[9px]">A×CR</span></th>
-                    <th className="text-center px-1" title="cf. 타원이용비중 L1 (편집 가능)">L1<br /><span className="font-normal text-[9px]">타원</span></th>
-                    <th className="text-center px-1" title="포괄관리 비중 C1 = 1 − L1 (산출)">C1<br /><span className="font-normal text-[9px]">1−L1</span></th>
-                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF (정책 슬라이더)">PF</th>
-                    <th className="text-center px-1 text-slate-700" title="일차의료 기본수가 PB = B × C1 (산출)">PB<br /><span className="font-normal text-[9px]">B×C1</span></th>
-                    <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF">P<br /><span className="font-normal text-[9px]">PB+PF</span></th>
-                    <th className="text-center px-1 text-blue-700" title="참여의원당 등록환자수 RR (이전 '등록')">RR<br /><span className="font-normal text-[9px]">등록</span></th>
+                    <th className="text-center px-1" title="1인당 의원급 외래비 B = A × CR (산출)">B<br /><span className="font-normal text-[9px]">=A×CR · 1인당 의원급 외래비</span></th>
+                    <th className="text-center px-1 text-emerald-700" title="등록의원 외래 의료비 비중 C1 = 1 − L1 (편집 가능 · L1 동시 갱신)">C1<br /><span className="font-normal text-[9px]">=1−L1 · 등록의원 외래 비중</span></th>
+                    <th className="text-center px-1 text-slate-700" title="일차의료 기본수가 PB = B × C1 (산출)">PB<br /><span className="font-normal text-[9px]">=B×C1 · 일차의료 기본수가</span></th>
+                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정율 F = PF ÷ B (편집 가능)">F<br /><span className="font-normal text-[9px]">기능보정율 %</span></th>
+                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF = B × F (산출)">PF<br /><span className="font-normal text-[9px]">=B×F · 기능보정</span></th>
+                    <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF (산출)">P<br /><span className="font-normal text-[9px]">=PB+PF · 일차의료수가</span></th>
+                    <th className="text-center px-1" title="환자 본인부담비 (현행 외래비 M1 대비, 디폴트 30% · 편집 가능)">본인부담비<br /><span className="font-normal text-[9px]">% · 디폴트 30</span></th>
+                    <th className="text-center px-1" title="환자군별 전체 환자수 NT (건보 전수 · 참고 · 편집 가능)">NT<br /><span className="font-normal text-[9px]">전체 환자수</span></th>
+                    <th className="text-center px-1" title="참여의원(일만시) 환자수 RN (기준 분포비·엔진 환자 배분 재료 · 편집 가능)">RN<br /><span className="font-normal text-[9px]">일만시 환자수</span></th>
+                    <th className="text-center px-1 text-blue-700" title="환자군별 분포비 (기준 = 등록) · 디폴트 = 일만시 실측 RN_i ÷ ΣRN · 자유 입력, 합 100% 강제 없음 · 등록환자 배분에 적용">분포비<br /><span className="font-normal text-[9px]">% · 기준 = 등록</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -496,40 +554,27 @@ export default memo(function TabSimulation({
                     const C1_i = 1 - L1_i;
                     const A_i = base[i].A;
                     const CR_i = base[i].CR;
-                    const NT_i = base[i].NT;
                     // B 표시: A·CR 모두 있을 때 A×CR 산출 (참고용), 그 외 P[i] (slider 값)
                     const B_calc = (typeof A_i === "number" && typeof CR_i === "number" && A_i > 0 && CR_i > 0)
                       ? Math.round(A_i * CR_i)
                       : null;
                     const B_display = B_calc ?? P[i];
                     const PB_display = Math.round(B_display * C1_i);
+                    const F_rate = B_display > 0 ? (Fi / B_display) * 100 : 0;
+                    const copay_i = copayRates[i] ?? COPAY_RATE;
+                    // v7.5.2 → v7.5.7 표시 규칙: % → 소수 1자리, 비중(0.XXX) → 소수 3자리, 금액 → 정수 (state 정밀도는 그대로)
                     return (
                       <tr key={i} className="border-t border-gray-100">
                         <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
-                        <td className="text-center px-1 text-gray-500">
-                          {typeof NT_i === "number" ? f(NT_i) : <span className="text-gray-300">—</span>}
+                        <td className="text-center px-1">
+                          <DraftInput value={typeof A_i === "number" ? A_i : undefined} decimals={0} grouping placeholder="—"
+                            className="w-20" min={0}
+                            onCommit={v => updBase(i, "A", Math.round(v))} />
                         </td>
                         <td className="text-center px-1">
-                          <input type="text" value={f(base[i].N)} className="w-20 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
-                        </td>
-                        <td className="text-center px-1">
-                          <input type="text" value={f(base[i].M1)} className="w-20 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updBase(i, "M1", v); }} />
-                        </td>
-                        <td className="text-center px-1">
-                          <input type="text"
-                            value={typeof A_i === "number" ? f(A_i) : ""}
-                            placeholder="—"
-                            className="w-20 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updBase(i, "A", v); }} />
-                        </td>
-                        <td className="text-center px-1">
-                          <input type="text"
-                            value={typeof CR_i === "number" ? CR_i.toFixed(3) : ""}
-                            placeholder="—"
-                            className="w-14 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updBase(i, "CR", v); }} />
+                          <DraftInput value={typeof CR_i === "number" ? CR_i : undefined} decimals={3} placeholder="—"
+                            className="w-16" min={0} max={1}
+                            onCommit={v => updBase(i, "CR", v)} />
                         </td>
                         <td className="text-center px-1 text-gray-700">
                           {f(B_display)}
@@ -538,29 +583,53 @@ export default memo(function TabSimulation({
                           )}
                         </td>
                         <td className="text-center px-1">
-                          <input type="text" value={base[i].L.toFixed(4)} className="w-16 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updBase(i, "L", v); }} />
-                          <span className="block text-[9px] text-teal-700">L1 {L1_i.toFixed(2)}</span>
+                          <DraftInput value={C1_i * 100} decimals={1} className="w-16 text-emerald-700" min={0} max={100}
+                            onCommit={v => { const newL = 1 - v / 100; updL1(i, newL); updBase(i, "L", newL); }} />
                         </td>
-                        <td className="text-center px-1 text-emerald-700">{(C1_i * 100).toFixed(1)}%</td>
-                        <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
                         <td className="text-center px-1 text-slate-700">{f(PB_display)}</td>
+                        <td className="text-center px-1">
+                          <DraftInput value={F_rate} decimals={1} className="w-16 text-purple-600" min={0}
+                            onCommit={v => updF(i, Math.round(B_display * v / 100))} />
+                        </td>
+                        <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
                         <td className="text-center px-1 font-bold text-indigo-700">{f(PB_display + Fi)}</td>
                         <td className="text-center px-1">
-                          <input type="text" value={f(state.regDist[i])} className="w-14 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5 text-blue-700"
-                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updRegDist(i, v); }} />
+                          <DraftInput value={copay_i * 100} decimals={1} className="w-16 text-gray-700" min={0} max={100}
+                            onCommit={v => updCopay(i, v / 100)} />
+                        </td>
+                        <td className="text-center px-1">
+                          <DraftInput value={typeof base[i].NT === "number" ? base[i].NT : undefined} decimals={0} grouping placeholder="—"
+                            className="w-24 text-gray-700" min={0}
+                            onCommit={v => updBase(i, "NT", Math.round(v))} />
+                        </td>
+                        <td className="text-center px-1">
+                          <DraftInput value={base[i].N} decimals={0} grouping className="w-24 text-gray-700" min={1}
+                            onCommit={v => updBase(i, "N", Math.round(v))} />
+                        </td>
+                        <td className="text-center px-1">
+                          <DraftInput value={ratios[i] * 100} decimals={1} className="w-16 text-blue-700" min={0} max={100}
+                            onCommit={v => updBaseRatio(i, v / 100)} />
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t border-gray-200 bg-gray-50 text-[10px] text-gray-500">
+                    <td className="px-2 py-1 font-semibold">합계</td>
+                    <td colSpan={9}></td>
+                    <td className="text-center px-1">{f(base.reduce((s, g) => s + (typeof g.NT === "number" ? g.NT : 0), 0))}</td>
+                    <td className="text-center px-1">{f(base.reduce((s, g) => s + (g.N || 0), 0))}</td>
+                    <td className="text-center px-1 text-blue-600">{(ratios.reduce((s, v) => s + v, 0) * 100).toFixed(1)}%{ratiosOverridden && <span className="block text-[9px] text-amber-600">수기</span>}</td>
+                  </tr>
+                </tfoot>
               </table>
               <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
-                ※ 직접 편집: RN · M1 · L (= L1 시드) · A · CR · RR.
-                B는 A × CR 산출값 (정책 슬라이더 B와 다르면 노란색 ⚠ 안내).
-                PF · L1 · 정책 B는 상단 슬라이더 또는 고급 패널에서 설정.
-                NT(전체 환자수)는 데이터 anchor의 reference (편집 불가).
-                약어: RN(참여의원 전체 환자수, 이전 NC) · RR(참여의원당 등록환자수, 이전 등록).
+                ※ 직접 편집: A · CR · C1 · F · 본인부담비 · NT · RN · 분포비 (셀 클릭 후 입력, Enter 또는 포커스 이동 시 반영 · Esc 취소).
+                C1 편집 시 L1(=1−C1)과 실측 L이 함께 갱신되어 PB에 즉시 반영. F 편집 시 PF = B × F로 재산출 (상단 PF 슬라이더와 연동).
+                B는 A × CR 산출값 (정책 슬라이더 B와 다르면 노란색 ⚠ 안내). 본인부담비는 환자군별 M1 × 본인부담비(디폴트 30%).
+                분포비 = 환자군별 등록 분포 (기준 = 등록, 단일 값). 디폴트는 일만시 실측 비율(RN_i ÷ ΣRN). 자유 입력(다른 군 불변, 합 100% 강제 없음)이며 의원당 등록환자 배분에 그대로 적용 — 합이 100%가 아니면 등록 총량도 그만큼 달라짐(예: 99.9% → 999명). "↩ 분포비 실측 복귀" 또는 "데이터 비례" 프리셋으로 되돌릴 수 있음.
+                RN 편집 시 분포비는 RN 실측 비율로 재산출되고 엔진의 참여의원 환자 배분(N_g)에도 반영. NT(전체 환자수)는 참고 표시. M1 절대값은 데이터 관리(엑셀 업로드·baseline)에서 관리.
               </div>
             </div>
           </div>
