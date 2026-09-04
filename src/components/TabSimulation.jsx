@@ -34,7 +34,7 @@ function DraftInput({ value, decimals = 2, onCommit, min = -Infinity, max = Infi
     <input type="text"
       value={draft === null ? fmt(value) : draft}
       placeholder={placeholder}
-      className={"text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5 " + className}
+      className={"text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5 px-0.5 " + className}
       onFocus={e => { setDraft(fmt(value).replace(/,/g, "")); e.target.select(); }}
       onChange={e => setDraft(e.target.value)}
       onBlur={commit}
@@ -528,24 +528,25 @@ export default memo(function TabSimulation({
                   편집: A, CR, C1(→ L1·base.L 동시 갱신), F(→ F_g = B×F), 등록 분포비(→ regDist = 비율 × Σ regDist).
                   산출: B, PB, PF, P. 표시만: 분포비(ratio_i, 프리셋으로만 변경).
                   NT·RN·M1·RR 절대값 컬럼은 제거 (데이터 anchor·엑셀 업로드로 관리). */}
-              <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1140 }}>
+              {/* v7.6.9: 모든 열이 한 화면(max-w-4xl 카드 폭)에 들어오도록 minWidth 제거 + 헤더 부제 축약(전체 설명은 title 툴팁) + 입력 폭 축소. overflow-x-auto는 좁은 화면 fallback. */}
+              <table className="w-full text-[11px] tabular-nums" style={{ tableLayout: "auto" }}>
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
-                    <th className="text-left px-2 py-1.5" title="HCC 4분위 환자군">환자군</th>
-                    <th className="text-center px-1" title="1인당 평균 의료비 A = T ÷ NT (편집 가능)">A<br /><span className="font-normal text-[9px]">=T/NT · 1인당 평균 의료비</span></th>
+                    <th className="text-left px-1 py-1.5 whitespace-nowrap" title="HCC 4분위 환자군">환자군</th>
+                    <th className="text-center px-1" title="1인당 평균 의료비 A = T ÷ NT (편집 가능)">A<br /><span className="font-normal text-[9px]">=T/NT</span></th>
                     <th className="text-center px-1" title="의원급 외래비중 CR (편집 가능)">CR<br /><span className="font-normal text-[9px]">외래비중</span></th>
-                    <th className="text-center px-1" title="1인당 의원급 외래비 B = A × CR (산출)">B<br /><span className="font-normal text-[9px]">=A×CR · 1인당 의원급 외래비</span></th>
-                    <th className="text-center px-1 text-emerald-700" title="등록의원 외래 의료비 비중 C1 = 1 − L1 (편집 가능 · L1 동시 갱신)">C1<br /><span className="font-normal text-[9px]">=1−L1 · 등록의원 외래 비중</span></th>
-                    <th className="text-center px-1 text-slate-700" title="일차의료 기본수가 PB = B × C1 (산출)">PB<br /><span className="font-normal text-[9px]">=B×C1 · 일차의료 기본수가</span></th>
-                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정율 F = PF ÷ B (편집 가능)">F<br /><span className="font-normal text-[9px]">기능보정율 %</span></th>
-                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF = B × F (산출)">PF<br /><span className="font-normal text-[9px]">=B×F · 기능보정</span></th>
-                    <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF (산출)">P<br /><span className="font-normal text-[9px]">=PB+PF · 일차의료수가</span></th>
-                    <th className="text-center px-1" title="환자군별 전체 환자수 NT (건보 전수 · 참고 · 편집 가능)">NT<br /><span className="font-normal text-[9px]">전체 환자수</span></th>
-                    <th className="text-center px-1" title="참여의원(일만시) 환자수 RN (기준 분포비·엔진 환자 배분 재료 · 편집 가능)">RN<br /><span className="font-normal text-[9px]">일만시 환자수</span></th>
+                    <th className="text-center px-1" title="1인당 의원급 외래비 B = A × CR (산출)">B<br /><span className="font-normal text-[9px]">=A×CR</span></th>
+                    <th className="text-center px-1 text-emerald-700" title="등록의원 외래 의료비 비중 C1 = 1 − L1 (편집 가능 · L1 동시 갱신)">C1<br /><span className="font-normal text-[9px]">=1−L1 %</span></th>
+                    <th className="text-center px-1 text-slate-700" title="일차의료 기본수가 PB = B × C1 (산출)">PB<br /><span className="font-normal text-[9px]">=B×C1</span></th>
+                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정율 F = PF ÷ B (편집 가능)">F<br /><span className="font-normal text-[9px]">보정율 %</span></th>
+                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF = B × F (산출)">PF<br /><span className="font-normal text-[9px]">=B×F</span></th>
+                    <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF (산출)">P<br /><span className="font-normal text-[9px]">=PB+PF</span></th>
+                    <th className="text-center px-1" title="환자군별 전체 환자수 NT (건보 전수 · 참고 · 편집 가능)">NT<br /><span className="font-normal text-[9px]">전체</span></th>
+                    <th className="text-center px-1" title="참여의원(일만시) 환자수 RN (기준 분포비·엔진 환자 배분 재료 · 편집 가능)">RN<br /><span className="font-normal text-[9px]">일만시</span></th>
                     {/* v7.5.11: 분포비 열 표시 전용 (수기 입력 불가, 사용자 결정). 변경은 프리셋 버튼으로만. */}
-                    <th className="text-center px-1 text-blue-700" title="환자군별 분포비 (기준 = 등록) · 디폴트 = 일만시 실측 RN_i ÷ ΣRN · 표시 전용 — 변경은 분포비 프리셋 버튼으로">분포비<br /><span className="font-normal text-[9px]">% · 기준 = 등록</span></th>
+                    <th className="text-center px-1 text-blue-700" title="환자군별 분포비 (기준 = 등록) · 디폴트 = 일만시 실측 RN_i ÷ ΣRN · 표시 전용 — 변경은 분포비 프리셋 버튼으로">분포비<br /><span className="font-normal text-[9px]">%</span></th>
                     {/* v7.6.2: 본인부담비 열 복원 (맨 오른쪽). v7.6.3: 참여 전 공단 지출 baseline = 총 외래비 × (1 − 본인부담비)에 반영. 참여 후 산식에는 미반영(v7.6.1). */}
-                    <th className="text-center px-1" title="환자 본인부담비 (디폴트 26.1% · 편집 가능) — 공단 지출: 참여 전 = 총 외래비 × (1 − 본인부담비) (v7.6.3), 참여 후 = (PB·타원비·비등록) × (1 − 본인부담비) + PF + 포괄관리성과 (v7.6.5~v7.6.7 · PF·성과는 공단 직접 지급이라 본인부담 없음). 의원 수입(P = PB + PF)에는 미반영">본인부담비<br /><span className="font-normal text-[9px]">% · 공단 지출 (PF·성과 제외)</span></th>
+                    <th className="text-center px-1" title="환자 본인부담비 (디폴트 26.1% · 편집 가능) — 공단 지출: 참여 전 = 총 외래비 × (1 − 본인부담비) (v7.6.3), 참여 후 = (PB·타원비·비등록) × (1 − 본인부담비) + PF + 포괄관리성과 (v7.6.5~v7.6.7 · PF·성과는 공단 직접 지급이라 본인부담 없음). 의원 수입(P = PB + PF)에는 미반영">본인부담<br /><span className="font-normal text-[9px]">% · 공단</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -565,15 +566,15 @@ export default memo(function TabSimulation({
                     // v7.5.2 → v7.5.7 표시 규칙: % → 소수 1자리, 비중(0.XXX) → 소수 3자리, 금액 → 정수 (state 정밀도는 그대로)
                     return (
                       <tr key={i} className="border-t border-gray-100">
-                        <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
+                        <td className="px-1 py-1.5 font-bold whitespace-nowrap" style={{ color: CL[i] }}>{SH[i]}</td>
                         <td className="text-center px-1">
                           <DraftInput value={typeof A_i === "number" ? A_i : undefined} decimals={0} grouping placeholder="—"
-                            className="w-20" min={0}
+                            className="w-[64px]" min={0}
                             onCommit={v => updBase(i, "A", Math.round(v))} />
                         </td>
                         <td className="text-center px-1">
                           <DraftInput value={typeof CR_i === "number" ? CR_i : undefined} decimals={3} placeholder="—"
-                            className="w-16" min={0} max={1}
+                            className="w-[46px]" min={0} max={1}
                             onCommit={v => updBase(i, "CR", v)} />
                         </td>
                         <td className="text-center px-1 text-gray-700">
@@ -583,28 +584,28 @@ export default memo(function TabSimulation({
                           )}
                         </td>
                         <td className="text-center px-1">
-                          <DraftInput value={C1_i * 100} decimals={1} className="w-16 text-emerald-700" min={0} max={100}
+                          <DraftInput value={C1_i * 100} decimals={1} className="w-[44px] text-emerald-700" min={0} max={100}
                             onCommit={v => { const newL = 1 - v / 100; updL1(i, newL); updBase(i, "L", newL); }} />
                         </td>
                         <td className="text-center px-1 text-slate-700">{f(PB_display)}</td>
                         <td className="text-center px-1">
-                          <DraftInput value={F_rate} decimals={1} className="w-16 text-purple-600" min={0}
+                          <DraftInput value={F_rate} decimals={1} className="w-[44px] text-purple-600" min={0}
                             onCommit={v => updF(i, Math.round(B_display * v / 100))} />
                         </td>
                         <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
                         <td className="text-center px-1 font-bold text-indigo-700">{f(PB_display + Fi)}</td>
                         <td className="text-center px-1">
                           <DraftInput value={typeof base[i].NT === "number" ? base[i].NT : undefined} decimals={0} grouping placeholder="—"
-                            className="w-24 text-gray-700" min={0}
+                            className="w-[70px] text-gray-700" min={0}
                             onCommit={v => updBase(i, "NT", Math.round(v))} />
                         </td>
                         <td className="text-center px-1">
-                          <DraftInput value={base[i].N} decimals={0} grouping className="w-24 text-gray-700" min={1}
+                          <DraftInput value={base[i].N} decimals={0} grouping className="w-[70px] text-gray-700" min={1}
                             onCommit={v => updBase(i, "N", Math.round(v))} />
                         </td>
                         <td className="text-center px-1 text-blue-700 font-semibold">{(ratios[i] * 100).toFixed(1)}%</td>
                         <td className="text-center px-1">
-                          <DraftInput value={((state.copayRates?.[i] ?? COPAY_RATE) * 100)} decimals={1} className="w-16 text-gray-500" min={0} max={100}
+                          <DraftInput value={((state.copayRates?.[i] ?? COPAY_RATE) * 100)} decimals={1} className="w-[44px] text-gray-500" min={0} max={100}
                             onCommit={v => updCopay(i, v / 100)} />
                         </td>
                       </tr>
