@@ -456,7 +456,7 @@ export default memo(function TabSimulation({
             <div className="flex items-center justify-between gap-2 py-1.5 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-600">📋 환자군별 상세 편집 테이블</span>
-                <span className="text-[10px] font-normal text-gray-400">A → B = A×CR → PB = B×C1 → PF = B×F → P = PB+PF · 입력: A · CR · C1 · F · 등록 분포비</span>
+                <span className="text-[10px] font-normal text-gray-400">A → B = A×CR → PB = B×C1 → PF = B×F → P = PB+PF · 입력: A · CR · C1 · F · NT · RN · 등록 분포비</span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-[10px] text-gray-500">등록 분포 프리셋:</span>
@@ -483,7 +483,7 @@ export default memo(function TabSimulation({
                   편집: A, CR, C1(→ L1·base.L 동시 갱신), F(→ F_g = B×F), 등록 분포비(→ regDist = 비율 × Σ regDist).
                   산출: B, PB, PF, P. 표시만: 본인부담비(30% 고정), 기준 분포비(ratio_i = N_i/ΣN).
                   NT·RN·M1·RR 절대값 컬럼은 제거 (데이터 anchor·엑셀 업로드로 관리). */}
-              <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1040 }}>
+              <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1240 }}>
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
                     <th className="text-left px-2 py-1.5" title="HCC 4분위 환자군">환자군</th>
@@ -496,7 +496,9 @@ export default memo(function TabSimulation({
                     <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF = B × F (산출)">PF<br /><span className="font-normal text-[9px]">=B×F · 기능보정</span></th>
                     <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF (산출)">P<br /><span className="font-normal text-[9px]">=PB+PF · 일차의료수가</span></th>
                     <th className="text-center px-1" title="환자 본인부담비 (현행 외래비 M1 대비, 30% 고정)">본인부담비<br /><span className="font-normal text-[9px]">%</span></th>
-                    <th className="text-center px-1" title="기준 군별 분포비 ratio_i = N_i ÷ ΣN (실측, 편집 불가)">기준 분포비<br /><span className="font-normal text-[9px]">% · ratio_i</span></th>
+                    <th className="text-center px-1" title="환자군별 전체 환자수 NT (건보 전수 · 참고 · 편집 가능)">NT<br /><span className="font-normal text-[9px]">전체 환자수</span></th>
+                    <th className="text-center px-1" title="참여의원(일만시) 환자수 RN (기준 분포비·엔진 환자 배분 재료 · 편집 가능)">RN<br /><span className="font-normal text-[9px]">일만시 환자수</span></th>
+                    <th className="text-center px-1" title="기준 군별 분포비 ratio_i = RN_i ÷ ΣRN (실측, 편집 불가)">기준 분포비<br /><span className="font-normal text-[9px]">% · ratio_i</span></th>
                     <th className="text-center px-1 text-blue-700" title="등록 군별 분포비 = regDist_i ÷ Σ regDist (편집 가능 · Σ=1,000이면 RR/1000)">등록 분포비<br /><span className="font-normal text-[9px]">% · RR/1000</span></th>
                   </tr>
                 </thead>
@@ -559,6 +561,18 @@ export default memo(function TabSimulation({
                         <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
                         <td className="text-center px-1 font-bold text-indigo-700">{f(PB_display + Fi)}</td>
                         <td className="text-center px-1 text-gray-500">{(COPAY_RATE * 100).toFixed(0)}%</td>
+                        <td className="text-center px-1">
+                          <input type="text"
+                            value={typeof base[i].NT === "number" ? f(base[i].NT) : ""}
+                            placeholder="—"
+                            className="w-24 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updBase(i, "NT", v); }} />
+                        </td>
+                        <td className="text-center px-1">
+                          <input type="text" value={f(base[i].N)}
+                            className="w-24 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
+                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
+                        </td>
                         <td className="text-center px-1 text-gray-600">{(ratios[i] * 100).toFixed(1)}%</td>
                         <td className="text-center px-1">
                           <input type="text" value={regPct.toFixed(1)}
@@ -572,11 +586,11 @@ export default memo(function TabSimulation({
                 </tbody>
               </table>
               <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
-                ※ 직접 편집: A · CR · C1 · F · 등록 분포비.
+                ※ 직접 편집: A · CR · C1 · F · NT · RN · 등록 분포비.
                 C1 편집 시 L1(=1−C1)과 실측 L이 함께 갱신되어 PB에 즉시 반영. F 편집 시 PF = B × F로 재산출 (상단 PF 슬라이더와 연동).
                 B는 A × CR 산출값 (정책 슬라이더 B와 다르면 노란색 ⚠ 안내). 본인부담비는 M1 × 30% 고정.
                 기준 분포비는 실측 환자수 비율(ratio_i = N_i ÷ ΣN, 편집 불가), 등록 분포비는 의원당 등록환자수 RR ÷ Σ RR(디폴트 1,000명 → RR/1000).
-                등록 분포비의 디폴트("데이터 비례")는 기준 분포비와 동일. RN · M1 · NT 절대값은 데이터 관리(엑셀 업로드·baseline)에서 관리.
+                등록 분포비의 디폴트("데이터 비례")는 기준 분포비와 동일. RN(일만시 참여의원 환자수) 편집 시 기준 분포비와 엔진의 환자군 배분(N_g)이 재산출되며, NT(전체 환자수)는 참고 표시. M1 절대값은 데이터 관리(엑셀 업로드·baseline)에서 관리.
               </div>
             </div>
           </div>
