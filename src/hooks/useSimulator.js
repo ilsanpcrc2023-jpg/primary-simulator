@@ -1,7 +1,20 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
 import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX, COPAY_RATE, INIT_COPAY_RATES } from "../constants";
-import { roundRegDist, refRatiosFromBase } from "../utils";
+import { roundRegDist, refRatiosFromBase, regDistFromRatios } from "../utils";
+
+// v7.5.8: 등록 기준 총량 (분포비를 곱하기 전 base) = Σ regDist ÷ Σ 현재 분포비. 디폴트 1,000명.
+//   regDist_i = ratio_i × base 이므로 분포비 합이 100%가 아니어도(예 119.8% → 1,198명) base는 1,000으로
+//   유지되고, "데이터 비례"/균등 프리셋으로 돌아오면 등록 총량도 base × Σ ratio로 복귀한다.
+//   의원당 등록환자수 프리셋(SCALE_REGDIST)은 비율을 보존하며 스케일하므로 base가 그 값(1,500 등)으로 바뀐다.
+const regBaseOf = (state) => {
+  const s = (state.regDist || []).reduce((a, v) => a + (Number(v) || 0), 0);
+  const ratios = Array.isArray(state.baseRatios) && state.baseRatios.length === state.base.length
+    ? state.baseRatios
+    : refRatiosFromBase(state.base);
+  const r = ratios.reduce((a, v) => a + (Number(v) || 0), 0);
+  return s > 0 && r > 0 ? s / r : 1000;
+};
 
 const initialState = {
   base: INIT_BASE,
@@ -94,18 +107,31 @@ function reducer(state, action) {
       const base = [...state.base];
       base[action.i] = { ...base[action.i], [action.key]: action.value };
       // v7.5.5: RN(N · 기준 분포비 재료) 편집 시 수기 override는 폐기 → RN 실측 비율로 재산출
-      return action.key === "N" ? { ...state, base, baseRatios: null } : { ...state, base };
+      // v7.5.8: 등록 분포비 = 기준 분포비이므로 regDist도 새 실측 비율로 동기화
+      return action.key === "N"
+        ? { ...state, base, baseRatios: null, regDist: regDistFromRatios(refRatiosFromBase(base), regBaseOf(state)) }
+        : { ...state, base };
     }
     // v7.5.3: 기준 군별 분포비(ratio_i) 수기 편집 — 자유 입력 override (다른 군 불변, 합 100% 강제 없음).
     // v7.5.5: 디폴트(override 없을 때) = RN 기준 (refRatiosFromBase).
+    // v7.5.8: 분포비 단일화 (사용자 결정) — 등록 분포비 = 기준 분포비. 분포비 편집 시 regDist도
+    //   ratio_i × 등록 총량(Σ regDist, 디폴트 1,000)으로 동시 갱신. 합 1,000 강제 없음 (999.9 등 허용).
     case "SET_BASE_RATIO_AT": {
       const cur = state.baseRatios ?? refRatiosFromBase(state.base);
       const baseRatios = [...cur];
       baseRatios[action.i] = Math.max(0, Math.min(1, action.ratio));
-      return { ...state, baseRatios };
+      const regDist = [...state.regDist];
+      regDist[action.i] = roundRegDist(baseRatios[action.i] * regBaseOf(state));
+      return { ...state, baseRatios, regDist };
     }
+    // v7.5.8: 분포비 일괄 설정 (프리셋 균등/건강편중/고위험편중) — 기준·등록 동시.
+    case "SET_DIST_ALL": {
+      const baseRatios = action.ratios.map(r => Math.max(0, Math.min(1, r)));
+      return { ...state, baseRatios, regDist: regDistFromRatios(baseRatios, regBaseOf(state)) };
+    }
+    // v7.5.8: 실측 복귀 — 기준 분포비 override 폐기 + 등록 분포비도 실측 비율로 재산출 ("데이터 비례").
     case "RESET_BASE_RATIOS":
-      return { ...state, baseRatios: null };
+      return { ...state, baseRatios: null, regDist: regDistFromRatios(refRatiosFromBase(state.base), regBaseOf(state)) };
     // v7.5.2: 환자군별 본인부담비 수기 편집 (0~1 clamp).
     case "SET_COPAY_AT": {
       const copayRates = [...(state.copayRates ?? INIT_COPAY_RATES)];
@@ -166,6 +192,7 @@ function reducer(state, action) {
         M_clinics: newM,
         totalN: newTotalN,
         regDist: [...INIT_REG_DIST],
+        baseRatios: null,   // v7.5.8: 분포비(기준=등록) 실측 복귀
         dataLabel: state.datasetLabel || INIT_DATA_LABEL,
       };
     }
@@ -183,8 +210,16 @@ function reducer(state, action) {
       regDist[action.i] = roundRegDist(action.value);
       return { ...state, regDist };
     }
-    case "SET_REGDIST_ALL":
-      return { ...state, regDist: action.values.map(roundRegDist) };
+    case "SET_REGDIST_ALL": {
+      // v7.5.8: 등록 분포비 = 기준 분포비 — 의원 모드 CLINIC_PRESETS 등 regDist 일괄 설정 시
+      //   기준 분포비(baseRatios)도 같은 비율로 동기화. 실측 비율과 같으면 override 없음(null).
+      const regDist = action.values.map(roundRegDist);
+      const sum = regDist.reduce((s, v) => s + v, 0);
+      const measured = refRatiosFromBase(state.base);
+      const ratios = sum > 0 ? regDist.map(v => v / sum) : measured;
+      const isMeasured = ratios.every((r, i) => Math.abs(r - measured[i]) < 0.0005);
+      return { ...state, regDist, baseRatios: isMeasured ? null : ratios };
+    }
     case "SCALE_REGDIST": {
       // 총합을 newTotal로 맞추되 비율 유지
       const sum = state.regDist.reduce((s, v) => s + v, 0);
@@ -209,10 +244,14 @@ function reducer(state, action) {
       //   사용자가 임의 조정한 L1은 새 데이터 LOAD 시 덮어써짐.
       const newL1 = action.base.map(b => (typeof b?.L === "number" ? b.L : 0.7));
       // v7.2.0: action.regDist (엑셀 RR 컬럼)가 4군 모두 양수면 자동 주입.
-      //   없으면 기존 state.regDist 보존 (사용자 슬라이더 조정값 보호).
-      const newRegDist = (Array.isArray(action.regDist) && action.regDist.length === 4 && action.regDist.every(v => v > 0))
+      // v7.5.8: 등록 분포비 = 기준 분포비 — RR이 있으면 기준 분포비도 RR 비율로 override,
+      //   없으면 새 데이터의 실측 비율(RN_i/ΣRN)로 regDist 재산출 (등록 총량은 현재 Σ regDist 유지).
+      const hasRR = Array.isArray(action.regDist) && action.regDist.length === 4 && action.regDist.every(v => v > 0);
+      const rrSum = hasRR ? action.regDist.reduce((s, v) => s + v, 0) : 0;
+      const newRegDist = hasRR
         ? action.regDist.map(roundRegDist)
-        : state.regDist;
+        : regDistFromRatios(refRatiosFromBase(action.base), regBaseOf(state));
+      const newBaseRatios = hasRR && rrSum > 0 ? action.regDist.map(v => v / rrSum) : null;
       return {
         ...state,
         base: action.base,
@@ -220,7 +259,7 @@ function reducer(state, action) {
         F_g: action.F_g ?? state.F_g,
         L1: newL1,
         regDist: newRegDist,
-        baseRatios: null,   // v7.5.3: 새 데이터 실측 비율로 복귀 (수기 override 폐기)
+        baseRatios: newBaseRatios,
         totalN: newTotalN,
         dataLabel: action.dataLabel,
         uploadBanner: action.uploadBanner,
@@ -539,6 +578,7 @@ export default function useSimulator() {
   // v7.5.2: 상세 편집 테이블 — 기준 분포비(ratio_i) · 본인부담비 수기 편집
   const updBaseRatio = useCallback((i, ratio) => dispatch({ type: "SET_BASE_RATIO_AT", i, ratio }), []);
   const resetBaseRatios = useCallback(() => dispatch({ type: "RESET_BASE_RATIOS" }), []);
+  const setDistAll = useCallback((ratios) => dispatch({ type: "SET_DIST_ALL", ratios }), []);
   const updCopay = useCallback((i, value) => dispatch({ type: "SET_COPAY_AT", i, value }), []);
   const updF = useCallback((i, value) => dispatch({ type: "SET_F_AT", i, value }), []);
   const setFAll = useCallback((values) => dispatch({ type: "SET_F_ALL", values }), []);
@@ -756,7 +796,7 @@ export default function useSimulator() {
 
   return {
     state, set, updP, updBase, updF, setFAll, setPfRule,
-    updBaseRatio, resetBaseRatios, updCopay,
+    updBaseRatio, resetBaseRatios, setDistAll, updCopay,
     resetF, resetP, resetReg,
     // v6.7 L1·L2 (α 제거)
     updL1, setL1All, resetL1,
