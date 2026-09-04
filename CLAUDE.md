@@ -27,9 +27,39 @@
     - **기준 군별 분포비 = ratio_i = N_i / ΣN** (실측, 편집 불가) · **등록 군별 분포비 = regDist_i / Σ regDist** (Σ=1,000이면 RR/1000). **등록 분포비 디폴트 = ratio_i** — "데이터 비례" 프리셋이 상수 `INIT_REG_DIST` 대신 `regDistFromRatios(ratiosFromBase(base), Σ regDist)` (largest-remainder)로 동적 산출. 현 baseline에서 [201,198,294,307] = INIT_REG_DIST 일치 (테스트 보장).
     - 신규: `constants.COPAY_RATE=0.30` (useSimulator.js:319·348 리터럴 0.30 치환) · `utils.ratiosFromBase(base)` · `utils.regDistFromRatios(ratios, total)`. 단위 테스트 +6 (90/90 통과).
 
-  · **v7.5.2 — 상세 편집 테이블 NT·RN 열 추가 (2026-09-04, 사용자 결정)** — v7.5.1 복귀 후 재적용. UI만.
-    - 기준 분포비 왼쪽에 **NT(전체 환자수)** · **RN(일만시 참여의원 환자수)** 열 추가. 둘 다 편집 가능(`updBase(i,"NT"|"N")`). RN 편집은 기준 분포비(ratio_i = RN_i/ΣRN)와 엔진 환자군 배분(N_g)에 반영, NT는 참고 표시. 컬럼 13개: `A | CR | B | C1 | PB | F | PF | P | 본인부담비 | NT | RN | 기준 분포비 | 등록 분포비`.
-    - 이전 세션의 v7.5.2~v7.5.8(입력 보강·분포비 단일화 등)은 사용자 요청으로 v7.5.1 상태로 되돌림(commit `2523b0c`). 히스토리에는 보존.
+  · **v7.5.2 — 상세 편집 테이블 입력 보강 (2026-09-04, 사용자 결정)** — UI·state만.
+    - **표시 자릿수**: %는 소수 2자리(C1·F·본인부담비·기준/등록 분포비), 비중(CR)은 소수 4자리(0.XXXX), 금액은 정수.
+    - **본인부담비 환자군별 수기 편집** — `state.copayRates[4]` 신규 (디폴트 `INIT_COPAY_RATES` = 4군 모두 30%). 엔진 `ab_reg = P + M1 × copayRates[i]` (`SET_COPAY_AT`, `updCopay`). 디폴트에서는 v7.5.1과 동일 값.
+    - **기준 분포비(ratio_i) 수기 편집** — `utils.rescaleBaseN(base, i, ratio)`: i군 비율 고정 + ΣN 보존 + 나머지 군 비례 재배분 (합 100% 유지). `SET_BASE_RATIO_AT`, `updBaseRatio`.
+    - **등록 분포비 자유 입력** — 분모를 Σ regDist → **1,000 고정**(RR/1000, 사용자 정의)으로 변경. 합 100% 강제 없음 (tfoot 합계 행에 합계 % · RR 표시).
+    - **`DraftInput` 컴포넌트** (TabSimulation.jsx 내부) — 포커스 중 로컬 텍스트 유지, blur/Enter 시 commit, Esc 취소. 이전 controlled input이 키 입력마다 parse→dispatch→toFixed 재포맷을 돌려 "."·부분 입력이 막히던 문제("입력 제한") 해소. A·CR·C1·F·본인부담비·기준/등록 분포비 모두 적용.
+    - 단위 테스트 +6 (96/96 통과).
+
+  · **v7.5.3 — 기준 분포비 자유 입력 + 등록 분포비 디폴트 2자리 정합 (2026-09-04, 사용자 결정)** — UI·state만.
+    - **기준 분포비 자유 입력** — v7.5.2의 "ΣN 보존 비례 재배분"(`rescaleBaseN`) 폐기. `state.baseRatios[4]` override 신설 (null = base.N에서 실측 산출). 입력값이 그대로 유지되고 다른 군은 불변, 합 100% 강제 없음 (tfoot 합계 + "수기" 배지). `SET_BASE_RATIO_AT` / `RESET_BASE_RATIOS`(↩ 기준 분포비 실측 복귀 버튼) / `LOAD_DATA` 시 null 복귀. 엔진 `ratios` 메모가 `baseRatios ?? N_i/ΣN`을 사용 → N_g·baseN_g·ffsPerPerson 모두 수기값 반영.
+    - **등록 분포비 디폴트 = 기준 분포비와 소수 2자리(%)까지 동일** — regDist 단위를 정수 → **0.1명**으로 변경 (등록 분포비 % = RR/10). `INIT_REG_DIST`를 상수 대신 `INIT_BASE`에서 산출: `round(ratio_i × 1000, 1)` = **[201.6, 197.7, 293.8, 306.8]** (합 999.9, 군별 독립 반올림 — largest-remainder 합 보정은 2자리 동일성을 깨뜨려 폐기) ↔ 기준 분포비 20.16 / 19.77 / 29.38 / 30.68 %. `utils.regDistFromRatios(ratios, total, decimals=1)` 시그니처 변경, `utils.roundRegDist` 신규 (reducer `SET_REGDIST_AT`/`SET_REGDIST_ALL`/`SCALE_REGDIST`/`LOAD_DATA` RR 주입 공용). 1차년도 디폴트 사업 전체 등록 100,000 → **99,990명**(비등록 324,610). `CLINIC_PRESETS.general.regDist = INIT_REG_DIST` 참조.
+    - 단위 테스트 93/93 통과 (rescaleBaseN 테스트 5개 제거, 2자리 동일성·roundRegDist 테스트 추가).
+
+  · **v7.5.4 — 상세 편집 테이블 NT·RN 열 추가 + 기준 분포비 NT 기준 (2026-09-04, 사용자 결정)** — UI·state만.
+    - 기준 분포비 왼쪽에 **NT(전체 환자수)** · **RN(일만시 참여의원 환자수)** 열 추가 (둘 다 DraftInput 편집 가능 → `updBase(i,"NT"|"N")`). tfoot에 ΣNT · ΣRN 표시.
+    - **기준 분포비 = NT 기준**: `ratio_i = NT_i / ΣNT` (`utils.refRatiosFromBase`, NT 없으면 RN fallback). exc_zero: **28.78 / 21.10 / 25.12 / 25.00 %** (ΣNT 48,874,201). NT 편집 시 수기 override(`baseRatios`) 자동 폐기.
+    - **등록 분포비 디폴트 = 기준 분포비** 규칙에 따라 `INIT_REG_DIST` → **[287.8, 211.0, 251.2, 250.0]** (합 1,000.0 · 사업 전체 등록 100,000명 복귀). v7.5.3의 RN 기준 [201.6, 197.7, 293.8, 306.8] 폐기.
+    - **엔진 분리**: 참여의원 환자 배분(`ratios` 메모 → N_g·baseN_g·ffsPerPerson)은 **RN 기준 그대로** — `baseRatios` override를 엔진에서 제거. 기준 분포비는 등록 분포비 디폴트("데이터 비례" 프리셋)와 표시에만 사용. RN 편집은 엔진에 반영, NT·기준 분포비 편집은 프리셋 클릭 전까지 KPI 불변.
+    - 단위 테스트 94/94 통과.
+
+  · **v7.5.5 — 기준 분포비 RN 기준 복귀 (2026-09-04, 사용자 결정)** — v7.5.4의 NT 기준을 되돌림. NT·RN 열은 유지.
+    - `refRatiosFromBase` = `ratiosFromBase(base, "N")` (RN_i / ΣRN). exc_zero: **20.16 / 19.77 / 29.38 / 30.68 %**. `INIT_REG_DIST` → **[201.6, 197.7, 293.8, 306.8]** (합 999.9 · 사업 전체 등록 99,990명). RN 편집 시 수기 override 자동 폐기(엔진 N_g에도 반영), NT는 참고 표시.
+    - 단위 테스트 94/94 통과.
+
+  · **v7.5.7 — 상세 편집 테이블 표시 자릿수 조정 (2026-09-04, 사용자 결정)** — 표시만, state 정밀도 불변.
+    - %(C1·F·본인부담비·기준/등록 분포비·tfoot 합계) 소수 2자리 → **1자리**, 비중(CR) 소수 4자리 → **3자리**. regDist 0.1명 단위·baseRatios 등 내부 정밀도는 그대로 (입력한 값은 그대로 보존, 표시만 반올림).
+
+  · **v7.5.8 — 분포비 단일화: 등록 분포비 = 기준 분포비, RR 표기 제거 (2026-09-04, 사용자 결정)** — UI·state만.
+    - 상세 편집 테이블의 "기준 분포비"·"등록 분포비" 두 열 → **"분포비" 한 열**(% · 기준 = 등록). RR(명) 부제·RR/1000·합계 RR 표기 모두 제거. 컬럼 13개: `A | CR | B | C1 | PB | F | PF | P | 본인부담비 | NT | RN | 분포비`.
+    - **분포비 편집 → regDist 자동 동기화**: `SET_BASE_RATIO_AT`가 `baseRatios[i]`와 `regDist[i] = ratio_i × base`를 함께 갱신. **base(등록 기준 총량) = Σ regDist ÷ Σ 현재 분포비** (`regBaseOf`, 디폴트 1,000 · 의원당 등록환자수 프리셋 1,500 등으로 스케일하면 그 값). 합 100%를 강제하지 않음 — 99.9%면 등록 999.9명, 119.8%면 1,198명, 프리셋으로 100% 복귀 시 1,000명 (사용자: "999명 처리 OK"). ClinicSummaryStrip·NumBox 표시는 정수 반올림. `SET_DIST_ALL`(프리셋 균등/건강편중/고위험편중 → 비율 배열) · `RESET_BASE_RATIOS`("데이터 비례"/"↩ 분포비 실측 복귀" → override 폐기 + regDist 실측 재산출) 신규/변경.
+    - 동기화 규칙: `SET_REGDIST_ALL`(의원 모드 CLINIC_PRESETS)은 baseRatios도 같은 비율로 설정(실측과 같으면 null) · `SET_BASE N` 편집 시 regDist 실측 재산출 · `LOAD_DATA`는 RR 있으면 baseRatios = RR/ΣRR override, 없으면 새 실측 비율로 regDist 재산출(이전 "보존" 규칙 폐기) · `RESET_REG`는 baseRatios null.
+    - 엔진: 참여의원 환자 배분(N_g)은 RN 실측 그대로(v7.5.5), 등록환자 배분(regRatios = regDist/Σ)이 분포비를 따름 → 분포비 편집이 KPI(등록 관련 항목)에 반영.
+    - 단위 테스트 94/94 통과.
 
   · **v7.3.0/v7.4 산식 보류** — archive/v7.4-prerevert-260520 브랜치에 보존. C 슬라이더 큰 값(예 +24.5%p) 시 환자 본인부담 30% 처리 누락이 발견되어 옵션 C(perf_blended를 메인 KPI에서 분리, 별도 카드로 노출) 적용 후 재시도 예정.
 
@@ -193,14 +223,14 @@ npm test          # 단위 테스트 (vitest run)
 | **F** | **일차의료 기능보정** (환자군별 배열 F_g[4]) — 등록 관리 업무 + 저평가된 본연 기능 상대가치 보정 | 원/년/환자 |
 | **P** | **일차의료수가 = B × (1 − L1) + F (공단 선지급 본체)** | 원/년/환자 |
 | **공단지급** | **= P (단일화, v6.7부터)** | 원/년/환자 |
-| 본인부담 | M1 × 30% (고정) — 기호 없음 | 원/년/환자 |
+| 본인부담 | M1 × 본인부담비 (환자군별, 디폴트 30% · v7.5.2 테이블에서 편집 가능) — 기호 없음 | 원/년/환자 |
 | **L1** | **선지급 기준 타원이용비중 (환자군별 4개, 데이터 실측 = base.L 자동 산출 · v6.9.5)** | 0~1 |
 | **L2** | **실측 타원이용비중 (단일 스칼라, 사업 중 관측치 · 성과급 산정)** | 0~1 |
 | M1 | 1인당 현행 등록의원 외래비 | 원/년 |
 | N | 실인원 환자수 (연인원 아님) | 명 |
 | M | 사업 참여 의원 수 | 개 |
 | n_reg | 의원당 등록환자수 = Σ regDist | 명 |
-| regDist | 의원당 환자군별 등록환자수 배열 (v7.2.0: 데이터 비례 [160,224,298,318], 합 1,000) | 명 |
+| regDist | 의원당 환자군별 등록환자수 배열 (v7.5.5: 0.1명 단위, 디폴트 = RN 기준 ratio_i × 1,000 [201.6, 197.7, 293.8, 306.8], 합 999.9 · 등록 분포비 % = RR/10) | 명 |
 | PT | 일차의료 전환지원금 (의원당·1회·첫해) — pt_base × Track % | 원 |
 
 **F는 L1 우회**: F는 타원이용비중에 걸리지 않고 등록의원에 고정 지급.
@@ -378,7 +408,7 @@ src/
    - `성과급_L2 = Σ max(0, L1_g − L2) × B_g × n_reg_g × TrackMul` (의원 100% 환원, 공유율 없음)
 10. **⚙️ 데이터 관리** (접힘)
     - 엑셀 업로드/내보내기, 파일럿 로드, 공식 baseline 등록, 환자군별 상세 편집 테이블
-    - 테이블 컬럼 (v7.5.2): `환자군 | A(=T/NT) | CR | B(=A×CR) | C1(=1−L1) | PB(=B×C1) | F(기능보정율 %) | PF(=B×F) | P(=PB+PF) | 본인부담비(%) | NT(전체 환자수) | RN(일만시 환자수) | 기준 분포비(%) | 등록 분포비(%)`
+    - 테이블 컬럼 (v7.5.4): `환자군 | A(=T/NT) | CR | B(=A×CR) | C1(=1−L1) | PB(=B×C1) | F(기능보정율 %) | PF(=B×F) | P(=PB+PF) | 본인부담비(%) | NT(전체 환자수) | RN(일만시 환자수) | 분포비(% · 기준 = 등록, 디폴트 RN 실측, RR 표기 없음)`
     - L1은 위쪽 L1 카드의 정책 슬라이더 값을 표시 (편집은 상단 박스에서)
 
 ### Track 탭 순서 (v6.7.5 · L2 슬라이더 재배치)
