@@ -81,6 +81,29 @@ export function calcPFfromPct(pfPct, rule, B, n_reg_g) {
   return distribute(totalTarget, rule, B, n_reg_g).map(v => Math.max(0, Math.round(v)));
 }
 
+// v7.5.1: 기준 군별 분포비 ratio_i = N_i / ΣN (base 실측 환자수 비율).
+//   useSimulator.js의 ratios 메모와 동일 산식 — 상세 편집 테이블 "기준 군별 분포비(%)" 표시용.
+export function ratiosFromBase(base) {
+  const t = base.reduce((s, g) => s + (g?.N || 0), 0);
+  if (t <= 0) return base.map(() => 1 / Math.max(1, base.length));
+  return base.map(g => (g?.N || 0) / t);
+}
+
+// v7.5.1: 등록 군별 분포비 디폴트 = ratio_i. ratio_i × total을 largest-remainder 반올림해
+//   합이 정확히 total(디폴트 1,000명)이 되는 정수 regDist 배열을 만든다.
+//   INIT_BASE(v7.5 exc_zero)에 적용하면 INIT_REG_DIST [201, 198, 294, 307]과 일치.
+export function regDistFromRatios(ratios, total = 1000) {
+  const raw = ratios.map(r => r * total);
+  const floor = raw.map(v => Math.floor(v));
+  let remain = total - floor.reduce((s, v) => s + v, 0);
+  const order = raw
+    .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+    .sort((a, b) => b.frac - a.frac || a.i - b.i);
+  const out = [...floor];
+  for (let k = 0; k < order.length && remain > 0; k++, remain--) out[order[k].i] += 1;
+  return out;
+}
+
 // v6.10.0: 현재 F_g에서 통합 슬라이더 % 역산 (사용자가 개별 슬라이더 조정 후 표시용).
 //   pfPct_implied = (Σ F_g[i] × n_reg_g[i]) / (Σ B[i] × n_reg_g[i]) × 100
 export function inferPFpct(F_g, B, n_reg_g) {

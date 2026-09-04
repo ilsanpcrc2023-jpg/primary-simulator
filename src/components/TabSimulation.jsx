@@ -3,9 +3,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { FCard, TCard, ClinicSummaryStrip, ClinicCountControls } from "./RegistrationPanel";
-import { SH, CL, INIT_REG_DIST, OFFICIAL_BASELINE_META } from "../constants";
+import { SH, CL, COPAY_RATE, OFFICIAL_BASELINE_META } from "../constants";
 import presets from "../data/presets/index";
-import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB } from "../utils";
+import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB, ratiosFromBase, regDistFromRatios } from "../utils";
 
 const TRACK_LABELS = { 0: "Track A 유지", 50: "Track B 혼합", 100: "Track C 환자군" };
 
@@ -30,6 +30,15 @@ export default memo(function TabSimulation({
 
   // v6.9.3: PB = B × (1 − L1) — UI 표시값. 슬라이더 onChange는 PBtoB로 B 역산.
   const PB = calcPB(P, L1);
+
+  // v7.5.1: 상세 편집 테이블 분포비 2종.
+  //   ratio_i  = N_i / ΣN            → "기준 군별 분포비(%)" (실측, 편집 불가)
+  //   regDist_i / Σ regDist          → "등록 군별 분포비(%)" (편집 가능, Σ=1,000이면 RR/1000과 동일)
+  //   등록 분포비 디폴트("데이터 비례" 프리셋) = ratio_i를 largest-remainder로 정수화 (= INIT_REG_DIST).
+  const ratios = ratiosFromBase(base);
+  const regSum = state.regDist.reduce((s, v) => s + v, 0);
+  const regDenom = regSum > 0 ? regSum : 1000;
+  const regDistDefault = regDistFromRatios(ratios, regDenom);
 
   // L2 기본값 · 표시값 (null이면 L1 가중평균)
   const L2_display = L2 ?? perfMemo.L1avg;
@@ -447,12 +456,12 @@ export default memo(function TabSimulation({
             <div className="flex items-center justify-between gap-2 py-1.5 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-600">📋 환자군별 상세 편집 테이블</span>
-                <span className="text-[10px] font-normal text-gray-400">엑셀 정합 (HCC v3.0 2025) · 입력: RN · M1 · L1 · A · CR · RR (B는 A×CR로 자동 산출, PB·PF는 정책 슬라이더)</span>
+                <span className="text-[10px] font-normal text-gray-400">A → B = A×CR → PB = B×C1 → PF = B×F → P = PB+PF · 입력: A · CR · C1 · F · 등록 분포비</span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-[10px] text-gray-500">등록 분포 프리셋:</span>
                 {[
-                  { label: "데이터 비례", v: INIT_REG_DIST },
+                  { label: "데이터 비례", v: regDistDefault },
                   { label: "균등", v: [250, 250, 250, 250] },
                   { label: "건강편중", v: [400, 400, 150, 50] },
                   { label: "고위험편중", v: [50, 350, 300, 300] },
@@ -469,24 +478,26 @@ export default memo(function TabSimulation({
               </div>
             </div>
             <div className="overflow-x-auto">
-              {/* v7.2.0: 엑셀 정합 약어 갱신 — NT / RN(이전 NC) / A / CR / B / L1 / C1 / PF / PB / P / RR(이전 등록).
-                  편집: RN, M1, L1, A, CR, RR. 산출: B=A×CR (A·CR 모두 있을 때 표시), C1=1−L1, PB=B(1−L1), P=PB+PF. */}
-              <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1080 }}>
+              {/* v7.5.1: 컬럼 재구성 (사용자 결정) —
+                    A(=T/NT) | CR | B(=A×CR) | C1(=1−L1) | PB(=B×C1) | F(기능보정율) | PF(=B×F) | P(=PB+PF) | 본인부담비 | 기준 분포비 | 등록 분포비
+                  편집: A, CR, C1(→ L1·base.L 동시 갱신), F(→ F_g = B×F), 등록 분포비(→ regDist = 비율 × Σ regDist).
+                  산출: B, PB, PF, P. 표시만: 본인부담비(30% 고정), 기준 분포비(ratio_i = N_i/ΣN).
+                  NT·RN·M1·RR 절대값 컬럼은 제거 (데이터 anchor·엑셀 업로드로 관리). */}
+              <table className="w-full text-[11px] tabular-nums" style={{ minWidth: 1040 }}>
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
                     <th className="text-left px-2 py-1.5" title="HCC 4분위 환자군">환자군</th>
-                    <th className="text-center px-1" title="환자군별 전체 환자수 NT (참고)">NT<br /><span className="font-normal text-[9px]">전체</span></th>
-                    <th className="text-center px-1" title="참여의원 전체 환자수 RN (이전 NC, 편집 가능)">RN<br /><span className="font-normal text-[9px]">참여의원</span></th>
-                    <th className="text-center px-1" title="1인당 등록의원 외래의료비 M1 (= RO ÷ RN)">M1<br /><span className="font-normal text-[9px]">RO ÷ RN</span></th>
-                    <th className="text-center px-1" title="환자군 평균 의료비 A (편집 가능)">A<br /><span className="font-normal text-[9px]">평균 의료비</span></th>
+                    <th className="text-center px-1" title="1인당 평균 의료비 A = T ÷ NT (편집 가능)">A<br /><span className="font-normal text-[9px]">=T/NT · 1인당 평균 의료비</span></th>
                     <th className="text-center px-1" title="의원급 외래비중 CR (편집 가능)">CR<br /><span className="font-normal text-[9px]">외래비중</span></th>
-                    <th className="text-center px-1" title="환자군 기준의료비 B = A × CR (산출)">B<br /><span className="font-normal text-[9px]">A×CR</span></th>
-                    <th className="text-center px-1" title="cf. 타원이용비중 L1 (편집 가능)">L1<br /><span className="font-normal text-[9px]">타원</span></th>
-                    <th className="text-center px-1" title="포괄관리 비중 C1 = 1 − L1 (산출)">C1<br /><span className="font-normal text-[9px]">1−L1</span></th>
-                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF (정책 슬라이더)">PF</th>
-                    <th className="text-center px-1 text-slate-700" title="일차의료 기본수가 PB = B × C1 (산출)">PB<br /><span className="font-normal text-[9px]">B×C1</span></th>
-                    <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF">P<br /><span className="font-normal text-[9px]">PB+PF</span></th>
-                    <th className="text-center px-1 text-blue-700" title="참여의원당 등록환자수 RR (이전 '등록')">RR<br /><span className="font-normal text-[9px]">등록</span></th>
+                    <th className="text-center px-1" title="1인당 의원급 외래비 B = A × CR (산출)">B<br /><span className="font-normal text-[9px]">=A×CR · 1인당 의원급 외래비</span></th>
+                    <th className="text-center px-1 text-emerald-700" title="등록의원 외래 의료비 비중 C1 = 1 − L1 (편집 가능 · L1 동시 갱신)">C1<br /><span className="font-normal text-[9px]">=1−L1 · 등록의원 외래 비중</span></th>
+                    <th className="text-center px-1 text-slate-700" title="일차의료 기본수가 PB = B × C1 (산출)">PB<br /><span className="font-normal text-[9px]">=B×C1 · 일차의료 기본수가</span></th>
+                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정율 F = PF ÷ B (편집 가능)">F<br /><span className="font-normal text-[9px]">기능보정율 %</span></th>
+                    <th className="text-center px-1 text-purple-600" title="일차의료 기능보정 PF = B × F (산출)">PF<br /><span className="font-normal text-[9px]">=B×F · 기능보정</span></th>
+                    <th className="text-center px-1 text-indigo-700" title="일차의료수가 P = PB + PF (산출)">P<br /><span className="font-normal text-[9px]">=PB+PF · 일차의료수가</span></th>
+                    <th className="text-center px-1" title="환자 본인부담비 (현행 외래비 M1 대비, 30% 고정)">본인부담비<br /><span className="font-normal text-[9px]">%</span></th>
+                    <th className="text-center px-1" title="기준 군별 분포비 ratio_i = N_i ÷ ΣN (실측, 편집 불가)">기준 분포비<br /><span className="font-normal text-[9px]">% · ratio_i</span></th>
+                    <th className="text-center px-1 text-blue-700" title="등록 군별 분포비 = regDist_i ÷ Σ regDist (편집 가능 · Σ=1,000이면 RR/1000)">등록 분포비<br /><span className="font-normal text-[9px]">% · RR/1000</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -496,27 +507,17 @@ export default memo(function TabSimulation({
                     const C1_i = 1 - L1_i;
                     const A_i = base[i].A;
                     const CR_i = base[i].CR;
-                    const NT_i = base[i].NT;
                     // B 표시: A·CR 모두 있을 때 A×CR 산출 (참고용), 그 외 P[i] (slider 값)
                     const B_calc = (typeof A_i === "number" && typeof CR_i === "number" && A_i > 0 && CR_i > 0)
                       ? Math.round(A_i * CR_i)
                       : null;
                     const B_display = B_calc ?? P[i];
                     const PB_display = Math.round(B_display * C1_i);
+                    const F_rate = B_display > 0 ? (Fi / B_display) * 100 : 0;
+                    const regPct = (state.regDist[i] / regDenom) * 100;
                     return (
                       <tr key={i} className="border-t border-gray-100">
                         <td className="px-2 py-1.5 font-bold" style={{ color: CL[i] }}>{SH[i]}</td>
-                        <td className="text-center px-1 text-gray-500">
-                          {typeof NT_i === "number" ? f(NT_i) : <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className="text-center px-1">
-                          <input type="text" value={f(base[i].N)} className="w-20 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v > 0) updBase(i, "N", v); }} />
-                        </td>
-                        <td className="text-center px-1">
-                          <input type="text" value={f(base[i].M1)} className="w-20 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updBase(i, "M1", v); }} />
-                        </td>
                         <td className="text-center px-1">
                           <input type="text"
                             value={typeof A_i === "number" ? f(A_i) : ""}
@@ -538,17 +539,32 @@ export default memo(function TabSimulation({
                           )}
                         </td>
                         <td className="text-center px-1">
-                          <input type="text" value={base[i].L.toFixed(4)} className="w-16 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5"
-                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) updBase(i, "L", v); }} />
-                          <span className="block text-[9px] text-teal-700">L1 {L1_i.toFixed(2)}</span>
+                          <input type="text" value={(C1_i * 100).toFixed(1)}
+                            className="w-14 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5 text-emerald-700"
+                            onChange={e => {
+                              const v = parseFloat(e.target.value);
+                              if (!isNaN(v) && v >= 0 && v <= 100) {
+                                const newL = 1 - v / 100;
+                                updL1(i, newL);
+                                updBase(i, "L", newL);
+                              }
+                            }} />
                         </td>
-                        <td className="text-center px-1 text-emerald-700">{(C1_i * 100).toFixed(1)}%</td>
-                        <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
                         <td className="text-center px-1 text-slate-700">{f(PB_display)}</td>
-                        <td className="text-center px-1 font-bold text-indigo-700">{f(PB_display + Fi)}</td>
                         <td className="text-center px-1">
-                          <input type="text" value={f(state.regDist[i])} className="w-14 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5 text-blue-700"
-                            onChange={e => { const v = parseInt(e.target.value.replace(/,/g, "")); if (!isNaN(v) && v >= 0) updRegDist(i, v); }} />
+                          <input type="text" value={F_rate.toFixed(1)}
+                            className="w-14 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5 text-purple-600"
+                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 100) updF(i, Math.round(B_display * v / 100)); }} />
+                        </td>
+                        <td className="text-center px-1 text-purple-600 font-semibold">{f(Fi)}</td>
+                        <td className="text-center px-1 font-bold text-indigo-700">{f(PB_display + Fi)}</td>
+                        <td className="text-center px-1 text-gray-500">{(COPAY_RATE * 100).toFixed(0)}%</td>
+                        <td className="text-center px-1 text-gray-600">{(ratios[i] * 100).toFixed(1)}%</td>
+                        <td className="text-center px-1">
+                          <input type="text" value={regPct.toFixed(1)}
+                            className="w-14 text-center text-[11px] border border-blue-200 rounded bg-blue-50 py-0.5 text-blue-700"
+                            onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 100) updRegDist(i, Math.round(regDenom * v / 100)); }} />
+                          <span className="block text-[9px] text-blue-500">RR {f(state.regDist[i])}명</span>
                         </td>
                       </tr>
                     );
@@ -556,11 +572,11 @@ export default memo(function TabSimulation({
                 </tbody>
               </table>
               <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
-                ※ 직접 편집: RN · M1 · L (= L1 시드) · A · CR · RR.
-                B는 A × CR 산출값 (정책 슬라이더 B와 다르면 노란색 ⚠ 안내).
-                PF · L1 · 정책 B는 상단 슬라이더 또는 고급 패널에서 설정.
-                NT(전체 환자수)는 데이터 anchor의 reference (편집 불가).
-                약어: RN(참여의원 전체 환자수, 이전 NC) · RR(참여의원당 등록환자수, 이전 등록).
+                ※ 직접 편집: A · CR · C1 · F · 등록 분포비.
+                C1 편집 시 L1(=1−C1)과 실측 L이 함께 갱신되어 PB에 즉시 반영. F 편집 시 PF = B × F로 재산출 (상단 PF 슬라이더와 연동).
+                B는 A × CR 산출값 (정책 슬라이더 B와 다르면 노란색 ⚠ 안내). 본인부담비는 M1 × 30% 고정.
+                기준 분포비는 실측 환자수 비율(ratio_i = N_i ÷ ΣN, 편집 불가), 등록 분포비는 의원당 등록환자수 RR ÷ Σ RR(디폴트 1,000명 → RR/1000).
+                등록 분포비의 디폴트("데이터 비례")는 기준 분포비와 동일. RN · M1 · NT 절대값은 데이터 관리(엑셀 업로드·baseline)에서 관리.
               </div>
             </div>
           </div>

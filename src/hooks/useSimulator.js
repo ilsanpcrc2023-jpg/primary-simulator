@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, B_MIN, B_MAX, COPAY_RATE } from "../constants";
 
 const initialState = {
   base: INIT_BASE,
@@ -316,7 +316,7 @@ export default function useSimulator() {
       const L1_g = L1[i] ?? 0.7;
       const F_i = F_g[i] ?? 0;
       const pay_gov = p * (1 - L1_g) + F_i;              // 공단지급 = P_g
-      const ab_reg = pay_gov + b.M1 * 0.30;              // 등록환자 1인당 의원수입
+      const ab_reg = pay_gov + b.M1 * COPAY_RATE;        // 등록환자 1인당 의원수입 (본인부담 = M1 × 30%)
 
       // 외래비 상수
       const C1 = b.M1 / (1 - b.L);                       // 기존 L 기반 총 외래비 (비등록·baseline)
@@ -345,7 +345,7 @@ export default function useSimulator() {
       return {
         N, p, b, L1_g,
         pay_gov, ab_reg,
-        B: b.M1 * 0.30,
+        B: b.M1 * COPAY_RATE,
         F_per_pt: F_i,
         n_reg: n_reg_g, n_unreg: n_unreg_g,
         inc0, inc, nhi0, nhi,

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { f, fE, fSv, pct, diffE, calcPB, PBtoB } from '../utils';
+import { f, fE, fSv, pct, diffE, calcPB, PBtoB, ratiosFromBase, regDistFromRatios } from '../utils';
+import { INIT_BASE, INIT_REG_DIST, COPAY_RATE } from '../constants';
 
 describe('format utilities', () => {
   it('f: formats numbers with Korean locale', () => {
@@ -71,5 +72,42 @@ describe('v6.9.3 PB·PF helpers', () => {
     expect(Math.abs(B_back - B)).toBeLessThanOrEqual(2); // 반올림 오차 허용
     // 사용자 시나리오: PB 90,000 입력 → B = 300,000
     expect(PBtoB(90000, 0.7)).toBe(300000);
+  });
+});
+
+// v7.5.1: 상세 편집 테이블 분포비 2종 — 기준(ratio_i) vs 등록(regDist/Σ)
+describe('v7.5.1 ratiosFromBase / regDistFromRatios', () => {
+  it('ratiosFromBase: ratio_i = N_i / ΣN, 합 1', () => {
+    const base = [{ N: 100 }, { N: 300 }, { N: 400 }, { N: 200 }];
+    const r = ratiosFromBase(base);
+    expect(r).toEqual([0.1, 0.3, 0.4, 0.2]);
+    expect(r.reduce((s, v) => s + v, 0)).toBeCloseTo(1, 12);
+  });
+
+  it('ratiosFromBase: ΣN=0이면 균등 fallback', () => {
+    expect(ratiosFromBase([{ N: 0 }, { N: 0 }])).toEqual([0.5, 0.5]);
+  });
+
+  it('regDistFromRatios: largest-remainder 반올림으로 합이 정확히 total', () => {
+    const out = regDistFromRatios([0.20165, 0.19772, 0.29382, 0.30681], 1000);
+    expect(out).toEqual([201, 198, 294, 307]);
+    expect(out.reduce((s, v) => s + v, 0)).toBe(1000);
+  });
+
+  it('regDistFromRatios: INIT_BASE(v7.5 exc_zero)에 적용하면 INIT_REG_DIST와 일치 (등록 분포비 디폴트 = ratio_i)', () => {
+    const ratios = ratiosFromBase(INIT_BASE);
+    expect(regDistFromRatios(ratios, 1000)).toEqual(INIT_REG_DIST);
+  });
+
+  it('regDistFromRatios: total 스케일(1,500명)에서도 합 보존', () => {
+    const out = regDistFromRatios(ratiosFromBase(INIT_BASE), 1500);
+    expect(out.reduce((s, v) => s + v, 0)).toBe(1500);
+  });
+});
+
+// v7.5.1: 본인부담비 고정 30% 상수
+describe('v7.5.1 COPAY_RATE', () => {
+  it('COPAY_RATE = 0.30 (본인부담 = M1 × 30% 고정)', () => {
+    expect(COPAY_RATE).toBe(0.30);
   });
 });
