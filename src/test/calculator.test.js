@@ -105,15 +105,15 @@ describe('calculation engine', () => {
 });
 
 describe('v6.6 / v7.2.0 upload schema', () => {
-  it('COL_ALIASES includes 12 fields: N, M1, L, HCC, CR, RR, RO (v7.2.0) + NT, C1, F, PF, COPAY (v7.7.0)', () => {
-    expect(Object.keys(COL_ALIASES).sort()).toEqual(['C1', 'COPAY', 'CR', 'F', 'HCC', 'L', 'M1', 'N', 'NT', 'PF', 'RO', 'RR']);
+  it('COL_ALIASES includes 10 fields: N, M1, L, HCC, CR, RR, RO (v7.2.0) + NT, C1, COPAY (v7.7.0 · v7.7.2 F/PF 제외)', () => {
+    expect(Object.keys(COL_ALIASES).sort()).toEqual(['C1', 'COPAY', 'CR', 'HCC', 'L', 'M1', 'N', 'NT', 'RO', 'RR']);
+    expect(COL_ALIASES).not.toHaveProperty('F');
+    expect(COL_ALIASES).not.toHaveProperty('PF');
     // v7.7.0: 내보내기 헤더가 그대로 인식되어야 함 (라운드트립)
     expect(COL_ALIASES.HCC).toContain('A');
     expect(COL_ALIASES.CR).toContain('CR');
     expect(COL_ALIASES.NT).toContain('NT');
     expect(COL_ALIASES.C1).toContain('C1');
-    expect(COL_ALIASES.F).toContain('F');
-    expect(COL_ALIASES.PF).toContain('PF');
     expect(COL_ALIASES.COPAY).toContain('본인부담비');
   });
 
@@ -834,22 +834,21 @@ describe('v7.6.8 · 군별 L2_g = L1_g − Δ (Δ = L1avg − L2)', () => {
 });
 
 describe('v7.7.0/v7.7.1 · 엑셀 내보내기 헤더 ↔ 업로드 alias 라운드트립', () => {
-  // v7.7.1 (사용자 결정): 수기 입력 + 계산 사용 열만, 순서 A · CR · C1 · F · NT · RN · 본인부담비
-  const EXPORT_HEADERS = ["환자군", "A", "CR", "C1", "F", "NT", "RN", "본인부담비"];
-  it('내보내기 열 7개(A·CR·C1·F·NT·RN·본인부담비)는 모두 COL_ALIASES에 정확 일치 alias가 있다', () => {
+  // v7.7.1 (사용자 결정): 수기 입력 + 계산 사용 열만 · v7.7.2: F 제외. 순서 A · CR · C1 · NT · RN · 본인부담비
+  const EXPORT_HEADERS = ["환자군", "A", "CR", "C1", "NT", "RN", "본인부담비"];
+  it('내보내기 열 6개(A·CR·C1·NT·RN·본인부담비)는 모두 COL_ALIASES에 정확 일치 alias가 있다', () => {
     const all = Object.values(COL_ALIASES).flat();
     EXPORT_HEADERS.filter(h => h !== "환자군").forEach(h => expect(all).toContain(h));
   });
-  it('산출 열(B·PB·PF·P·분포비)과 파생/미사용 필드(L·M1·RR)는 내보내기 헤더에 없다', () => {
-    ["B", "PB", "PF", "P", "분포비", "L", "M1", "RR"].forEach(h => expect(EXPORT_HEADERS).not.toContain(h));
+  it('산출 열(B·PB·PF·P·분포비)·파생/미사용 필드(L·M1·RR)·F 보정율(v7.7.2 표시 전용)은 내보내기 헤더에 없다', () => {
+    ["B", "PB", "PF", "P", "분포비", "L", "M1", "RR", "F"].forEach(h => expect(EXPORT_HEADERS).not.toContain(h));
   });
-  it('단문자 헤더 F·NT·C1·PF는 정확 일치 전용 키에 등록 (부분일치로 PF↔F, N↔NT 혼동 방지)', async () => {
+  it('단문자 헤더 NT·C1은 정확 일치 전용 키에 등록 (부분일치로 N↔NT 혼동 방지)', async () => {
     const { COL_ALIASES_EXACT_ONLY } = await import('../constants');
-    expect(COL_ALIASES_EXACT_ONLY).toEqual(expect.arrayContaining(['NT', 'C1', 'F', 'PF', 'COPAY']));
+    expect(COL_ALIASES_EXACT_ONLY).toEqual(expect.arrayContaining(['NT', 'C1', 'COPAY']));
   });
-  it('F(%) → F_g = round(B × F/100), 본인부담비 % → 0~1, C1 % → L = 1 − C1 (handleFile 명세)', () => {
-    const B = 300000, Fpct = 7, copayPct = 20, C1pct = 30;
-    expect(Math.round(B * Fpct / 100)).toBe(21000);
+  it('본인부담비 % → 0~1, C1 % → L = 1 − C1 (handleFile 명세)', () => {
+    const copayPct = 20, C1pct = 30;
     expect(copayPct / 100).toBeCloseTo(0.2, 10);
     expect(1 - C1pct / 100).toBeCloseTo(0.7, 10);
   });

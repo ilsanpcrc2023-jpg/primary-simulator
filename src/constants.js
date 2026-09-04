@@ -204,12 +204,11 @@ export const COL_ALIASES = {
   // v7.7.0: 상세 편집 테이블 수기 입력 열 라운드트립 (내보내기 헤더와 동일). 정확 일치(정규화)로만 인식 — N/NT, F/PF, P/PB 혼동 방지.
   NT:  ["NT", "전체 환자수", "환자군별 전체 환자수"],
   C1:  ["C1", "C1(%)", "등록의원 외래 비중", "포괄관리비중"],
-  F:   ["F", "F(%)", "기능보정율", "기능보정율(%)", "일차의료 기능보정율"],
-  PF:  ["PF", "기능보정", "일차의료 기능보정"],
+  // v7.7.2: F(%)·PF 열은 엑셀 라운드트립에서 제외 (PF는 상단 슬라이더로만 조정) — alias 키 삭제.
   COPAY: ["본인부담비", "본인부담비(%)", "본인부담률", "본인부담비율"],
 };
 // v7.7.0: 정확 일치 전용 키 (findCol의 부분일치 fallback 미적용)
-export const COL_ALIASES_EXACT_ONLY = ["NT", "C1", "F", "PF", "COPAY"];
+export const COL_ALIASES_EXACT_ONLY = ["NT", "C1", "COPAY"];
 
 // v6.10.0: balance-thumb CSS 제거 (균형추 모듈 폐지와 함께).
 export const sliderCSS = `
