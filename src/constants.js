@@ -71,7 +71,9 @@ export const INIT_REG_DIST = _sumN > 0
 // v7.6.1: 본인부담 항은 산식에서 완전 제거 (사용자 결정 — 참여 후 수입·공단 지출에 잘못 더해지던 값).
 //   등록환자 1인당 의원수입 = P = PB + PF. 본인부담은 시뮬레이터 산식에 없음.
 // v7.6.2: 상세 편집 테이블 본인부담비 열은 참고 항목으로 복원 (편집·보존만, 계산 미반영). 디폴트 30%.
-export const COPAY_RATE = 0.30;
+// v7.6.3: 참여 전 공단 지출 baseline nhi0 = C1 × N × (1 − 본인부담비)에 사용.
+// v7.6.4 (사용자 결정): 디폴트 30% → 26.1% (4군 공통).
+export const COPAY_RATE = 0.261;
 export const INIT_COPAY_RATES = [COPAY_RATE, COPAY_RATE, COPAY_RATE, COPAY_RATE];
 
 // v6.9.4: 데이터 기반 디폴트로 전환.

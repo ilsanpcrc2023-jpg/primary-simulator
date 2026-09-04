@@ -545,7 +545,7 @@ export default memo(function TabSimulation({
                     {/* v7.5.11: 분포비 열 표시 전용 (수기 입력 불가, 사용자 결정). 변경은 프리셋 버튼으로만. */}
                     <th className="text-center px-1 text-blue-700" title="환자군별 분포비 (기준 = 등록) · 디폴트 = 일만시 실측 RN_i ÷ ΣRN · 표시 전용 — 변경은 분포비 프리셋 버튼으로">분포비<br /><span className="font-normal text-[9px]">% · 기준 = 등록</span></th>
                     {/* v7.6.2: 본인부담비 열 복원 (맨 오른쪽). v7.6.3: 참여 전 공단 지출 baseline = 총 외래비 × (1 − 본인부담비)에 반영. 참여 후 산식에는 미반영(v7.6.1). */}
-                    <th className="text-center px-1" title="환자 본인부담비 (디폴트 30% · 편집 가능) — v7.6.3: 참여 전 공단 지출 = 총 외래비 × (1 − 본인부담비). 참여 후 의원 수입·공단 지출(공단지급 P)에는 미반영(v7.6.1)">본인부담비<br /><span className="font-normal text-[9px]">% · 참여 전 공단 지출</span></th>
+                    <th className="text-center px-1" title="환자 본인부담비 (디폴트 26.1% · 편집 가능) — v7.6.3: 참여 전 공단 지출 = 총 외래비 × (1 − 본인부담비). 참여 후 의원 수입·공단 지출(공단지급 P)에는 미반영(v7.6.1)">본인부담비<br /><span className="font-normal text-[9px]">% · 참여 전 공단 지출</span></th>
                   </tr>
                 </thead>
                 <tbody>
