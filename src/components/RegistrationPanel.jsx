@@ -174,8 +174,7 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
 export const ClinicSummaryStrip = memo(function ClinicSummaryStrip({ state }) {
   const { M_clinics, totalN, regDist } = state;
   const perClinic = Math.max(1, Math.round(totalN / Math.max(1, M_clinics)));
-  // v7.5.8: regDist는 0.1명 단위(분포비 × 등록 총량)라 합이 999.9 등 소수가 될 수 있음 → 표시는 정수(명)로 반올림.
-  const regSum = Math.round(regDist.reduce((s, v) => s + v, 0));
+  const regSum = regDist.reduce((s, v) => s + v, 0);
   const regPerClinic = Math.min(regSum, perClinic);
   const unregPerClinic = Math.max(0, perClinic - regPerClinic);
   const totalReg = M_clinics * regPerClinic;
@@ -247,10 +246,10 @@ export const ClinicCountControls = memo(function ClinicCountControls({ state, se
       {scaleRegDist && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-gray-700 shrink-0 w-32">의원당 등록환자수</span>
-          <NumBox value={Math.round(regSum)} onChange={v => scaleRegDist(Math.max(0, Math.round(v)))} color="#2563eb" suffix="명" />
+          <NumBox value={regSum} onChange={v => scaleRegDist(Math.max(0, Math.round(v)))} color="#2563eb" suffix="명" />
           <div className="flex flex-wrap gap-1">
             {REG_PER_CLINIC_PRESETS.map(v => {
-              const active = Math.abs(regSum - v) < 0.5;
+              const active = regSum === v;
               return (
                 <button key={v} onClick={() => scaleRegDist(v)}
                   className="text-xs px-2 py-0.5 rounded border font-medium transition"
