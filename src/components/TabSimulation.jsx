@@ -317,9 +317,9 @@ export default memo(function TabSimulation({
         </div>
         <div className="bg-white rounded-xl px-4 py-5 text-center shadow-sm border border-blue-100">
           <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight text-blue-700">
-            {diffAuto(T.nhi0, T.nhi + perfMemo.perf_blended)}<span className="text-base text-gray-500 font-bold"> / 년</span>
+            {diffAuto(T.nhi0, T.nhi + perfMemo.perf_nhi)}<span className="text-base text-gray-500 font-bold"> / 년</span>
           </div>
-          <div className="text-[11px] text-gray-500 font-normal mt-1">사업 전체 공단 지출 변화액 · 참여 전 = 총 외래비 × (1 − 본인부담비) · 참여 후 등록환자 = PB × (1 − 본인부담비) + PF</div>
+          <div className="text-[11px] text-gray-500 font-normal mt-1">사업 전체 공단 지출 변화액 · 참여 전 = 총 외래비 × (1 − 본인부담비) · 참여 후 = (PB + 타원비 + 비등록 + 포괄관리성과) × (1 − 본인부담비) + PF</div>
         </div>
       </div>
     </div>
@@ -372,7 +372,7 @@ export default memo(function TabSimulation({
       { t: "의원 (의사)", c: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
         txt: `환자군 기반 적절 보상\n의원당 ${diffMan(perClinicNet)}\n포괄관리성과 ${diffMan(perClinicPerf)}/년` },
       { t: "공단 (정부)", c: "#dc2626", bg: "#fef2f2", bd: "#fecaca",
-        txt: `지출 ${diffAuto(T.nhi0, T.nhi + perfMemo.perf_blended)}\n예측 가능성 향상\n*Shared Saving 효과 별도` },
+        txt: `지출 ${diffAuto(T.nhi0, T.nhi + perfMemo.perf_nhi)}\n예측 가능성 향상\n*Shared Saving 효과 별도` },
     ]} />
 
     {/* v6.11.0: 고급 설정 — 위치를 수가 산출 구조 위로 이동 (정책 모드 전용) */}
@@ -524,7 +524,7 @@ export default memo(function TabSimulation({
             </div>
             <div className="overflow-x-auto">
               {/* v7.5.1: 컬럼 재구성 (사용자 결정) —
-                    A(=T/NT) | CR | B(=A×CR) | C1(=1−L1) | PB(=B×C1) | F(기능보정율) | PF(=B×F) | P(=PB+PF) | NT | RN | 분포비(표시 전용) | 본인부담비(v7.6.3 참여 전 공단 지출 × (1−본인부담비) · v7.6.5 참여 후 PB × (1−본인부담비) + PF)
+                    A(=T/NT) | CR | B(=A×CR) | C1(=1−L1) | PB(=B×C1) | F(기능보정율) | PF(=B×F) | P(=PB+PF) | NT | RN | 분포비(표시 전용) | 본인부담비(v7.6.3 참여 전 공단 지출 × (1−본인부담비) · v7.6.5/v7.6.6 참여 후 PF 제외 전 항목 × (1−본인부담비))
                   편집: A, CR, C1(→ L1·base.L 동시 갱신), F(→ F_g = B×F), 등록 분포비(→ regDist = 비율 × Σ regDist).
                   산출: B, PB, PF, P. 표시만: 분포비(ratio_i, 프리셋으로만 변경).
                   NT·RN·M1·RR 절대값 컬럼은 제거 (데이터 anchor·엑셀 업로드로 관리). */}
@@ -545,7 +545,7 @@ export default memo(function TabSimulation({
                     {/* v7.5.11: 분포비 열 표시 전용 (수기 입력 불가, 사용자 결정). 변경은 프리셋 버튼으로만. */}
                     <th className="text-center px-1 text-blue-700" title="환자군별 분포비 (기준 = 등록) · 디폴트 = 일만시 실측 RN_i ÷ ΣRN · 표시 전용 — 변경은 분포비 프리셋 버튼으로">분포비<br /><span className="font-normal text-[9px]">% · 기준 = 등록</span></th>
                     {/* v7.6.2: 본인부담비 열 복원 (맨 오른쪽). v7.6.3: 참여 전 공단 지출 baseline = 총 외래비 × (1 − 본인부담비)에 반영. 참여 후 산식에는 미반영(v7.6.1). */}
-                    <th className="text-center px-1" title="환자 본인부담비 (디폴트 26.1% · 편집 가능) — 공단 지출: 참여 전 = 총 외래비 × (1 − 본인부담비) (v7.6.3), 참여 후 등록환자 = PB × (1 − 본인부담비) + PF (v7.6.5). 의원 수입(P = PB + PF)에는 미반영">본인부담비<br /><span className="font-normal text-[9px]">% · 공단 지출 (PB 부분)</span></th>
+                    <th className="text-center px-1" title="환자 본인부담비 (디폴트 26.1% · 편집 가능) — 공단 지출: 참여 전 = 총 외래비 × (1 − 본인부담비) (v7.6.3), 참여 후 = PF 제외 전 항목(PB·타원비·비등록·포괄관리성과) × (1 − 본인부담비) + PF (v7.6.5/v7.6.6). 의원 수입(P = PB + PF)에는 미반영">본인부담비<br /><span className="font-normal text-[9px]">% · 공단 지출 (PF 제외)</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -625,7 +625,7 @@ export default memo(function TabSimulation({
               <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
                 ※ 직접 편집: A · CR · C1 · F · NT · RN · 본인부담비 (셀 클릭 후 입력, Enter 또는 포커스 이동 시 반영 · Esc 취소).
                 C1 편집 시 L1(=1−C1)과 실측 L이 함께 갱신되어 PB에 즉시 반영. F 편집 시 PF = B × F로 재산출 (상단 PF 슬라이더와 연동).
-                B는 A × CR 산출값 — A·CR 편집 시 엔진 B(상단 PB 카드·KPI)도 즉시 동기화되고 PF는 기존 비율(B의 X%)을 유지해 재산출. (PB 카드 "↩ 초기화" 등으로 B가 A×CR과 달라지면 노란색 ⚠ 안내.) 등록환자 1인당 의원수입 = P = PB + PF (v7.6.1: 참여 후 본인부담 항 제거). 본인부담비는 공단 지출에만 적용 — 참여 전 = 총 외래비 × (1 − 본인부담비) (v7.6.3), 참여 후 등록환자 = PB × (1 − 본인부담비) + PF (v7.6.5 · PF는 전액 공단 부담, 타원비·비등록 항은 그대로) — v7.6.0부터 현행 외래비 M1은 계산에 쓰지 않음(baseline FFS·비등록·공단 외래비·Track A 모두 PB 기준).
+                B는 A × CR 산출값 — A·CR 편집 시 엔진 B(상단 PB 카드·KPI)도 즉시 동기화되고 PF는 기존 비율(B의 X%)을 유지해 재산출. (PB 카드 "↩ 초기화" 등으로 B가 A×CR과 달라지면 노란색 ⚠ 안내.) 등록환자 1인당 의원수입 = P = PB + PF (v7.6.1: 참여 후 본인부담 항 제거). 본인부담비는 공단 지출에만 적용 — 참여 전 = 총 외래비 × (1 − 본인부담비) (v7.6.3), 참여 후 = PB·타원비(D1_L2)·비등록(C1)·포괄관리성과 모두 × (1 − 본인부담비), PF만 전액 공단 부담 (v7.6.5/v7.6.6) — v7.6.0부터 현행 외래비 M1은 계산에 쓰지 않음(baseline FFS·비등록·공단 외래비·Track A 모두 PB 기준).
                 분포비(기준 = 등록)는 표시 전용 — 수기 입력 불가. 디폴트는 일만시 실측 비율(RN_i ÷ ΣRN)이며, 위의 분포비 프리셋(데이터 비례 · 균등 · 건강편중 · 고위험편중)으로만 변경 — 의원당 등록환자 배분에 그대로 적용.
                 RN 편집 시 등록 분포는 RN 실측 비율로 재산출되고 엔진의 참여의원 환자 배분(N_g)에도 반영. NT(전체 환자수)는 참고 표시. M1은 데이터 필드로만 보존(엑셀 업로드·baseline), 계산 미사용.
               </div>

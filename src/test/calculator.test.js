@@ -769,3 +769,27 @@ describe('v7.6.5 · 참여 후 공단 지출 등록환자 항 = PB × (1 − 본
     expect(PB * (1 - 0) + PF).toBeCloseTo(P, 6);
   });
 });
+
+describe('v7.6.6 · 참여 후 공단 지출: D1_L2·비등록 C1·포괄관리성과에도 (1 − 본인부담비)', () => {
+  it('PF만 전액 공단 부담 — 등록·비등록·성과 모두 공단 부담분 = × (1 − copay)', () => {
+    const b = INIT_BASE[0];
+    const B = INIT_P[0], L1 = b.L, L2 = 0.70, copay = 0.261;
+    const PB = B * (1 - L1), PF = INIT_F[0];
+    const C1 = PB / (1 - b.L), D1_L2 = PB * L2 / (1 - L2);
+    const n_reg = 100, n_unreg = 300;
+    const nhi = (PB * (1 - copay) + PF + D1_L2 * (1 - copay)) * n_reg + C1 * (1 - copay) * n_unreg;
+    const perf_nhi = Math.max(0, L1 - L2) * B * n_reg * (1 - copay);
+    // copay 0이면 v7.6.2 이전 구조(P + D1_L2, C1 전액)와 동일
+    const nhi_full = (PB + PF + D1_L2) * n_reg + C1 * n_unreg;
+    expect(nhi + perf_nhi).toBeLessThan(nhi_full + Math.max(0, L1 - L2) * B * n_reg);
+    // 차액 = (PB + D1_L2) × n_reg × copay + C1 × n_unreg × copay + perf × copay  (PF는 차감 없음)
+    const perf_full = Math.max(0, L1 - L2) * B * n_reg;
+    const expectedDiff = ((PB + D1_L2) * n_reg + C1 * n_unreg + perf_full) * copay;
+    expect((nhi_full + perf_full) - (nhi + perf_nhi)).toBeCloseTo(expectedDiff, 4);
+    // 참여 전(FFS)과 대칭: copay 적용 범위가 같아 PF·성과·L2 효과만 남음
+    const N = n_reg + n_unreg;
+    const nhi0 = C1 * N * (1 - copay);
+    const structural = (PF * n_reg + (D1_L2 - (C1 - PB)) * n_reg * (1 - copay)) + perf_nhi;
+    expect(nhi + perf_nhi - nhi0).toBeCloseTo(structural, 4);
+  });
+});
