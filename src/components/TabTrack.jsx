@@ -1,7 +1,7 @@
 import { memo, useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import NumBox from "./shared/NumBox";
-import { SH } from "../constants";
+import { SH, C_DELTA_MAX } from "../constants";
 import { f, pct, fMan, fAuto, diffMan } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
@@ -65,10 +65,10 @@ export default memo(function TabTrack({
       const L1avg = perfMemo?.L1avg ?? 0.7;
       const C0 = 1 - L1avg;
       const Cnow = 1 - L2_display;
-      const cDelta = Math.max(0, Math.min(25, (Cnow - C0) * 100));
-      const sliderBg = `linear-gradient(to right, #7c3aed ${(cDelta / 25) * 100}%, #e5e7eb 0%)`;
+      const cDelta = Math.max(0, Math.min(C_DELTA_MAX, (Cnow - C0) * 100));
+      const sliderBg = `linear-gradient(to right, #7c3aed ${(cDelta / C_DELTA_MAX) * 100}%, #e5e7eb 0%)`;
       const setCdelta = (dPct) => {
-        const d = Math.max(0, Math.min(25, dPct));
+        const d = Math.max(0, Math.min(C_DELTA_MAX, dPct));
         setL2?.(Math.max(0, Math.min(1, L1avg - d / 100)));
       };
       return (
@@ -91,13 +91,13 @@ export default memo(function TabTrack({
               ↩ 초기화
             </button>
           </div>
-          <input type="range" min={0} max={25} step={0.5} value={cDelta}
+          <input type="range" min={0} max={C_DELTA_MAX} step={0.5} value={cDelta}
             onChange={e => setCdelta(parseFloat(e.target.value))}
             aria-label="Track 탭 포괄관리 지표 C 슬라이더"
             className="w-full big-thumb"
             style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: sliderBg }} />
           <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
-            <span>0%p</span><span>+5%p</span><span>+10%p</span><span>+15%p</span><span>+20%p</span><span>+25%p</span>
+            <span>0%p</span><span>+15%p</span><span>+30%p</span><span>+45%p</span><span>+60%p</span><span>+75%p</span>
           </div>
         </div>
       );
