@@ -416,6 +416,9 @@ export default function useSimulator() {
   // v6.7: L1 환자군별 배열에서 P_g 산출. LC(변화율) 제거.
   // 의원 선지급 = P_g = B(1−L1_g) + F_g, 공단지급 = P_g (단일화).
   // 공단 외래 지출은 등록환자 타원비를 L2 기반으로 반영 (L2 슬라이더 연동).
+  // v7.7.6 (사용자 결정): PF는 Track별 차등 — A 0 / B 0.5 / C 1.0 (hccPct/100 선형 보간, 성과 Track 배수와 동일).
+  //   등록환자 1인당 의원 수입 = PB + PF × pfMul. 공단 지출의 PF 항도 의원 수령액과 동일(공단 직접 지급 정합).
+  const pfMul = Math.max(0, Math.min(1, hccPct / 100));
   const G = useMemo(() => {
     return base.map((b, i) => {
       const safeL2 = L2_g[i];                            // v7.6.8: 군별 L2_g = L1_g − Δ
@@ -428,13 +431,14 @@ export default function useSimulator() {
       // v7.6.1 (사용자 결정): 참여 후 수입·공단 지출에 더해지던 본인부담 항(M1×0.3 → PB×본인부담비)은 잘못 추가된 값 → 완전 제거.
       //   등록환자 1인당 의원수입 = 공단지급 P = PB + PF (본인부담 없음).
       const PB_g = p * (1 - L1_g);                       // 일차의료 기본수가 (M1 대체)
-      const pay_gov = PB_g + F_i;                        // 공단지급 = P_g
-      const ab_reg = pay_gov;                            // 등록환자 1인당 의원수입 = P (본인부담 항 제거)
+      const F_eff = F_i * pfMul;                         // v7.7.6: Track 반영 PF (A 0 / B 0.5 / C 1.0)
+      const pay_gov = PB_g + F_eff;                      // 공단지급 = PB + PF × Track 배수
+      const ab_reg = pay_gov;                            // 등록환자 1인당 의원수입 (본인부담 항 제거)
       // v7.6.3/v7.6.5 본인부담비 (상세 편집 테이블 · 디폴트 26.1%)
       const copay_i = Math.max(0, Math.min(1, copayRates?.[i] ?? INIT_COPAY_RATES[i]));
       // v7.6.5 (사용자 결정): 참여 후 공단 지출의 등록환자 항에서 PB에만 (1 − 본인부담비)를 곱하고 PF는 전액 공단 부담.
       //   의원 수입(ab_reg = PB + PF)은 불변 — 차액(PB × 본인부담비)은 환자 본인부담. D1_L2·비등록 C1 항은 그대로.
-      const nhi_reg = PB_g * (1 - copay_i) + F_i;         // 등록환자 1인당 공단 부담분
+      const nhi_reg = PB_g * (1 - copay_i) + F_eff;       // 등록환자 1인당 공단 부담분 (PF는 Track 반영, v7.7.6)
 
       // 외래비 상수 (PB 기준)
       const C1 = PB_g / (1 - b.L);                       // 기존 L 기반 총 외래비 (비등록·baseline)
@@ -459,21 +463,22 @@ export default function useSimulator() {
       const nhi = (nhi_reg + D1_L2 * (1 - copay_i)) * n_reg_g + C1 * (1 - copay_i) * n_unreg_g;
 
       // Track (1인당 등록환자 실지불액 · 선지급만, 성과급은 T 레벨)
-      const tA = PB_g + F_i;
-      const tC = ab_reg;
-      const tB = 0.5 * tA + 0.5 * tC;
+      // v7.7.6: Track A = PB (PF 제외) · Track B = PB + 0.5 × PF · Track C = PB + PF. tS = 현재 hccPct 보간 (= ab_reg).
+      const tA = PB_g;
+      const tC = PB_g + F_i;
+      const tB = PB_g + 0.5 * F_i;
       const tS = tA * (ffsPct / 100) + tC * (hccPct / 100);
 
       return {
         N, p, b, L1_g, PB: PB_g,
         pay_gov, ab_reg, nhi_reg, copay: copay_i,
-        F_per_pt: F_i,
+        F_per_pt: F_eff, F_full: F_i, pfMul,
         n_reg: n_reg_g, n_unreg: n_unreg_g,
         inc0, inc, nhi0, nhi,
         tA, tB, tC, tS,
       };
     });
-  }, [base, P, L1, L2_g, totalN, hccPct, ffsPct, ratios, regRatios, reg, F_g, copayRates]);
+  }, [base, P, L1, L2_g, totalN, hccPct, ffsPct, pfMul, ratios, regRatios, reg, F_g, copayRates]);
 
   const T = useMemo(() => {
     const s = { inc0: 0, inc: 0, nhi0: 0, nhi: 0, tA: 0, tB: 0, tC: 0, tS: 0 };
@@ -511,9 +516,9 @@ export default function useSimulator() {
     return {
       L2eff, L1avg, dL2, L2_g,
       perf_raw_total, perf_total, perfByTrack,
-      trackMul, perf_blended, perf_nhi,
+      trackMul, pfMul, perf_blended, perf_nhi,
     };
-  }, [G, L1, L2eff, L1avg, dL2, L2_g, hccPct]);
+  }, [G, L1, L2eff, L1avg, dL2, L2_g, hccPct, pfMul]);
 
   // v6.7: KPI 변화율 — L2 연동
   //   의원 수입  = 선지급 inc + 성과급 perf_blended
@@ -530,7 +535,7 @@ export default function useSimulator() {
   // v6.7 패널 분해 (L2 반응):
   //   baselineIncome = baseN × ffsPerPerson × M       (참여 전 전원 FFS)
   //   panelEffect    = Σ PB × (N_after − baseN)       (패널 변화 · FFS 유지)   ※ v7.6.0: M1 → PB
-  //   modelEffect    = Σ n_reg × (ab_reg − PB)        (지불방식 전환 · 선지급 = PF, v7.6.1 본인부담 항 제거)
+  //   modelEffect    = Σ n_reg × (ab_reg − PB)        (지불방식 전환 · 선지급 = PF × Track 배수, v7.7.6)
   //   performanceEffect = perf_blended                 (L2 성과급 · Track 배수 반영)
   //   afterIncome = 선지급 + 성과급 (의원 수입 KPI)
   const decomp = useMemo(() => {

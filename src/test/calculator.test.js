@@ -62,7 +62,8 @@ describe('calculation engine', () => {
       const F_i = INIT_F[i];
       const pay_gov = B_i * (1 - L1_i) + F_i;
       expect(pay_gov).toBeGreaterThan(0);
-      // v7.6.1: 등록환자 1인당 의원수입 = 공단지급 P = PB + PF (본인부담 항 제거, M1 미사용)
+      // v7.6.1: 등록환자 1인당 의원수입 = 공단지급 = PB + PF (본인부담 항 제거, M1 미사용)
+      // v7.7.6: Track C(hccPct 100, pfMul 1.0) 기준. Track A/B는 PF × 0 / × 0.5.
       const PB_i = B_i * (1 - L1_i);
       const ab_reg = pay_gov;
       expect(ab_reg).toBeCloseTo(PB_i + F_i, 6);
@@ -265,28 +266,49 @@ describe('v6.7 L1·L2 분리 (선지급 vs 사후 성과급)', () => {
     expect(L1avg).toBeLessThan(0.78);
   });
 
-  it('v7.6.0: Track A 1인당 수가 = PB + F (M1 → PB 대체, 본인부담 미포함)', () => {
+  it('v7.7.6: Track A 1인당 수가 = PB (PF 제외 · M1 미사용)', () => {
     INIT_BASE.forEach((b, i) => {
       const PB_i = INIT_P[i] * (1 - INIT_L1[i]);
-      const tA = PB_i + INIT_F[i];
-      expect(tA).toBeCloseTo(PB_i + INIT_F[i], 6);
-      // M1과 무관해야 함 (M1을 바꿔도 tA 불변)
-      const tA_alt = PB_i + INIT_F[i];
-      expect(tA).toBe(tA_alt);
-      expect(tA).not.toBeCloseTo(b.M1 + INIT_F[i], 0);
+      const tA = PB_i;
+      expect(tA).toBeCloseTo(PB_i, 6);
+      expect(tA).toBeLessThan(PB_i + INIT_F[i]);
+      expect(tA).not.toBeCloseTo(b.M1, 0);
     });
   });
 
-  it('Track B = 0.5 × Track A + 0.5 × Track C (혼합 50:50)', () => {
+  it('v7.7.6: Track B = PB + 0.5 × PF = 0.5 × Track A + 0.5 × Track C, Track C = PB + PF', () => {
     INIT_BASE.forEach((b, i) => {
       const B_i = INIT_P[i];
       const F_i = INIT_F[i];
       const L1_i = INIT_L1[i];
       const PB_i = B_i * (1 - L1_i);
-      const tA = PB_i + F_i;                             // v7.6.0: M1 → PB
-      const tC = PB_i + F_i;                             // 환자군 모형 1인당 = P (v7.6.1: 본인부담 항 제거)
-      const tB = 0.5 * tA + 0.5 * tC;
+      const tA = PB_i;
+      const tC = PB_i + F_i;
+      const tB = PB_i + 0.5 * F_i;
       expect(tB).toBeCloseTo((tA + tC) / 2, 5);
+      expect(tC - tA).toBeCloseTo(F_i, 6);
+    });
+  });
+
+  it('v7.7.6: PF Track 배수 pfMul = hccPct/100 (A 0 / B 0.5 / C 1.0) → 등록환자 1인당 수입 = PB + PF × pfMul', () => {
+    const pfMul = hccPct => Math.max(0, Math.min(1, hccPct / 100));
+    expect(pfMul(0)).toBe(0);
+    expect(pfMul(50)).toBe(0.5);
+    expect(pfMul(100)).toBe(1);
+    INIT_BASE.forEach((b, i) => {
+      const PB_i = INIT_P[i] * (1 - INIT_L1[i]);
+      const F_i = INIT_F[i];
+      const abA = PB_i + F_i * pfMul(0);
+      const abB = PB_i + F_i * pfMul(50);
+      const abC = PB_i + F_i * pfMul(100);
+      expect(abA).toBeCloseTo(PB_i, 6);
+      expect(abB).toBeCloseTo(PB_i + F_i / 2, 6);
+      expect(abC).toBeCloseTo(PB_i + F_i, 6);
+      // 공단 지출 등록환자 항의 PF도 의원 수령액과 동일 (공단 직접 지급 정합)
+      const cp = 0.261;
+      const nhiA = PB_i * (1 - cp) + F_i * pfMul(0);
+      const nhiC = PB_i * (1 - cp) + F_i * pfMul(100);
+      expect(nhiC - nhiA).toBeCloseTo(F_i, 6);
     });
   });
 });
