@@ -877,12 +877,12 @@ describe('v7.7.0/v7.7.1 · 엑셀 내보내기 헤더 ↔ 업로드 alias 라운
   });
 });
 
-describe('v7.8.0 · 슬라이더 상한 확장', () => {
-  it('PF 통합 슬라이더 상한 40% · 포괄관리 지표 C 슬라이더 상한 +75%p', () => {
+describe('v7.8.0/v7.8.1 · 슬라이더 상한', () => {
+  it('PF 통합 슬라이더 상한 40% (v7.8.0) · 포괄관리 지표 C 슬라이더 상한 +25%p (v7.8.1 복귀)', () => {
     expect(PF_PCT_MAX).toBe(40);
-    expect(C_DELTA_MAX).toBe(75);
+    expect(C_DELTA_MAX).toBe(25);
   });
-  it('ΔC 75%p는 L2_g clamp(≥ 0)로 군별 L1_g에서 상한 — 성과 diff = min(ΔC, L1_g)', () => {
+  it('(참고) ΔC가 L1_g를 넘으면 L2_g clamp(≥ 0)로 군별 L1_g에서 상한 — 성과 diff = min(ΔC, L1_g)', () => {
     const L1 = [0.7165, 0.7448, 0.7605, 0.7419];
     const dL2 = 0.75;
     const L2_g = L1.map(l => Math.max(0, Math.min(0.999, l - dL2)));
