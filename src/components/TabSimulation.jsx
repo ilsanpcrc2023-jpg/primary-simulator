@@ -248,7 +248,7 @@ export default memo(function TabSimulation({
       //   기준 C0 = 1 − L1 (환자군 구조상 기대 집중도)
       //   현재 C  = 1 − L2_display
       //   ΔC = C − C0 = L1 − L2_display (양수일 때만 가산 발생)
-      //   슬라이더 0 ~ +C_DELTA_MAX %p (v7.8.0: 25 → 75, 우측 갈수록 개선). C = 100%(L2 = 0)가 실효 상한
+      //   슬라이더 0 ~ +C_DELTA_MAX %p (v7.8.1: 25 복귀, 우측 갈수록 개선)
       const C0 = 1 - L1avg;
       const Cnow = 1 - L2_display;
       const cDelta = Math.max(0, Math.min(C_DELTA_MAX, (Cnow - C0) * 100));
@@ -283,7 +283,7 @@ export default memo(function TabSimulation({
             className="w-full big-thumb"
             style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: sliderBg }} />
           <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
-            <span>0%p</span><span>+15%p</span><span>+30%p</span><span>+45%p</span><span>+60%p</span><span>+75%p</span>
+            <span>0%p</span><span>+5%p</span><span>+10%p</span><span>+15%p</span><span>+20%p</span><span>+25%p</span>
           </div>
         </div>
       );

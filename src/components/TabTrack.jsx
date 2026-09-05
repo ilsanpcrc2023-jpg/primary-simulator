@@ -97,7 +97,7 @@ export default memo(function TabTrack({
             className="w-full big-thumb"
             style={{ '--thumb-bg': '#7c3aed', accentColor: "#7c3aed", background: sliderBg }} />
           <div className="flex justify-between text-[10px] mt-0.5" style={{ color: "#8b5cf6" }}>
-            <span>0%p</span><span>+15%p</span><span>+30%p</span><span>+45%p</span><span>+60%p</span><span>+75%p</span>
+            <span>0%p</span><span>+5%p</span><span>+10%p</span><span>+15%p</span><span>+20%p</span><span>+25%p</span>
           </div>
         </div>
       );
