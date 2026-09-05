@@ -87,9 +87,10 @@ export default memo(function TabSimulation({
   const perClinicNet = decomp.netChange / M;
 
   // v6.9.3: 의원 공단지급분 변화 KPI (정책 모드) — modelEffect의 PB drift 제거, PF 가산만 노출.
-  // pfEffect = Σ_g n_reg_g × PF_g (현재 PF로 계산되는 절대 가산 효과)
+  // pfEffect = Σ_g n_reg_g × PF_g × Track 배수 (v7.7.6: A 0 / B 0.5 / C 1.0 — 엔진 G.F_per_pt와 동일)
   // 설계 의도: PB는 L1을 흡수해 구조적으로 중립이어야 함. 데이터 캘리브레이션 drift는 KPI에서 숨김.
-  const pfEffect = G.reduce((s, g, i) => s + g.n_reg * (F_g[i] ?? 0), 0);
+  const pfMul = perfMemo?.pfMul ?? 1;
+  const pfEffect = G.reduce((s, g, i) => s + g.n_reg * (F_g[i] ?? 0) * pfMul, 0);
   const perClinicPF = pfEffect / M;
   const govNetChange = decomp.panelEffect + pfEffect + decomp.performanceEffect; // 공단지급분 관점 순 변화
   const perClinicGovNet = govNetChange / M;
@@ -625,7 +626,7 @@ export default memo(function TabSimulation({
               <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
                 ※ 직접 편집: A · CR · C1 · NT · RN · 본인부담비 (셀 클릭 후 입력, Enter 또는 포커스 이동 시 반영 · Esc 취소).
                 C1 편집 시 L1(=1−C1)과 실측 L이 함께 갱신되어 PB에 즉시 반영. F 편집 시 PF = B × F로 재산출 (상단 PF 슬라이더와 연동).
-                B는 A × CR 산출값 — A·CR 편집 시 엔진 B(상단 PB 카드·KPI)도 즉시 동기화되고 PF는 기존 비율(B의 X%)을 유지해 재산출. (PB 카드 "↩ 초기화" 등으로 B가 A×CR과 달라지면 노란색 ⚠ 안내.) 등록환자 1인당 의원수입 = P = PB + PF (v7.6.1: 참여 후 본인부담 항 제거). 본인부담비는 공단 지출에만 적용 — 참여 전 = 총 외래비 × (1 − 본인부담비) (v7.6.3), 참여 후 = PB·타원비(D1_L2)·비등록(C1) × (1 − 본인부담비), PF와 포괄관리성과는 공단 직접 지급이라 전액 공단 부담 (v7.6.5~v7.6.7) — v7.6.0부터 현행 외래비 M1은 계산에 쓰지 않음(baseline FFS·비등록·공단 외래비·Track A 모두 PB 기준).
+                B는 A × CR 산출값 — A·CR 편집 시 엔진 B(상단 PB 카드·KPI)도 즉시 동기화되고 PF는 기존 비율(B의 X%)을 유지해 재산출. (PB 카드 "↩ 초기화" 등으로 B가 A×CR과 달라지면 노란색 ⚠ 안내.) 등록환자 1인당 의원수입 = PB + PF × Track 배수 (v7.7.6: Track A 0 · B 0.5 · C 1.0 — Track A는 PF 제외, v7.6.1: 참여 후 본인부담 항 제거). 본인부담비는 공단 지출에만 적용 — 참여 전 = 총 외래비 × (1 − 본인부담비) (v7.6.3), 참여 후 = PB·타원비(D1_L2)·비등록(C1) × (1 − 본인부담비), PF와 포괄관리성과는 공단 직접 지급이라 전액 공단 부담 (v7.6.5~v7.6.7) — v7.6.0부터 현행 외래비 M1은 계산에 쓰지 않음(baseline FFS·비등록·공단 외래비·Track A 모두 PB 기준).
                 분포비(기준 = 등록)는 표시 전용 — 수기 입력 불가. 디폴트는 일만시 실측 비율(RN_i ÷ ΣRN)이며, 위의 분포비 프리셋(데이터 비례 · 균등 · 건강편중 · 고위험편중)으로만 변경 — 의원당 등록환자 배분에 그대로 적용.
                 RN 편집 시 등록 분포는 RN 실측 비율로 재산출되고 엔진의 참여의원 환자 배분(N_g)에도 반영. NT(전체 환자수)는 참고 표시. M1은 데이터 필드로만 보존(엑셀 업로드·baseline), 계산 미사용.
               </div>

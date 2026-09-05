@@ -28,8 +28,9 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
   // 동적 baseline — Σ regDist × PB × M_clinics (등록환자 기본수가 기준, 동적) · v7.6.0: M1 → PB
   const PB_g = calcPB(B_g, state.L1);
   const pfBaseline = PB_g.reduce((s, pb, i) => s + (regDist[i] || 0) * pb * M, 0);
-  // 현재 PF로 인한 공단지출 추가 = Σ F_g × n_reg_g
-  const pfExpenditure = F_g.reduce((s, v, i) => s + (v || 0) * (n_reg_g[i] || 0), 0);
+  // 현재 PF로 인한 공단지출 추가 = Σ F_g × n_reg_g × Track 배수 (v7.7.6: A 0 / B 0.5 / C 1.0 — 엔진 KPI와 동일)
+  const pfMul = Math.max(0, Math.min(1, (state.hccPct ?? 100) / 100));
+  const pfExpenditure = F_g.reduce((s, v, i) => s + (v || 0) * (n_reg_g[i] || 0), 0) * pfMul;
   const pfPctOfBaseline = pfBaseline > 0 ? (pfExpenditure / pfBaseline) * 100 : 0;
 
   // 통합 슬라이더 onChange — 분배 규칙으로 4군 자동 산출
@@ -69,6 +70,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
           </div>
           <div className="text-xs font-semibold tabular-nums" style={{ color: pfExpenditure >= 0 ? "#0369a1" : "#dc2626" }}>
             공단지출 {pfExpenditure >= 0 ? "+" : "−"}{fE(Math.abs(pfExpenditure))}억
+            {pfMul < 1 && <span className="ml-1 font-normal text-slate-500">(Track 배수 ×{pfMul.toFixed(1)})</span>}
           </div>
         </div>
         <input type="range" min={0} max={PF_PCT_MAX} step={0.5}
