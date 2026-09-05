@@ -690,10 +690,10 @@ export default function useSimulator() {
       //   - A 또는 CR이 0/누락이면 해당 군의 B는 기존 slider값(state.P[i]) 유지
       //   - RR (참여의원당 등록환자수) → state.regDist 자동 주입 (4군 모두 양수일 때).
       //   - F(state.F_g) 정책 슬라이더는 보존 — 엑셀 비반영 일관성 유지
-      // v7.7.0: 상세 편집 테이블 수기 입력 열 라운드트립 — NT · RN(N) · A · CR · C1(→ L = 1 − C1) · F(%) 또는 PF(원) · 본인부담비(%).
+      // v7.7.0: 상세 편집 테이블 수기 입력 열 라운드트립 — RN(N) · A · CR · C1(→ L = 1 − C1) · 본인부담비(%). (v7.7.2 F/PF 제외 · v7.7.7 NT 제외)
       //   내보내기(handleExport)가 같은 헤더로 쓰므로 내보낸 파일을 그대로 올리면 테이블이 동일하게 복원된다.
       const prevBase = state.base;
-      // v7.7.1: 내보내기 열 = A · CR · C1 · F · NT · RN · 본인부담비 (수기 입력 + 계산 사용 열만). 아래 N/M1/L/RR/RO 인식은 구 템플릿·NHIS 엑셀 호환용.
+      // v7.7.7: 내보내기 열 = A · CR · C1 · RN · 본인부담비 (수기 입력 + 계산 사용 열만). 아래 N/M1/L/RR/RO 인식은 구 템플릿·NHIS 엑셀 호환용.
       const rows = data.slice(0, 4).map((row, i) => {
         let N = findCol(row, COL_ALIASES.N, 0);
         let M1 = findCol(row, COL_ALIASES.M1, 0);
@@ -702,7 +702,7 @@ export default function useSimulator() {
         let CR = findCol(row, COL_ALIASES.CR, 0);
         const RR = findCol(row, COL_ALIASES.RR, 0);
         const RO = findCol(row, COL_ALIASES.RO, 0);
-        const NT = findColExact(row, COL_ALIASES.NT, 0);
+        // v7.7.7: NT(전체 환자수) 열은 더 이상 읽지 않음 (테이블 미표시·엑셀 제외). base.NT는 이전 값 보존.
         let C1 = findColExact(row, COL_ALIASES.C1, NaN);
         // v7.7.2: F(%)·PF(원) 열은 더 이상 읽지 않음 — PF는 상단 PF 슬라이더로만 조정, 업로드 시 현재 F_g 보존.
         let copay = findColExact(row, COL_ALIASES.COPAY, NaN);
@@ -722,16 +722,15 @@ export default function useSimulator() {
           HCC,
           CR,
           RR: RR > 0 ? RR : 0,          // v7.7.0: 0.1명 단위 보존 (reducer의 roundRegDist가 정리)
-          NT: Math.round(NT) || 0,
           copay,
         };
       });
-      // base: N·M1·L + reference 필드 A·CR·NT (엑셀에 없으면 이전 값 보존 → 테이블 A·CR 표시 유지)
+      // base: N·M1·L + reference 필드 A·CR (엑셀에 없으면 이전 값 보존 → 테이블 A·CR 표시 유지) · NT는 항상 이전 값 보존 (v7.7.7)
       const newBase = rows.map((r, i) => {
         const b = { N: r.N, M1: r.M1, L: r.L };
         const A = r.HCC > 0 ? r.HCC : prevBase?.[i]?.A;
         const CRv = r.CR > 0 ? r.CR : prevBase?.[i]?.CR;
-        const NTv = r.NT > 0 ? r.NT : prevBase?.[i]?.NT;
+        const NTv = prevBase?.[i]?.NT;
         if (typeof A === "number") b.A = A;
         if (typeof CRv === "number") b.CR = CRv;
         if (typeof NTv === "number") b.NT = NTv;
@@ -772,7 +771,6 @@ export default function useSimulator() {
           : `  (B 유지: ${fmt(newB[i])})`;
         const rrDet = hasRR ? `, RR=${fmt(r.RR)}` : "";
         const extra = [
-          r.NT > 0 ? `NT=${fmt(r.NT)}` : null,
           hasCopay ? `본인부담비=${(r.copay * 100).toFixed(1)}%` : null,
         ].filter(Boolean);
         return base + bDet + rrDet + (extra.length ? `, ${extra.join(", ")}` : "");
@@ -781,7 +779,7 @@ export default function useSimulator() {
         ? `B 권장값 ${derivedCount}/4군 자동 유도 (A × CR)`
         : `B 슬라이더 보존 (A·CR 없음)`;
       const rrMsg = hasRR ? ` · RR 컬럼 → 의원당 등록환자수 자동 주입` : ``;
-      const tblMsg = [hasCopay ? "본인부담비" : null, rows.some(r => r.NT > 0) ? "NT" : null].filter(Boolean);
+      const tblMsg = [hasCopay ? "본인부담비" : null].filter(Boolean);
       const tblMsgS = tblMsg.length ? ` · 테이블 열 반영: ${tblMsg.join("·")}` : "";
       const bannerMsg = `"${sheetName}" 시트에서 4군 데이터 로딩 완료 — ${bMsg}${rrMsg}${tblMsgS}`;
       dispatch({
@@ -806,10 +804,10 @@ export default function useSimulator() {
     try {
       const SH = ["1군", "2군", "3군", "4군"];
       // v7.7.1 (사용자 결정): 수기 입력 가능 + 계산에 쓰이는 열만. v7.7.2: F 보정율은 테이블에서 표시 전용이 되어 엑셀에서도 제외
-      //   (PF는 상단 PF 슬라이더로만 조정 · 엑셀 라운드트립 시 현재 PF 보존). 열 순서 A · CR · C1 · NT · RN · 본인부담비.
+      //   (PF는 상단 PF 슬라이더로만 조정 · 엑셀 라운드트립 시 현재 PF 보존). v7.7.7: NT 제외. 열 순서 A · CR · C1 · RN · 본인부담비.
       //   산출 열(B·PB·PF·P·분포비)과 미사용/파생 필드(M1·L·RR)는 내보내지 않음.
       //   업로드 시 L = 1 − C1, 분포비·regDist = RN 비율로 재산출, M1·PF는 현재 값 보존.
-      const headers = ["환자군", "A", "CR", "C1", "NT", "RN", "본인부담비"];
+      const headers = ["환자군", "A", "CR", "C1", "RN", "본인부담비"];
       const ws = {};
       const put = (r, c, cell) => { ws[XLSX.utils.encode_cell({ r, c })] = cell; };
       headers.forEach((h, c) => put(0, c, { t: "s", v: h }));
@@ -827,19 +825,17 @@ export default function useSimulator() {
         put(r, 1, A !== null ? num(A) : blank);
         put(r, 2, CR !== null ? num(Number(CR.toFixed(6))) : blank);
         put(r, 3, num(Number((C1 * 100).toFixed(4))));
-        put(r, 4, typeof b.NT === "number" ? num(b.NT) : blank);
-        put(r, 5, num(b.N));
-        put(r, 6, num(Number((cp * 100).toFixed(4))));
+        put(r, 4, num(b.N));
+        put(r, 5, num(Number((cp * 100).toFixed(4))));
       });
 
-      // 합계 행 (r=5): NT·RN 합계
+      // 합계 행 (r=5): RN 합계
       const SR = 5;
       put(SR, 0, { t: "s", v: "합계" });
-      put(SR, 4, { t: "n", f: "SUM(E2:E5)", v: base.reduce((s, b) => s + (typeof b.NT === "number" ? b.NT : 0), 0) });
-      put(SR, 5, { t: "n", f: "SUM(F2:F5)", v: base.reduce((s, b) => s + b.N, 0) });
+      put(SR, 4, { t: "n", f: "SUM(E2:E5)", v: base.reduce((s, b) => s + b.N, 0) });
 
       ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: SR, c: headers.length - 1 } });
-      ws["!cols"] = [{ wch: 8 }, { wch: 11 }, { wch: 9 }, { wch: 9 }, { wch: 12 }, { wch: 12 }, { wch: 11 }];
+      ws["!cols"] = [{ wch: 8 }, { wch: 11 }, { wch: 9 }, { wch: 9 }, { wch: 12 }, { wch: 11 }];
 
       const wb_new = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb_new, ws, "시뮬레이터_업로드");
