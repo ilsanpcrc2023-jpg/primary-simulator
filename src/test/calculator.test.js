@@ -9,7 +9,7 @@ import { INIT_BASE, INIT_P, INIT_F, INIT_R, INIT_PF_PCT, INIT_PF_RULE,
   INIT_L1,
   INIT_M_CLINICS, INIT_TOTAL_N, INIT_PER_CLINIC, INIT_BASE_PER_CLINIC,
   INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N,
-  CLINIC_COUNT_PRESETS, REG_PER_CLINIC_PRESETS,
+  CLINIC_COUNT_PRESETS, REG_PER_CLINIC_PRESETS, PF_PCT_MAX, C_DELTA_MAX,
   B_MIN, B_MAX, OFFICIAL_BASELINE_META } from '../constants';
 import { distribute, calcPFfromPct, inferPFpct } from '../utils';
 
@@ -874,5 +874,19 @@ describe('v7.7.0/v7.7.1 · 엑셀 내보내기 헤더 ↔ 업로드 alias 라운
     const copayPct = 20, C1pct = 30;
     expect(copayPct / 100).toBeCloseTo(0.2, 10);
     expect(1 - C1pct / 100).toBeCloseTo(0.7, 10);
+  });
+});
+
+describe('v7.8.0 · 슬라이더 상한 확장', () => {
+  it('PF 통합 슬라이더 상한 40% · 포괄관리 지표 C 슬라이더 상한 +75%p', () => {
+    expect(PF_PCT_MAX).toBe(40);
+    expect(C_DELTA_MAX).toBe(75);
+  });
+  it('ΔC 75%p는 L2_g clamp(≥ 0)로 군별 L1_g에서 상한 — 성과 diff = min(ΔC, L1_g)', () => {
+    const L1 = [0.7165, 0.7448, 0.7605, 0.7419];
+    const dL2 = 0.75;
+    const L2_g = L1.map(l => Math.max(0, Math.min(0.999, l - dL2)));
+    L2_g.forEach((v, i) => expect(v).toBeCloseTo(Math.max(0, L1[i] - dL2), 10));   // 1·2·4군 0, 3군 0.0105
+    L1.forEach((l, i) => expect(Math.max(0, l - L2_g[i])).toBeCloseTo(Math.min(dL2, l), 10));
   });
 });

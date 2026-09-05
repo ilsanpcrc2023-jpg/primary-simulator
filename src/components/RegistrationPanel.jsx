@@ -1,12 +1,12 @@
 import { memo } from "react";
 import NumBox from "./shared/NumBox";
-import { SH, CL, ON, INIT_F, CLINIC_PRESETS, POLICY_SCENARIOS, CLINIC_COUNT_PRESETS, REG_PER_CLINIC_PRESETS } from "../constants";
+import { SH, CL, ON, INIT_F, CLINIC_PRESETS, POLICY_SCENARIOS, CLINIC_COUNT_PRESETS, REG_PER_CLINIC_PRESETS, PF_PCT_MAX } from "../constants";
 import { f, fE, calcPFfromPct, inferPFpct, calcPB } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 const H2 = "font-bold text-base text-gray-900";
 const F_MAX = 600000;
-const PF_PCT_MAX = 20;       // v6.10.0: 통합 슬라이더 상한 (PB ≈ PF 동수선이 자연스러운 한계)
+// v7.8.0: PF_PCT_MAX(40)는 constants.js로 이동 (v6.10.0 상한 20 → 40, 사용자 결정)
 
 // v6.11.0: 역비례 옵션 삭제 (정책 근거 약함)
 const PF_RULES = [
@@ -80,7 +80,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
           className="w-full big-thumb"
           style={{ '--thumb-bg': "#2563eb", accentColor: "#2563eb" }} />
         <div className="flex justify-between text-[10px] text-slate-500 mt-0.5">
-          <span>0%</span><span>5%</span><span>10%</span><span>15%</span><span>20%</span>
+          <span>0%</span><span>10%</span><span>20%</span><span>30%</span><span>40%</span>
         </div>
         <div className="mt-1 text-[10px] text-slate-500 leading-relaxed">
           ※ 환자군 기준의료비(B) 기준
