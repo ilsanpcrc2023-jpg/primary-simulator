@@ -869,7 +869,8 @@ export default function useSimulator() {
         set("uploadBanner", {
           success: false,
           msg: `공식 baseline 등록 실패 (HTTP ${res.status})`,
-          details: data?.error || data?.message || "서버 응답 확인 필요. Vercel 환경변수 GITHUB_PAT 설정 여부 점검.",
+          details: [data?.error || data?.message || "서버 응답 확인 필요. Vercel 환경변수 GITHUB_PAT 설정 여부 점검.",
+            data?.details ? `GitHub 응답: ${String(data.details).slice(0, 300)}` : null].filter(Boolean).join(" · "),
         });
         return;
       }
