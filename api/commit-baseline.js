@@ -2,11 +2,11 @@
 // src/data/presets/official_baseline.json을 GitHub Contents API로 갱신 → Vercel 재배포.
 // 필요 환경변수 (Vercel 대시보드 → Project Settings → Environment Variables):
 //   GITHUB_PAT       (필수) GitHub Personal Access Token, repo contents:write 스코프
-//   GITHUB_REPO      (선택) 기본 shleefm/primary-simulator
+//   GITHUB_REPO      (선택) 기본 ilsanpcrc2023-jpg/primary-simulator
 //   GITHUB_BRANCH    (선택) 기본 main
 //   ADMIN_PWD        (선택) 미설정 시 인증 없음. 설정 시 요청 본문의 password와 일치해야 함
 
-const DEFAULT_REPO = "shleefm/primary-simulator";
+const DEFAULT_REPO = "ilsanpcrc2023-jpg/primary-simulator";
 const DEFAULT_BRANCH = "main";
 const FILE_PATH = "src/data/presets/official_baseline.json";
 
