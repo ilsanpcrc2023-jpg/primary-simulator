@@ -708,7 +708,7 @@ pt_base·baseN_per_clinic·M_clinics·regDist(분포비 프리셋)·PF(F_g, PF �
 
 **필요 환경변수 (Vercel 대시보드)**:
 - `GITHUB_PAT` (필수) — GitHub PAT, repo `contents:write` 스코프
-- `GITHUB_REPO` (선택, 기본 `shleefm/primary-simulator`)
+- `GITHUB_REPO` (선택, 기본 `ilsanpcrc2023-jpg/primary-simulator` · v7.9.1부터, 이전 `shleefm/primary-simulator`)
 - `GITHUB_BRANCH` (선택, 기본 `main`)
 - `ADMIN_PWD` (선택) — 설정 시 요청 본문의 `password`와 일치 필요
 
