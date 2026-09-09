@@ -75,8 +75,11 @@ export const INIT_REG_DIST = _sumN > 0
 // v7.6.2: 상세 편집 테이블 본인부담비 열은 참고 항목으로 복원 (편집·보존만, 계산 미반영). 디폴트 30%.
 // v7.6.3: 참여 전 공단 지출 baseline nhi0 = C1 × N × (1 − 본인부담비)에 사용.
 // v7.6.4 (사용자 결정): 디폴트 30% → 26.1% (4군 공통).
+// v7.9.0: 군별 본인부담비 디폴트는 official_baseline.json의 copay 배열에서 로드 (없으면 26.1% 공통 fallback).
 export const COPAY_RATE = 0.261;
-export const INIT_COPAY_RATES = [COPAY_RATE, COPAY_RATE, COPAY_RATE, COPAY_RATE];
+const validCopay = Array.isArray(officialBaseline?.copay) && officialBaseline.copay.length === 4
+  && officialBaseline.copay.every(v => typeof v === "number" && v >= 0 && v <= 1);
+export const INIT_COPAY_RATES = validCopay ? [...officialBaseline.copay] : [COPAY_RATE, COPAY_RATE, COPAY_RATE, COPAY_RATE];
 
 // v6.9.4: 데이터 기반 디폴트로 전환.
 //   INIT_TOTAL_N = sum(INIT_BASE.N) — 파일럿(2023)이면 69,604명

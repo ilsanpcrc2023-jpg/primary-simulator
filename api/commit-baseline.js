@@ -51,7 +51,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "관리자 비밀번호가 일치하지 않습니다." });
   }
 
-  const { base, P, M_clinics, dataLabel } = body;
+  const { base, P, M_clinics, dataLabel, copay } = body;
   const baseErr = validateBase(base);
   if (baseErr) return res.status(400).json({ error: baseErr });
   const pErr = validateP(P);
@@ -63,11 +63,14 @@ export default async function handler(req, res) {
     ? dataLabel.trim().slice(0, 200)
     : `데이터 baseline (${safeMClinics}기관 · ${sumN.toLocaleString("en-US")}명)`;
 
+  // v7.9.0: 군별 본인부담비(0~1, 4개) — 유효하면 저장, 아니면 생략(시뮬레이터가 26.1% fallback).
+  const safeCopay = (Array.isArray(copay) && copay.length === 4 && copay.every(v => typeof v === "number" && v >= 0 && v <= 1))
+    ? copay.map(v => Math.round(v * 1e6) / 1e6) : null;
   const repo = process.env.GITHUB_REPO || DEFAULT_REPO;
   const branch = process.env.GITHUB_BRANCH || DEFAULT_BRANCH;
 
   const payload = {
-    version: "6.9.4",
+    version: "7.9.0",
     updated_at: new Date().toISOString().slice(0, 10),
     updated_by: "admin (simulator UI button)",
     note: "시뮬레이터 '공식 baseline으로 등록' 버튼을 통해 갱신된 파일. 편집 시 주의 — 시뮬레이터가 앱 시작 시 이 파일을 읽어 모든 사용자의 디폴트를 결정합니다.",
@@ -75,6 +78,7 @@ export default async function handler(req, res) {
     dataLabel: safeLabel,
     base,
     P,
+    ...(safeCopay ? { copay: safeCopay } : {}),
   };
   const content = Buffer.from(JSON.stringify(payload, null, 2) + "\n", "utf-8").toString("base64");
 
