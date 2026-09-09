@@ -861,6 +861,7 @@ export default function useSimulator() {
           P: state.P,
           M_clinics: state.M_clinics,
           dataLabel: state.dataLabel,
+          copay: state.copayRates,          // v7.9.0: 군별 본인부담비도 baseline에 저장
         }),
       });
       const data = await res.json().catch(() => ({}));

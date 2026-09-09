@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { FCard, TCard, ClinicSummaryStrip, ClinicCountControls } from "./RegistrationPanel";
-import { SH, CL, COPAY_RATE, OFFICIAL_BASELINE_META, C_DELTA_MAX } from "../constants";
+import { SH, CL, INIT_COPAY_RATES, OFFICIAL_BASELINE_META, C_DELTA_MAX, ON, INIT_M_CLINICS, INIT_PER_CLINIC, INIT_REG_DIST } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB, refRatiosFromBase } from "../utils";
 
@@ -401,8 +401,8 @@ export default memo(function TabSimulation({
               <div className="pl-3">2) HCC 4분위(quartile)로 환자군 1~4군 분류</div>
               <div className="pt-1"><b className="text-slate-800">2단계 (일만시 참여의원 환자 중심 분석)</b></div>
               <div className="pl-3 text-[10px] text-slate-500 leading-tight">
-                주분석 대상: 일차의료 만성질환관리 시범사업 참여의원 <b className="text-slate-700">2,923개 의원</b>
-                · 환자 <b className="text-slate-700">12,411,152명</b> (의원당 환자수 <b className="text-slate-700">4,246명</b>)
+                주분석 대상: 일차의료 만성질환관리 시범사업 참여의원 <b className="text-slate-700">{INIT_M_CLINICS.toLocaleString("ko-KR")}개 의원</b>
+                · 환자 <b className="text-slate-700">{ON.toLocaleString("ko-KR")}명</b> (의원당 환자수 <b className="text-slate-700">{INIT_PER_CLINIC.toLocaleString("ko-KR")}명</b>)
               </div>
               <div className="pl-3">1) 환자군 평균 의료비 <b>A</b></div>
               <div className="pl-3">2) 환자군 기준 의료비(의원급외래) <b>B = A × CR</b></div>
@@ -443,7 +443,8 @@ export default memo(function TabSimulation({
             </div>
             <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
               onClick={() => {
-                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: 4,246명\n· 의원당 등록환자수: 약 1,000명 (분포비 = 일만시 실측 20.2/19.8/29.4/30.7%)\n· 사업 전체 등록: 약 100,000명\n\n환자군별 RN · L · 분포비만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
+                const distTxt = INIT_REG_DIST.map(v => (v / 10).toFixed(1)).join("/");
+                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: ${INIT_PER_CLINIC.toLocaleString("ko-KR")}명\n· 의원당 등록환자수: 약 1,000명 (분포비 = 일만시 실측 ${distTxt}%)\n· 사업 전체 등록: 약 100,000명\n\n환자군별 RN · L · 분포비만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
                 if (confirm(msg)) resetReg?.();
               }}>
               <div className="text-amber-500 text-xl mb-0.5">↩</div>
@@ -599,7 +600,7 @@ export default memo(function TabSimulation({
                         </td>
                         <td className="text-center px-1 text-blue-700 font-semibold">{(ratios[i] * 100).toFixed(1)}%</td>
                         <td className="text-center px-1">
-                          <DraftInput value={((state.copayRates?.[i] ?? COPAY_RATE) * 100)} decimals={1} className="w-[44px] text-gray-500" min={0} max={100}
+                          <DraftInput value={((state.copayRates?.[i] ?? INIT_COPAY_RATES[i]) * 100)} decimals={1} className="w-[44px] text-gray-500" min={0} max={100}
                             onCommit={v => updCopay(i, v / 100)} />
                         </td>
                       </tr>
