@@ -43,7 +43,7 @@ export const OFFICIAL_BASELINE_META = {
 // v7.2.2: 디폴트 10% → 5% (사용자 결정).
 // v7.5: 의료비 0원 제외 baseline(B=[238515, 413166, 662478, 1013352]) 적용 시: [11926, 20658, 33124, 50668].
 //   PF 통합 슬라이더의 디폴트 위치(5%)와 정합.
-export const INIT_PF_PCT = 5;                // PF 통합 슬라이더 디폴트 (B의 X%, 0~PF_PCT_MAX)
+export const INIT_PF_PCT = 10;               // PF 통합 슬라이더 디폴트 (B의 X%, 0~PF_PCT_MAX · v7.9.3: 5 → 10 복귀)
 export const PF_PCT_MAX = 40;                // v7.8.0: PF 통합 슬라이더 상한 (B의 %) — 20 → 40 (사용자 결정)
 export const C_DELTA_MAX = 25;               // v7.8.1: 포괄관리 지표 C 슬라이더 상한 (ΔC, %p) — v7.8.0 75 → 25 복귀 (사용자 결정)
 export const INIT_PF_RULE = "hcc";           // 분배 규칙 디폴트 (hcc|equal|inverse)
