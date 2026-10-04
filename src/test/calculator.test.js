@@ -431,25 +431,24 @@ describe('v6.5 PT/SS Track percentages', () => {
 });
 
 // v6.10.0: PF 디폴트 = B의 10% (HCC 비례 자동) + 통합 슬라이더 + 분배 함수
-describe('v6.10.0 / v7.2.2 · PF 디폴트 (B의 5%, HCC 비례 자동)', () => {
-  it('INIT_PF_PCT = 5 · INIT_PF_RULE = "hcc" (v7.2.2: 10% → 5% 변경)', () => {
-    expect(INIT_PF_PCT).toBe(5);
+describe('v6.10.0 / v7.2.2 / v7.9.3 · PF 디폴트 (B의 10%, HCC 비례 자동)', () => {
+  it('INIT_PF_PCT = 10 · INIT_PF_RULE = "hcc" (v7.2.2: 10% → 5%, v7.9.3: 5% → 10% 복귀)', () => {
+    expect(INIT_PF_PCT).toBe(10);
     expect(INIT_PF_RULE).toBe('hcc');
   });
 
-  it('INIT_F = INIT_P × 5% (각 환자군별)', () => {
+  it('INIT_F = INIT_P × 10% (각 환자군별)', () => {
     expect(INIT_F).toHaveLength(4);
     INIT_F.forEach((v, i) => {
-      const expected = Math.round(INIT_P[i] * 0.05);
+      const expected = Math.round(INIT_P[i] * 0.10);
       expect(v).toBe(expected);
     });
     // v7.9.0: baseline 260909 — B = [249593, 338271, 615003, 968667] (환자군 실제 평균 의료비 A × CR)
-    //   → INIT_F[i] = round(B[i] × 5%) (v7.2.2 PF 5% 디폴트)
-    //   (이전 v7.5 exc_zero: [11926, 20658, 33124, 50668])
-    expect(INIT_F[0]).toBe(12480);
-    expect(INIT_F[1]).toBe(16914);
-    expect(INIT_F[2]).toBe(30750);
-    expect(INIT_F[3]).toBe(48433);
+    //   → INIT_F[i] = round(B[i] × 10%) (v7.9.3 PF 10% 디폴트 · 이전 5%: [12480, 16914, 30750, 48433])
+    expect(INIT_F[0]).toBe(24959);
+    expect(INIT_F[1]).toBe(33827);
+    expect(INIT_F[2]).toBe(61500);
+    expect(INIT_F[3]).toBe(96867);
   });
 
   it('INIT_R는 INIT_F alias (하위 호환)', () => {
@@ -460,9 +459,9 @@ describe('v6.10.0 / v7.2.2 · PF 디폴트 (B의 5%, HCC 비례 자동)', () => 
     expect(INIT_F).not.toEqual([10000, 20000, 30000, 40000]);
   });
 
-  it('이전 10% 디폴트 회귀 방지 — INIT_F는 더 이상 B × 10%가 아님', () => {
-    const tenPct = INIT_P.map(b => Math.round(b * 0.10));
-    expect(INIT_F).not.toEqual(tenPct);
+  it('v7.2.2 5% 디폴트 회귀 방지 — INIT_F는 더 이상 B × 5%가 아님 (v7.9.3: 10% 복귀)', () => {
+    const fivePct = INIT_P.map(b => Math.round(b * 0.05));
+    expect(INIT_F).not.toEqual(fivePct);
   });
 });
 
@@ -754,7 +753,7 @@ describe('v7.1.1 · 엑셀 정합 reference 필드 (A·CR·NT)', () => {
 // v7.5.9: 상세 편집 테이블 A·CR 편집 → 엔진 B(state.P) 동기화 (reducer SET_BASE 명세)
 describe('v7.5.9 · A·CR 편집 시 B = clamp(round(A×CR)) 동기화 + PF 비율 보존', () => {
   const clampB = (v) => Math.max(B_MIN, Math.min(B_MAX, v));
-  it('1군 A를 2배로 올리면 B도 A×CR로 갱신되고 PF는 5% 비율 유지', () => {
+  it('1군 A를 2배로 올리면 B도 A×CR로 갱신되고 PF는 10% 비율 유지', () => {
     const b = INIT_BASE[0];
     const oldB = INIT_P[0];
     const oldF = INIT_F[0];

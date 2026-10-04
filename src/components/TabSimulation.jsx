@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import NumBox from "./shared/NumBox";
 import WinWinWin from "./WinWinWin";
 import { FCard, TCard, ClinicSummaryStrip, ClinicCountControls } from "./RegistrationPanel";
-import { SH, CL, INIT_COPAY_RATES, OFFICIAL_BASELINE_META, C_DELTA_MAX, ON, INIT_M_CLINICS, INIT_PER_CLINIC, INIT_REG_DIST } from "../constants";
+import { SH, CL, INIT_COPAY_RATES, INIT_PF_PCT, OFFICIAL_BASELINE_META, C_DELTA_MAX, ON, INIT_M_CLINICS, INIT_PER_CLINIC, INIT_REG_DIST } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB, refRatiosFromBase } from "../utils";
 
@@ -408,7 +408,7 @@ export default memo(function TabSimulation({
               <div className="pl-3">2) 환자군 기준 의료비(의원급외래) <b>B = A × CR</b></div>
               <div className="pl-3">3) 일차의료 기본수가 <b>PB = B × C1</b> <span className="text-slate-500">(C1 = 1 − L1)</span></div>
               <div className="pt-1 text-slate-500"><i>cf. 일차의료 정책 보정 후 일차의료수가</i></div>
-              <div className="pl-3 text-slate-600">· 일차의료 기능보정 <b>PF</b> <span className="text-slate-500">(B 기준 N% 정책 슬라이더, 디폴트 5%)</span></div>
+              <div className="pl-3 text-slate-600">· 일차의료 기능보정 <b>PF</b> <span className="text-slate-500">(B 기준 N% 정책 슬라이더, 디폴트 {INIT_PF_PCT}%)</span></div>
               <div className="pl-3 text-slate-600">· 일차의료수가 <b>P = PB + PF</b></div>
             </div>
           </div>
