@@ -145,7 +145,7 @@ export default memo(function TabTrack({
       </div>
 
       <div className="mt-3 text-[11px] text-gray-500 leading-relaxed">
-        · 변화액 = 포괄관리성과 (일차의료 기능보정 PF는 0%로 계산 · 수가 시뮬레이션 탭 PF와 미연동 · 매년 · 일차의료 전환지원금은 1년차 별도 지급)
+        · 일차의료기능 보정 (PF) 제외, 운영지원금(단독모형) 제외
         <br/>· <span className="text-gray-400">※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도.</span>
       </div>
     </div>
