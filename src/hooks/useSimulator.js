@@ -632,13 +632,17 @@ export default function useSimulator() {
     const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
     const perfPerClinicFull = (performanceTrack?.perf_total ?? 0) / M;   // v7.9.5: Track 탭 전용 C 슬라이더 기준
     const baselinePerClinic = (decomp?.baselineIncome ?? 0) / M;
+    // v7.9.6 (사용자 결정): Track 별 의원 수입 비교는 일차의료 기능보정(PF)을 0으로 두고 산출 — 수가 시뮬 PF 슬라이더와 미연동.
+    //   선지급 수입 = Σ PB × (n_reg + n_unreg) = T.tA (Track A = PB, PF 항 없음)를 세 Track에 공통 적용.
+    //   → Track별 차이는 포괄관리성과 배수(A 0 / B 0.5 / C 1.0)만. (T.tB/T.tC는 Track 차트 등 다른 용도로 보존.)
+    const incomeNoPF = T.tA / M;
     const list = [
       { n: "Track A", d: "FFS 100%",   hc: 0,   c: "#22c55e", bg: "#f0fdf4", bd: "#86efac",
-        income: T.tA / M, chg: tAchg, ptPct: state.ptPctA, ssPct: state.ssPctA, perfMul: 0 },
+        income: incomeNoPF, chg: tAchg, ptPct: state.ptPctA, ssPct: state.ssPctA, perfMul: 0 },
       { n: "Track B", d: "혼합 50:50",  hc: 50,  c: "#3b82f6", bg: "#eff6ff", bd: "#93c5fd",
-        income: T.tB / M, chg: tBchg, ptPct: state.ptPctB, ssPct: state.ssPctB, perfMul: 0.5 },
+        income: incomeNoPF, chg: tAchg, ptPct: state.ptPctB, ssPct: state.ssPctB, perfMul: 0.5 },
       { n: "Track C", d: "환자군 100%", hc: 100, c: "#f97316", bg: "#fff7ed", bd: "#fdba74",
-        income: T.tC / M, chg: tCchg, ptPct: state.ptPctC, ssPct: state.ssPctC, perfMul: 1.0 },
+        income: incomeNoPF, chg: tAchg, ptPct: state.ptPctC, ssPct: state.ssPctC, perfMul: 1.0 },
     ];
     return list.map(t => {
       const ptAmt = state.pt_base * t.ptPct / 100;
@@ -652,7 +656,7 @@ export default function useSimulator() {
         netChange: ongoing - baselinePerClinic,            // v7.0: 수가 시뮬 KPI와 일치
       };
     });
-  }, [M_clinics, T.tA, T.tB, T.tC, tAchg, tBchg, tCchg,
+  }, [M_clinics, T.tA, tAchg,
       state.ptPctA, state.ptPctB, state.ptPctC,
       state.ssPctA, state.ssPctB, state.ssPctC,
       state.pt_base, SS.clinicFromItem, performanceTrack.perf_total,
