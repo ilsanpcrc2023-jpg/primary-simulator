@@ -12,9 +12,9 @@ export default memo(function TabTrack({
   resetPtPct, resetSsPct,
   setL2, resetL2,
 }) {
-  const { hccPct, L2, M_clinics, pt_base,
+  const { hccPct, L2_track, M_clinics, pt_base,
     ptPctA, ptPctB, ptPctC, ssPctA, ssPctB, ssPctC } = state;
-  const L2_display = L2 ?? (perfMemo?.L1avg ?? 0.7);
+  const L2_display = L2_track ?? (perfMemo?.L1avg ?? 0.7);   // v7.9.5: Track 탭 전용 (수가 시뮬 L2와 미연동)
   const ffsPct = 100 - hccPct;
   const M = Math.max(1, M_clinics);
 
@@ -60,7 +60,7 @@ export default memo(function TabTrack({
       {/* v7.0: 행위별·환자군 100% 미세조정 슬라이더 제거 */}
     </div>
 
-    {/* ② 포괄관리 지표 (C) — 수가 시뮬레이션 탭과 동일 (state 공유, 양수 슬라이더) */}
+    {/* ② 포괄관리 지표 (C) — v7.9.5: Track 탭 전용 state(L2_track), 수가 시뮬레이션 탭과 미연동 */}
     {(() => {
       const L1avg = perfMemo?.L1avg ?? 0.7;
       const C0 = 1 - L1avg;
