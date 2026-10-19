@@ -12,10 +12,9 @@ export default memo(function TabTrack({
   resetPtPct, resetTrackPfPct, resetSsPct,
   setL2, resetL2,
 }) {
-  const { hccPct, L2_track, M_clinics, totalN, regDist,
+  const { hccPct, L2_track, M_clinics, regDist,
     trackPfPctA, trackPfPctB, trackPfPctC } = state;
-  // v7.9.9: 의원당 환자수 표시 (등록 = Σ regDist · 비등록 = 의원당 환자수 − 등록)
-  const perClinicN = Math.round((totalN || 0) / Math.max(1, M_clinics));
+  // v7.9.10: 의원당 시범사업 참여 환자 수 (= Σ regDist) · v7.9.11: 의원당 환자수(totalN/M) 표시 삭제
   const perClinicReg = Math.round((regDist || []).reduce((a, b) => a + (b || 0), 0));
   const L2_display = L2_track ?? (perfMemo?.L1avg ?? 0.7);   // v7.9.5: Track 탭 전용 (수가 시뮬 L2와 미연동)
   const ffsPct = 100 - hccPct;
@@ -196,9 +195,9 @@ export default memo(function TabTrack({
               })}
             </div>
             <div className="mt-2 text-[10px] text-amber-800/70">
-              ※ 의원당 시범사업 참여 환자 수 = <b>{f(perClinicReg)}명</b> (의원당 환자수 {f(perClinicN)}명 = 등록 {f(perClinicReg)}명 + 비등록 {f(Math.max(0, perClinicN - perClinicReg))}명)
-              <br/>※ PF %는 환자군 기준의료비(B) 기준 — PF = B × %
-              <br/>※ PF 수입액 = Σ 환자군별 B × PF% × 의원당 등록환자수 (수가 시뮬레이션 탭 PF와 미연동)
+              ※ 의원당 시범사업 참여 환자 수 = <b>{f(perClinicReg)}명</b>
+              <br/>※ PF %는 환자군 기준의료비(B) 기준
+              <br/>※ PF 수입액 = Σ 환자군별 B × PF% × 의원당 등록환자수
             </div>
           </div>
 
