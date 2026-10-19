@@ -18,8 +18,8 @@ export const diffAuto = (a, b) => {
 };
 
 // 만원 단위 고정 포매팅 (의원당 평균처럼 작은 차이 가독성 필요 시)
-export const fMan = (v) => Math.round(v / 1e4).toLocaleString("ko-KR") + "만원";
-export const diffMan = (delta) => (delta >= 0 ? "+" : "") + fMan(delta);
+export const fMan = (v) => { const n = Math.round(v / 1e4); return (n === 0 ? 0 : n).toLocaleString("ko-KR") + "만원"; };   // v7.9.4: −0 표기 방지
+export const diffMan = (delta) => (Math.round(delta / 1e4) >= 0 ? "+" : "") + fMan(delta);                                  // v7.9.4: 부호는 만원 반올림 후 판정
 
 // v6.9.1: 의료비 변화액 음(−) 표기 헬퍼 (U+2212).
 // 양수 절감액 → "−XXX억원" prefix 부착, 0이면 부호 없이.

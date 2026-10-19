@@ -296,7 +296,7 @@ export default memo(function TabSimulation({
           <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider">의원 수입 변화</span>
           {mode === "clinic" && (
             <span className="text-[10px] text-emerald-700/70 font-semibold">
-              현재 Track: <b className="text-emerald-800">{state.hccPct === 0 ? "A (FFS)" : state.hccPct === 100 ? "C (환자군)" : `B (혼합 ${state.hccPct}%)`}</b>
+              기준: <b className="text-emerald-800">Track C (환자군 100%)</b> · Track별 비교는 Track 탭
             </span>
           )}
         </div>

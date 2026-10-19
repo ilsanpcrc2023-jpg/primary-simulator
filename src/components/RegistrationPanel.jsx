@@ -28,8 +28,8 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
   // 동적 baseline — Σ regDist × PB × M_clinics (등록환자 기본수가 기준, 동적) · v7.6.0: M1 → PB
   const PB_g = calcPB(B_g, state.L1);
   const pfBaseline = PB_g.reduce((s, pb, i) => s + (regDist[i] || 0) * pb * M, 0);
-  // 현재 PF로 인한 공단지출 추가 = Σ F_g × n_reg_g × Track 배수 (v7.7.6: A 0 / B 0.5 / C 1.0 — 엔진 KPI와 동일)
-  const pfMul = Math.max(0, Math.min(1, (state.hccPct ?? 100) / 100));
+  // 현재 PF로 인한 공단지출 추가 = Σ F_g × n_reg_g (v7.9.4: 수가 시뮬은 Track C 고정 → 배수 1.0, Track 탭 선택과 미연동)
+  const pfMul = 1;
   const pfExpenditure = F_g.reduce((s, v, i) => s + (v || 0) * (n_reg_g[i] || 0), 0) * pfMul;
   const pfPctOfBaseline = pfBaseline > 0 ? (pfExpenditure / pfBaseline) * 100 : 0;
 
