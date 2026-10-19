@@ -129,6 +129,10 @@ export const INIT_PT_BASE = 10_000_000;   // 일차의료 전환지원금 기준
 export const INIT_PT_PCT_A = 10;
 export const INIT_PT_PCT_B = 50;
 export const INIT_PT_PCT_C = 100;
+// v7.9.8: Track 탭 전용 일차의료 기능보정(PF) % (B 기준, Track별) — 수가 시뮬 PF 슬라이더와 미연동
+export const INIT_TRACK_PF_PCT_A = 5;
+export const INIT_TRACK_PF_PCT_B = 7.5;
+export const INIT_TRACK_PF_PCT_C = 10;
 export const INIT_SS_PCT_A = 10;
 export const INIT_SS_PCT_B = 50;
 export const INIT_SS_PCT_C = 100;

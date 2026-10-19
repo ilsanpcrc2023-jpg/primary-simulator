@@ -127,7 +127,7 @@ export default function App() {
             G={sim.G} T={sim.T} SS={sim.SS} performance={sim.performanceTrack} tracks={sim.tracks}
             nhiChg={sim.nhiChg}
             tAchg={sim.tAchg} tBchg={sim.tBchg} tCchg={sim.tCchg} tSchg={sim.tSchg}
-            resetPtPct={sim.resetPtPct} resetSsPct={sim.resetSsPct}
+            resetPtPct={sim.resetPtPct} resetTrackPfPct={sim.resetTrackPfPct} resetSsPct={sim.resetSsPct}
             setL2={sim.setL2Track} resetL2={sim.resetL2Track}
           />
         )}
