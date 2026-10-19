@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, COL_ALIASES_EXACT_ONLY, B_MIN, B_MAX, INIT_COPAY_RATES } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_TRACK_PF_PCT_A, INIT_TRACK_PF_PCT_B, INIT_TRACK_PF_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, COL_ALIASES_EXACT_ONLY, B_MIN, B_MAX, INIT_COPAY_RATES } from "../constants";
 import { roundRegDist, refRatiosFromBase, regDistFromRatios } from "../utils";
 
 // v7.5.8: 등록 기준 총량 (분포비를 곱하기 전 base) = Σ regDist ÷ Σ 현재 분포비. 디폴트 1,000명.
@@ -73,6 +73,10 @@ const initialState = {
   ptPctA: INIT_PT_PCT_A,
   ptPctB: INIT_PT_PCT_B,
   ptPctC: INIT_PT_PCT_C,
+  // v7.9.8: Track 탭 PF % (B 기준 · Track별 · 수가 시뮬 PF와 미연동)
+  trackPfPctA: INIT_TRACK_PF_PCT_A,
+  trackPfPctB: INIT_TRACK_PF_PCT_B,
+  trackPfPctC: INIT_TRACK_PF_PCT_C,
   // 성과공유 Track 지급률 (A/B/C, %) — 편집 가능
   ssPctA: INIT_SS_PCT_A,
   ssPctB: INIT_SS_PCT_B,
@@ -223,6 +227,8 @@ function reducer(state, action) {
     //   초기화는 RESET_REG로 처리 (M=100 시범사업 디폴트 복귀).
     case "RESET_PT_PCT":
       return { ...state, ptPctA: INIT_PT_PCT_A, ptPctB: INIT_PT_PCT_B, ptPctC: INIT_PT_PCT_C };
+    case "RESET_TRACK_PF_PCT":   // v7.9.8
+      return { ...state, trackPfPctA: INIT_TRACK_PF_PCT_A, trackPfPctB: INIT_TRACK_PF_PCT_B, trackPfPctC: INIT_TRACK_PF_PCT_C };
     case "RESET_SS_PCT":
       return { ...state, ssPctA: INIT_SS_PCT_A, ssPctB: INIT_SS_PCT_B, ssPctC: INIT_SS_PCT_C };
     case "RESET_SS_COST":
@@ -632,25 +638,29 @@ export default function useSimulator() {
     const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
     const perfPerClinicFull = (performanceTrack?.perf_total ?? 0) / M;   // v7.9.5: Track 탭 전용 C 슬라이더 기준
     const baselinePerClinic = (decomp?.baselineIncome ?? 0) / M;
+    const pfBasePerClinic = G.reduce((s, r) => s + r.p * r.n_reg, 0) / M;   // v7.9.8: Σ B × n_reg (의원당) — PF 1% 당 수입 기준
     // v7.9.6 (사용자 결정): Track 별 의원 수입 비교는 일차의료 기능보정(PF)을 0으로 두고 산출 — 수가 시뮬 PF 슬라이더와 미연동.
     //   선지급 수입 = Σ PB × (n_reg + n_unreg) = T.tA (Track A = PB, PF 항 없음)를 세 Track에 공통 적용.
     //   → Track별 차이는 포괄관리성과 배수(A 0 / B 0.5 / C 1.0)만. (T.tB/T.tC는 Track 차트 등 다른 용도로 보존.)
     const incomeNoPF = T.tA / M;
     const list = [
       { n: "Track A", d: "FFS 100%",   hc: 0,   c: "#22c55e", bg: "#f0fdf4", bd: "#86efac",
-        income: incomeNoPF, chg: tAchg, ptPct: state.ptPctA, ssPct: state.ssPctA, perfMul: 0 },
+        income: incomeNoPF, chg: tAchg, ptPct: state.ptPctA, ssPct: state.ssPctA, perfMul: 0, pfPct: state.trackPfPctA },
       { n: "Track B", d: "혼합 50:50",  hc: 50,  c: "#3b82f6", bg: "#eff6ff", bd: "#93c5fd",
-        income: incomeNoPF, chg: tAchg, ptPct: state.ptPctB, ssPct: state.ssPctB, perfMul: 0.5 },
+        income: incomeNoPF, chg: tAchg, ptPct: state.ptPctB, ssPct: state.ssPctB, perfMul: 0.5, pfPct: state.trackPfPctB },
       { n: "Track C", d: "환자군 100%", hc: 100, c: "#f97316", bg: "#fff7ed", bd: "#fdba74",
-        income: incomeNoPF, chg: tAchg, ptPct: state.ptPctC, ssPct: state.ssPctC, perfMul: 1.0 },
+        income: incomeNoPF, chg: tAchg, ptPct: state.ptPctC, ssPct: state.ssPctC, perfMul: 1.0, pfPct: state.trackPfPctC },
     ];
     return list.map(t => {
       const ptAmt = state.pt_base * t.ptPct / 100;
+      // v7.9.8: Track별 PF 수입액(의원당 연간) = Σ_g B_g × pfPct/100 × n_reg_g / M — Track 탭 전용 %, 수가 시뮬 PF와 미연동.
+      //   표시 전용(Track 카드 변화액·ongoing에는 미포함 · v7.9.6 "PF 제외" 유지).
+      const pfAmt = pfBasePerClinic * (t.pfPct ?? 0) / 100;
       const ssAmt = ssPerClinicFull * t.ssPct / 100;     // SS 탭 시연용 (Track 가산 합산에서 제외)
       const perfAmt = perfPerClinicFull * t.perfMul;
       const ongoing = t.income + perfAmt;                  // v6.11.0: ssAmt 제외
       return {
-        ...t, ptAmt, ssAmt, perfAmt,
+        ...t, ptAmt, ssAmt, perfAmt, pfAmt,
         firstYear: t.income + ptAmt,
         ongoing,
         netChange: ongoing - baselinePerClinic,            // v7.0: 수가 시뮬 KPI와 일치
@@ -658,6 +668,7 @@ export default function useSimulator() {
     });
   }, [M_clinics, T.tA, tAchg,
       state.ptPctA, state.ptPctB, state.ptPctC,
+      state.trackPfPctA, state.trackPfPctB, state.trackPfPctC, G,
       state.ssPctA, state.ssPctB, state.ssPctC,
       state.pt_base, SS.clinicFromItem, performanceTrack.perf_total,
       decomp.baselineIncome]);
@@ -686,6 +697,7 @@ export default function useSimulator() {
   const resetL2Track = useCallback(() => dispatch({ type: "RESET_L2_TRACK" }), []);
   const resetReg = useCallback(() => dispatch({ type: "RESET_REG" }), []);
   const resetPtPct = useCallback(() => dispatch({ type: "RESET_PT_PCT" }), []);
+  const resetTrackPfPct = useCallback(() => dispatch({ type: "RESET_TRACK_PF_PCT" }), []);   // v7.9.8
   const resetSsPct = useCallback(() => dispatch({ type: "RESET_SS_PCT" }), []);
   const resetSsCost = useCallback(() => dispatch({ type: "RESET_SS_COST" }), []);
   const updRegDist = useCallback((i, value) => dispatch({ type: "SET_REGDIST_AT", i, value }), []);
@@ -940,7 +952,7 @@ export default function useSimulator() {
     updL1, setL1All, resetL1,
     setL2, resetL2,
     setL2Track, resetL2Track,
-    resetPtPct, resetSsPct, resetSsCost,
+    resetPtPct, resetTrackPfPct, resetSsPct, resetSsCost,
     updRegDist, setRegDistAll, scaleRegDist,
     reset,
     handleMacroSync, handleFile, handleExport, loadPreset, handleCommitBaseline,

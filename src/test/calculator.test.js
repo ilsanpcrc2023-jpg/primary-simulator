@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { INIT_BASE, INIT_P, INIT_F, INIT_R, INIT_PF_PCT, INIT_PF_RULE,
+import { INIT_BASE, INIT_P, INIT_F, INIT_R, INIT_PF_PCT, INIT_PF_RULE, INIT_TRACK_PF_PCT_A, INIT_TRACK_PF_PCT_B, INIT_TRACK_PF_PCT_C,
   INIT_REG_DIST,
   POLICY_SCENARIOS, CLINIC_PRESETS,
   ON, COL_ALIASES,
@@ -891,5 +891,22 @@ describe('v7.8.0/v7.8.1 · 슬라이더 상한', () => {
     const L2_g = L1.map(l => Math.max(0, Math.min(0.999, l - dL2)));
     L2_g.forEach((v, i) => expect(v).toBeCloseTo(Math.max(0, L1[i] - dL2), 10));   // 1·2·4군 0, 3군 0.0105
     L1.forEach((l, i) => expect(Math.max(0, l - L2_g[i])).toBeCloseTo(Math.min(dL2, l), 10));
+  });
+});
+
+// v7.9.8: Track 탭 전용 PF % (B 기준 · Track별) — 수가 시뮬 PF와 미연동
+describe('v7.9.8 · Track 탭 PF % 디폴트 A 5 / B 7.5 / C 10', () => {
+  it('INIT_TRACK_PF_PCT_A/B/C = 5 / 7.5 / 10', () => {
+    expect(INIT_TRACK_PF_PCT_A).toBe(5);
+    expect(INIT_TRACK_PF_PCT_B).toBe(7.5);
+    expect(INIT_TRACK_PF_PCT_C).toBe(10);
+  });
+  it('PF 수입액(의원당) = Σ B_g × pct/100 × regDist_g — Track C 10%는 수가 시뮬 디폴트 PF 10% 의원당 가산과 동일', () => {
+    const regDist = [192.4, 229.7, 280.1, 297.9];
+    const pfC = INIT_P.reduce((s, b, i) => s + b * INIT_TRACK_PF_PCT_C / 100 * regDist[i], 0);
+    const pfSim = INIT_F.reduce((s, f, i) => s + f * regDist[i], 0);
+    expect(Math.abs(pfC - pfSim)).toBeLessThan(regDist.reduce((a, b) => a + b, 0) * 0.5 + 1);   // INIT_F 정수 반올림 오차 이내
+    const pfA = INIT_P.reduce((s, b, i) => s + b * INIT_TRACK_PF_PCT_A / 100 * regDist[i], 0);
+    expect(pfA).toBeCloseTo(pfC / 2, 6);
   });
 });
