@@ -12,8 +12,11 @@ export default memo(function TabTrack({
   resetPtPct, resetTrackPfPct, resetSsPct,
   setL2, resetL2,
 }) {
-  const { hccPct, L2_track, M_clinics,
+  const { hccPct, L2_track, M_clinics, totalN, regDist,
     trackPfPctA, trackPfPctB, trackPfPctC } = state;
+  // v7.9.9: 의원당 환자수 표시 (등록 = Σ regDist · 비등록 = 의원당 환자수 − 등록)
+  const perClinicN = Math.round((totalN || 0) / Math.max(1, M_clinics));
+  const perClinicReg = Math.round((regDist || []).reduce((a, b) => a + (b || 0), 0));
   const L2_display = L2_track ?? (perfMemo?.L1avg ?? 0.7);   // v7.9.5: Track 탭 전용 (수가 시뮬 L2와 미연동)
   const ffsPct = 100 - hccPct;
   const M = Math.max(1, M_clinics);
@@ -65,10 +68,11 @@ export default memo(function TabTrack({
       const L1avg = perfMemo?.L1avg ?? 0.7;
       const C0 = 1 - L1avg;
       const Cnow = 1 - L2_display;
-      const cDelta = Math.max(0, Math.min(C_DELTA_MAX, (Cnow - C0) * 100));
+      // v7.9.9: ΔC를 0.5%p 단위로 표시·입력 (NumBox 수기 입력도 0.5 단위로 반올림)
+      const cDelta = Math.round(Math.max(0, Math.min(C_DELTA_MAX, (Cnow - C0) * 100)) * 2) / 2;
       const sliderBg = `linear-gradient(to right, #7c3aed ${(cDelta / C_DELTA_MAX) * 100}%, #e5e7eb 0%)`;
       const setCdelta = (dPct) => {
-        const d = Math.max(0, Math.min(C_DELTA_MAX, dPct));
+        const d = Math.round(Math.max(0, Math.min(C_DELTA_MAX, dPct)) * 2) / 2;
         setL2?.(Math.max(0, Math.min(1, L1avg - d / 100)));
       };
       return (
@@ -84,7 +88,7 @@ export default memo(function TabTrack({
               <span className="text-purple-400">→</span>
               <span className="text-xs text-purple-600 font-semibold">후</span>
               <span className="text-lg font-extrabold text-purple-900">{(Cnow * 100).toFixed(1)}%</span>
-              <NumBox value={parseFloat(cDelta.toFixed(1))} onChange={setCdelta} color="#7c3aed" suffix="%p" />
+              <NumBox value={cDelta} decimals={1} onChange={setCdelta} color="#7c3aed" suffix="%p" />
             </div>
             <button onClick={resetL2}
               className="ml-auto text-xs text-purple-700 hover:text-red-600 border border-purple-200 hover:border-red-300 rounded px-2 py-0.5 bg-white/70">
@@ -156,7 +160,7 @@ export default memo(function TabTrack({
               수가 시뮬레이션 탭 PF 슬라이더와 미연동 · Track 카드 변화액에는 미포함(PF 제외 원칙 유지). PT state(pt_base·ptPct*)는 엔진에 보존, 화면 미표시. */}
           <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
             <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
-              <h3 className="font-bold text-sm text-amber-900">💠 일차의료 기능 보정 (PF) <span className="text-xs font-normal text-amber-700">· Track별 B 기준 % · 의원당 연간 수입액 · 위 변화액 별도</span></h3>
+              <h3 className="font-bold text-sm text-amber-900">💠 일차의료 기능보정 (PF) <span className="text-xs font-normal text-amber-700">· 의원당 연간 수입액 · 위 변화액 별도</span></h3>
               <button onClick={resetTrackPfPct}
                 className="text-xs text-amber-700 hover:text-amber-900 hover:bg-amber-100 rounded px-2 py-1 transition"
                 title="PF % A 5 / B 7.5 / C 10%로 복귀">↩ 초기화</button>
@@ -177,7 +181,9 @@ export default memo(function TabTrack({
                       aria-selected={active}
                       className="block w-full text-xs font-bold cursor-pointer"
                       style={{ color: t.c }}>{t.n}</button>
-                    <div className="flex items-center justify-center gap-1 mt-1">
+                    <div className="text-[10px] text-amber-800/80 mt-1 leading-tight">일차의료 기능보정 (PF)<br/><span className="text-amber-700/70">환자군 기준의료비(B) 기준</span></div>
+                    <div className="flex items-center justify-center gap-1 mt-0.5">
+                      <span className="text-[10px] text-amber-700/70">B ×</span>
                       <NumBox value={t.pctVal} decimals={1}
                         onChange={v => set(t.key, Math.max(0, Math.min(PF_PCT_MAX, Math.round(v * 10) / 10)))}
                         color="#b45309" suffix="%" />
@@ -188,7 +194,10 @@ export default memo(function TabTrack({
                 );
               })}
             </div>
-            <div className="mt-2 text-[10px] text-amber-800/70">· PF 수입액 = Σ 환자군별 B × PF% × 의원당 등록환자수 (수가 시뮬레이션 탭 PF와 미연동)</div>
+            <div className="mt-2 text-[10px] text-amber-800/70">
+              · 의원당 환자수 <b>{f(perClinicN)}명</b> = 등록 <b>{f(perClinicReg)}명</b> + 비등록 {f(Math.max(0, perClinicN - perClinicReg))}명
+              <br/>· PF 수입액 = Σ 환자군별 B × PF% × 의원당 등록환자수 (수가 시뮬레이션 탭 PF와 미연동)
+            </div>
           </div>
 
           {/* v7.0: 포괄관리성과 박스 삭제 — Track 비교 카드의 변화액에 이미 반영됨 */}
