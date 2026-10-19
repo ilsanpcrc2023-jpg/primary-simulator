@@ -6,6 +6,15 @@ import { f, pct, fMan, fAuto, diffMan } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
+// v7.9.12/v7.9.13: Track 카드 부제(FFS 100% · 혼합 50:50 · 환자군 100%) 공용 배지 — Track 선택·수입 비교·PF 박스 3곳 동일 스타일
+const TRACK_TINT = { 0: "#f0fdf4", 50: "#eff6ff", 100: "#fff7ed" };
+function TrackSubBadge({ text, color, tint, active }) {
+  return (
+    <div className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] sm:text-xs font-bold leading-tight"
+      style={{ color, background: active ? "#fff" : tint, border: `1px solid ${color}` }}>{text}</div>
+  );
+}
+
 export default memo(function TabTrack({
   mode = "policy",
   state, set, G, T, SS, performance: perfMemo, tracks,
@@ -55,8 +64,7 @@ export default memo(function TabTrack({
             {hccPct === t.v && <div className="absolute top-1 right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: t.c }}>✓</div>}
             <div className="text-xs sm:text-sm font-extrabold" style={{ color: t.c }}>{t.n}</div>
             {/* v7.9.12: 부제(FFS 100% · 혼합 · 환자군) 가시성 강화 — 회색 10px → Track 색 배지(굵게·11~12px) */}
-            <div className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] sm:text-xs font-bold leading-tight"
-              style={{ color: t.c, background: hccPct === t.v ? "#fff" : t.bg, border: `1px solid ${t.c}` }}>{t.d}</div>
+            <TrackSubBadge text={t.d} color={t.c} tint={t.bg} active={hccPct === t.v} />
           </button>
         ))}
       </div>
@@ -134,7 +142,8 @@ export default memo(function TabTrack({
                 </div>
               )}
               <div className="text-sm font-extrabold" style={{ color: t.c }}>{t.n}</div>
-              <div className="text-[11px] text-gray-500 mt-0.5">{t.d}</div>
+              {/* v7.9.13: 부제 배지 (Track 선택 카드와 동일) */}
+              <TrackSubBadge text={t.d} color={t.c} tint={TRACK_TINT[t.hc]} active={active} />
 
               {/* 변화액 (지불체계 전환 효과 + 포괄관리성과, PT 별도) */}
               <div className="mt-4">
@@ -169,9 +178,9 @@ export default memo(function TabTrack({
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { n: "Track A", key: "trackPfPctA", pctVal: trackPfPctA, hc: 0, c: "#22c55e" },
-                { n: "Track B", key: "trackPfPctB", pctVal: trackPfPctB, hc: 50, c: "#3b82f6" },
-                { n: "Track C", key: "trackPfPctC", pctVal: trackPfPctC, hc: 100, c: "#f97316" },
+                { n: "Track A", d: "FFS 100%", key: "trackPfPctA", pctVal: trackPfPctA, hc: 0, c: "#22c55e" },
+                { n: "Track B", d: "혼합 50:50", key: "trackPfPctB", pctVal: trackPfPctB, hc: 50, c: "#3b82f6" },
+                { n: "Track C", d: "환자군 100%", key: "trackPfPctC", pctVal: trackPfPctC, hc: 100, c: "#f97316" },
               ].map(t => {
                 const active = hccPct === t.hc;
                 const amt = tracks.find(x => x.hc === t.hc)?.pfAmt ?? 0;
@@ -183,7 +192,8 @@ export default memo(function TabTrack({
                       aria-selected={active}
                       className="block w-full text-xs font-bold cursor-pointer"
                       style={{ color: t.c }}>{t.n}</button>
-                    <div className="text-[10px] text-amber-800/80 mt-1 leading-tight">일차의료 기능보정 (PF)</div>
+                    {/* v7.9.13: "일차의료 기능보정 (PF)" 라벨 삭제 → 부제 배지 (Track 선택 카드와 동일) */}
+                    <TrackSubBadge text={t.d} color={t.c} tint={TRACK_TINT[t.hc]} active={active} />
                     <div className="flex items-center justify-center gap-1 mt-0.5">
                       <span className="text-[10px] text-amber-700/70">B ×</span>
                       <NumBox value={t.pctVal} decimals={1}
