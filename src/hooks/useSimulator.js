@@ -25,6 +25,7 @@ const initialState = {
   // 성과급 = max(0, L1−L2) × B × n_reg × TrackMul (Shared Saving과 달리 공유율 없음).
   L1: [...INIT_L1],
   L2: null,
+  L2_track: null,   // v7.9.5: Track 탭 전용 포괄관리 지표(C) 목표값 — 수가 시뮬 L2와 미연동
   // v6.9.4: 데이터 anchor — 환자군 패널 "↩ 초기화"가 복귀할 기준값.
   //   초기엔 official_baseline.json (HCC v3.0: 2,923기관 / 12,801,143명).
   //   엑셀 업로드·프리셋 로드 시 그 데이터의 M_clinics·sum(N)·라벨로 갱신됨.
@@ -194,6 +195,10 @@ function reducer(state, action) {
       return { ...state, L2: action.value == null ? null : Math.max(0, Math.min(1, action.value)) };
     case "RESET_L2":
       return { ...state, L2: null };
+    case "SET_L2_TRACK":   // v7.9.5: Track 탭 C 슬라이더 (수가 시뮬 L2와 분리)
+      return { ...state, L2_track: action.value == null ? null : Math.max(0, Math.min(1, action.value)) };
+    case "RESET_L2_TRACK":
+      return { ...state, L2_track: null };
     case "RESET_REG": {
       // v7.1.1: 초기화는 "1차년도 시범사업 scope"로 복귀 (100개 의원 × 의원당 4,379명).
       //   datasetM·datasetTotalN(2,923 anchor)이 아닌 v1 디폴트(INIT_DEFAULT_M=100)로 reset.
@@ -362,7 +367,7 @@ export default function useSimulator() {
   const fileRef = useRef(null);
 
   const {
-    base, P, L1, L2, totalN,
+    base, P, L1, L2, L2_track, totalN,
     ssTotalCost, ssAcute, ssEmergency, ssLtc,
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
     ssCostBase, ssProjectCost,
@@ -523,6 +528,24 @@ export default function useSimulator() {
     };
   }, [G, L1, L2eff, L1avg, dL2, L2_g, pfMul]);
 
+  // v7.9.5 (사용자 결정): Track 탭 전용 성과 메모 — Track 탭의 포괄관리 지표(C) 슬라이더(state.L2_track)만 반영.
+  //   수가 시뮬 탭의 performance(state.L2)와 완전히 분리. tracks 메모(Track별 포괄관리성과)는 이 값을 사용.
+  const performanceTrack = useMemo(() => {
+    const L2eff_t = L2_track ?? L1avg;
+    const dL2_t = L1avg - L2eff_t;
+    const L2_g_t = L1.map(l => Math.max(0, Math.min(0.999, (l ?? 0.7) - dL2_t)));
+    let perf_total = 0;
+    G.forEach((r, i) => {
+      const diff = Math.max(0, (L1[i] ?? 0.7) - L2_g_t[i]);
+      perf_total += diff * r.p * r.n_reg;
+    });
+    return {
+      L2eff: L2eff_t, L1avg, dL2: dL2_t, L2_g: L2_g_t,
+      perf_raw_total: perf_total, perf_total,
+      perfByTrack: { A: 0, B: perf_total * 0.5, C: perf_total },
+    };
+  }, [G, L1, L2_track, L1avg]);
+
   // v6.7: KPI 변화율 — L2 연동
   //   의원 수입  = 선지급 inc + 성과급 perf_blended
   //   공단 지출 = L2 반영 nhi + 성과급 지급 perf_nhi (= perf_blended, v7.6.7: 성과에는 본인부담비 없음)
@@ -607,7 +630,7 @@ export default function useSimulator() {
   const tracks = useMemo(() => {
     const M = Math.max(1, M_clinics);
     const ssPerClinicFull = (SS?.clinicFromItem ?? 0) / M;
-    const perfPerClinicFull = (performance?.perf_total ?? 0) / M;
+    const perfPerClinicFull = (performanceTrack?.perf_total ?? 0) / M;   // v7.9.5: Track 탭 전용 C 슬라이더 기준
     const baselinePerClinic = (decomp?.baselineIncome ?? 0) / M;
     const list = [
       { n: "Track A", d: "FFS 100%",   hc: 0,   c: "#22c55e", bg: "#f0fdf4", bd: "#86efac",
@@ -632,7 +655,7 @@ export default function useSimulator() {
   }, [M_clinics, T.tA, T.tB, T.tC, tAchg, tBchg, tCchg,
       state.ptPctA, state.ptPctB, state.ptPctC,
       state.ssPctA, state.ssPctB, state.ssPctC,
-      state.pt_base, SS.clinicFromItem, performance.perf_total,
+      state.pt_base, SS.clinicFromItem, performanceTrack.perf_total,
       decomp.baselineIncome]);
 
   const set = useCallback((key, value) => dispatch({ type: "SET", key, value }), []);
@@ -654,6 +677,9 @@ export default function useSimulator() {
   const resetL1 = useCallback(() => dispatch({ type: "RESET_L1" }), []);
   const setL2 = useCallback((value) => dispatch({ type: "SET_L2", value }), []);
   const resetL2 = useCallback(() => dispatch({ type: "RESET_L2" }), []);
+  // v7.9.5: Track 탭 전용 C 슬라이더 setter/resetter
+  const setL2Track = useCallback((value) => dispatch({ type: "SET_L2_TRACK", value }), []);
+  const resetL2Track = useCallback(() => dispatch({ type: "RESET_L2_TRACK" }), []);
   const resetReg = useCallback(() => dispatch({ type: "RESET_REG" }), []);
   const resetPtPct = useCallback(() => dispatch({ type: "RESET_PT_PCT" }), []);
   const resetSsPct = useCallback(() => dispatch({ type: "RESET_SS_PCT" }), []);
@@ -909,12 +935,13 @@ export default function useSimulator() {
     // v6.7 L1·L2 (α 제거)
     updL1, setL1All, resetL1,
     setL2, resetL2,
+    setL2Track, resetL2Track,
     resetPtPct, resetSsPct, resetSsCost,
     updRegDist, setRegDistAll, scaleRegDist,
     reset,
     handleMacroSync, handleFile, handleExport, loadPreset, handleCommitBaseline,
     fileRef,
-    G, T, SS, decomp, performance, tracks,
+    G, T, SS, decomp, performance, performanceTrack, tracks,
     ffsPct,
     incChg, nhiChg,
     // v6.6 legacy aliases (점진적 제거)

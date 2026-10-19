@@ -4,7 +4,7 @@
 시범사업 지불체계 최종 채택에 따라 "지불모형" → "지불체계"로 명칭 변경 (v6.8).
 
 **정책 기준**: 노션 「일차의료 시범사업 지불체계 보완 방안」 후속 보완 (2026-04-22)
-**시뮬레이터 버전**: **v7.9.4** (v7.9.0 데이터 260909 + v7.6.x~v7.9.x 산식·UI 보완 · 최신: v7.9.4 수가 시뮬 ↔ Track 탭 선택 미연동 [수가 시뮬 = Track C 고정], v7.9.3 PF 디폴트 5% → 10% 복귀, v7.9.2 baseline 등록 오류 상세 표시, v7.9.1 등록 API 기본 저장소 ilsanpcrc2023-jpg, v7.9.0 엑셀 260909 업로드값을 공식 baseline 디폴트로 [A·CR·C1·RN·군별 본인부담비], v7.8.1 C 상한 +25%p 복귀, v7.8.0 PF 상한 40%, v7.7.9 테이블 캡션 문구, v7.7.8 풋노트 미표시, v7.7.7 NT 열 미표시·엑셀 제외, v7.7.6 PF Track 배수 A 0 / B 0.5 / C 1.0)
+**시뮬레이터 버전**: **v7.9.5** (v7.9.0 데이터 260909 + v7.6.x~v7.9.x 산식·UI 보완 · 최신: v7.9.5 Track 탭 포괄관리 지표(C) 슬라이더 전용 state 분리, v7.9.4 수가 시뮬 ↔ Track 탭 선택 미연동 [수가 시뮬 = Track C 고정], v7.9.3 PF 디폴트 5% → 10% 복귀, v7.9.2 baseline 등록 오류 상세 표시, v7.9.1 등록 API 기본 저장소 ilsanpcrc2023-jpg, v7.9.0 엑셀 260909 업로드값을 공식 baseline 디폴트로 [A·CR·C1·RN·군별 본인부담비], v7.8.1 C 상한 +25%p 복귀, v7.8.0 PF 상한 40%, v7.7.9 테이블 캡션 문구, v7.7.8 풋노트 미표시, v7.7.7 NT 열 미표시·엑셀 제외, v7.7.6 PF Track 배수 A 0 / B 0.5 / C 1.0)
 
   · **데이터 갱신만 (v7.5)** — 2026-05-20. NHIS-HCC v3.0 (의료비 0원 제외, 48,874,201명 → 참여의원 12,411,152명) 새 데이터 적용. 시뮬 핵심 산식은 v7.2.3 안정 유지 (`PB = B × (1−L1)`, 본인부담 별도). v7.3.0/v7.4 산식 변경은 perf_blended 본인부담 처리 모순 발견 후 후속 작업으로 보류 (archive/v7.4-prerevert-260520 브랜치 보존).
     - 참여의원 환자수: 12,801,143 → **12,411,152명** (-39만)
@@ -189,6 +189,12 @@
     - UI: 의원 모드 KPI 카드 부제 "현재 Track: X" → "기준: Track C (환자군 100%) · Track별 비교는 Track 탭". RegistrationPanel `pfMul = 1` 고정("(Track 배수 ×0.5)" 부기 소멸).
     - `utils.fMan`/`diffMan`: 만원 반올림 후 0이면 `−0만원` 대신 `+0만원`/`0만원` (Track A 카드 "-0만원" 표기 해소).
     - 검증(Playwright): Track 탭에서 Track A 선택 후 수가 탭 복귀 → 의원 +5,865만원 · 공단 +58.7억 불변(이전에는 +0 / +0으로 바뀜). 단위 테스트 107/107.
+
+  · **v7.9.5 — Track 탭 포괄관리 지표(C) 슬라이더를 수가 시뮬과 미연동 (2026-10-19, 사용자 결정)** — "포괄관리 지표(C)도 미연동되도록". 산식 불변, state 분리만.
+    - `state.L2_track` 신설 (null = L1avg, 성과 0 기준점) + reducer `SET_L2_TRACK`/`RESET_L2_TRACK` + `setL2Track`/`resetL2Track`. 수가 시뮬의 `state.L2`·`setL2`·`resetL2`는 그대로.
+    - 엔진 `performanceTrack` 메모 신설: `L2_g_track = clamp(L1_g − (L1avg − L2_track))`, `perf_total = Σ max(0, L1_g − L2_g_track) × B × n_reg`, `perfByTrack A 0 / B 0.5 / C 1.0`. **`tracks` 메모(Track별 포괄관리성과·변화액)는 `performanceTrack.perf_total`만 사용** — 수가 시뮬 `performance`(KPI)와 독립.
+    - App: TabTrack에 `performance={sim.performanceTrack}`, `setL2={sim.setL2Track}`, `resetL2={sim.resetL2Track}` 전달. TabTrack은 `state.L2_track` 표시. SS 탭 Hero는 `tracks`를 쓰므로 Track 탭 C를 따름.
+    - 검증(Playwright): Track 탭 C +10%p → Track 카드 A +0 / B +5,865 / C +11,731만원, 수가 탭 KPI +5,865만원·+58.7억 불변. 수가 탭 C +5%p → 수가 KPI +8,798만원·+21.4억, Track 탭 카드·C 표시(38.4%) 불변. 단위 테스트 107/107.
 
   · **v7.3.0/v7.4 산식 보류** — archive/v7.4-prerevert-260520 브랜치에 보존. C 슬라이더 큰 값(예 +24.5%p) 시 환자 본인부담 30% 처리 누락이 발견되어 옵션 C(perf_blended를 메인 KPI에서 분리, 별도 카드로 노출) 적용 후 재시도 예정.
 
