@@ -54,7 +54,9 @@ export default memo(function TabTrack({
             style={{ background: hccPct === t.v ? t.bg : "#fff", border: `2px solid ${hccPct === t.v ? t.c : "#e5e7eb"}` }}>
             {hccPct === t.v && <div className="absolute top-1 right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: t.c }}>✓</div>}
             <div className="text-xs sm:text-sm font-extrabold" style={{ color: t.c }}>{t.n}</div>
-            <div className="text-[10px] text-gray-500 mt-0.5">{t.d}</div>
+            {/* v7.9.12: 부제(FFS 100% · 혼합 · 환자군) 가시성 강화 — 회색 10px → Track 색 배지(굵게·11~12px) */}
+            <div className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] sm:text-xs font-bold leading-tight"
+              style={{ color: t.c, background: hccPct === t.v ? "#fff" : t.bg, border: `1px solid ${t.c}` }}>{t.d}</div>
           </button>
         ))}
       </div>
