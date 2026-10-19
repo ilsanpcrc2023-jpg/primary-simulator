@@ -362,7 +362,7 @@ export default function useSimulator() {
   const fileRef = useRef(null);
 
   const {
-    base, P, L1, L2, totalN, hccPct,
+    base, P, L1, L2, totalN,
     ssTotalCost, ssAcute, ssEmergency, ssLtc,
     ssAcutePct, ssEmergencyPct, ssLtcPct, ssClinicShare,
     ssCostBase, ssProjectCost,
@@ -370,7 +370,10 @@ export default function useSimulator() {
     baseRatios, copayRates,
   } = state;
 
-  const ffsPct = 100 - hccPct;
+  // v7.9.4 (사용자 결정): 수가 시뮬레이션 탭은 Track 탭 선택(hccPct)과 미연동 — 엔진 KPI·PF·성과는 항상 Track C(환자군 100%) 기준.
+  //   state.hccPct는 Track 탭의 카드 선택(하이라이트·SS 탭 Hero 라벨)에만 쓰이고, Track별 수치는 tracks 메모(tA/tB/tC·perfByTrack)로 독립 산출.
+  const SIM_TRACK_PCT = 100;
+  const ffsPct = 100 - SIM_TRACK_PCT;
 
   // 참여의원 환자 분포 (RN 기준) — N_g = totalN × ratios[i], baseN_g, ffsPerPerson 가중치.
   // v7.5.4/v7.5.5: 기준 분포비의 수기 override(state.baseRatios)는 여기에 연결하지 않는다.
@@ -418,7 +421,7 @@ export default function useSimulator() {
   // 공단 외래 지출은 등록환자 타원비를 L2 기반으로 반영 (L2 슬라이더 연동).
   // v7.7.6 (사용자 결정): PF는 Track별 차등 — A 0 / B 0.5 / C 1.0 (hccPct/100 선형 보간, 성과 Track 배수와 동일).
   //   등록환자 1인당 의원 수입 = PB + PF × pfMul. 공단 지출의 PF 항도 의원 수령액과 동일(공단 직접 지급 정합).
-  const pfMul = Math.max(0, Math.min(1, hccPct / 100));
+  const pfMul = Math.max(0, Math.min(1, SIM_TRACK_PCT / 100));   // v7.9.4: 수가 시뮬은 Track C 고정 (= 1.0)
   const G = useMemo(() => {
     return base.map((b, i) => {
       const safeL2 = L2_g[i];                            // v7.6.8: 군별 L2_g = L1_g − Δ
@@ -467,7 +470,7 @@ export default function useSimulator() {
       const tA = PB_g;
       const tC = PB_g + F_i;
       const tB = PB_g + 0.5 * F_i;
-      const tS = tA * (ffsPct / 100) + tC * (hccPct / 100);
+      const tS = tA * (ffsPct / 100) + tC * (SIM_TRACK_PCT / 100);   // v7.9.4: = tC (수가 시뮬 Track C 고정)
 
       return {
         N, p, b, L1_g, PB: PB_g,
@@ -478,7 +481,7 @@ export default function useSimulator() {
         tA, tB, tC, tS,
       };
     });
-  }, [base, P, L1, L2_g, totalN, hccPct, ffsPct, pfMul, ratios, regRatios, reg, F_g, copayRates]);
+  }, [base, P, L1, L2_g, totalN, ffsPct, pfMul, ratios, regRatios, reg, F_g, copayRates]);
 
   const T = useMemo(() => {
     const s = { inc0: 0, inc: 0, nhi0: 0, nhi: 0, tA: 0, tB: 0, tC: 0, tS: 0 };
@@ -508,7 +511,7 @@ export default function useSimulator() {
       B: perf_total * 0.5,
       C: perf_total * 1.0,
     };
-    const trackMul = Math.max(0, Math.min(1, hccPct / 100));   // hccPct 0→A, 50→B, 100→C
+    const trackMul = Math.max(0, Math.min(1, SIM_TRACK_PCT / 100));   // v7.9.4: 수가 시뮬 Track C 고정 (Track별 값은 perfByTrack·tracks 메모)
     const perf_blended = perf_total * trackMul;
     // v7.6.7: 성과급은 공단→의원 직접 지급(진료비 청구 아님)이라 환자 본인부담이 없음.
     //   v7.6.6에서 곱했던 (1 − 본인부담비)를 성과 항목에서만 되돌려 공단 지출 = 의원 수령액(perf_blended)으로 정합.
@@ -518,7 +521,7 @@ export default function useSimulator() {
       perf_raw_total, perf_total, perfByTrack,
       trackMul, pfMul, perf_blended, perf_nhi,
     };
-  }, [G, L1, L2eff, L1avg, dL2, L2_g, hccPct, pfMul]);
+  }, [G, L1, L2eff, L1avg, dL2, L2_g, pfMul]);
 
   // v6.7: KPI 변화율 — L2 연동
   //   의원 수입  = 선지급 inc + 성과급 perf_blended
