@@ -106,7 +106,7 @@ export default memo(function TabTrack({
     {/* ③ Track 별 의원 수입 비교 — v7.0: 단일 변화액 한 줄 (포괄관리성과 포함, PT 미포함) */}
     <div className={card + " p-4"}>
       <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
-        <h2 className="font-bold text-base text-gray-900">💰 Track 별 의원 수입 비교 <span className="text-xs font-normal text-gray-500">(참여 전 FFS 대비 · 의원당)</span></h2>
+        <h2 className="font-bold text-base text-gray-900">💰 <span className="text-sm font-semibold text-gray-600">(일차의료 기능보정 (PF) 제외)</span> Track 별 의원 수입 비교 <span className="text-xs font-normal text-gray-500">(참여 전 FFS 대비 · 의원당)</span></h2>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -145,7 +145,7 @@ export default memo(function TabTrack({
       </div>
 
       <div className="mt-3 text-[11px] text-gray-500 leading-relaxed">
-        · 변화액 = 지불체계 전환 효과 + 포괄관리성과 (매년 · 일차의료 전환지원금은 1년차 별도 지급)
+        · 변화액 = 포괄관리성과 (일차의료 기능보정 PF는 0%로 계산 · 수가 시뮬레이션 탭 PF와 미연동 · 매년 · 일차의료 전환지원금은 1년차 별도 지급)
         <br/>· <span className="text-gray-400">※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도.</span>
       </div>
     </div>
