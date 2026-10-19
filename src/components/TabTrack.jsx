@@ -149,8 +149,9 @@ export default memo(function TabTrack({
       </div>
 
       <div className="mt-3 text-[11px] text-gray-500 leading-relaxed">
-        · 일차의료기능 보정 (PF) 제외, 운영지원금(단독모형) 제외
-        <br/>· <span className="text-gray-400">※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도.</span>
+        ※ 의원당 시범사업 참여 환자 수 = <b>{f(perClinicReg)}명</b>
+        <br/>※ 일차의료기능 보정 (PF) 제외, 운영지원금(단독모형) 제외
+        <br/><span className="text-gray-400">※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도.</span>
       </div>
     </div>
 
@@ -181,7 +182,7 @@ export default memo(function TabTrack({
                       aria-selected={active}
                       className="block w-full text-xs font-bold cursor-pointer"
                       style={{ color: t.c }}>{t.n}</button>
-                    <div className="text-[10px] text-amber-800/80 mt-1 leading-tight">일차의료 기능보정 (PF)<br/><span className="text-amber-700/70">환자군 기준의료비(B) 기준</span></div>
+                    <div className="text-[10px] text-amber-800/80 mt-1 leading-tight">일차의료 기능보정 (PF)</div>
                     <div className="flex items-center justify-center gap-1 mt-0.5">
                       <span className="text-[10px] text-amber-700/70">B ×</span>
                       <NumBox value={t.pctVal} decimals={1}
@@ -195,8 +196,9 @@ export default memo(function TabTrack({
               })}
             </div>
             <div className="mt-2 text-[10px] text-amber-800/70">
-              · 의원당 환자수 <b>{f(perClinicN)}명</b> = 등록 <b>{f(perClinicReg)}명</b> + 비등록 {f(Math.max(0, perClinicN - perClinicReg))}명
-              <br/>· PF 수입액 = Σ 환자군별 B × PF% × 의원당 등록환자수 (수가 시뮬레이션 탭 PF와 미연동)
+              ※ 의원당 시범사업 참여 환자 수 = <b>{f(perClinicReg)}명</b> (의원당 환자수 {f(perClinicN)}명 = 등록 {f(perClinicReg)}명 + 비등록 {f(Math.max(0, perClinicN - perClinicReg))}명)
+              <br/>※ PF %는 환자군 기준의료비(B) 기준 — PF = B × %
+              <br/>※ PF 수입액 = Σ 환자군별 B × PF% × 의원당 등록환자수 (수가 시뮬레이션 탭 PF와 미연동)
             </div>
           </div>
 
