@@ -1,7 +1,7 @@
 import { memo } from "react";
 import NumBox from "./shared/NumBox";
 import { SH, CL, ON, INIT_F, CLINIC_PRESETS, POLICY_SCENARIOS, CLINIC_COUNT_PRESETS, REG_PER_CLINIC_PRESETS, PF_PCT_MAX } from "../constants";
-import { f, fE, calcPFfromPct, inferPFpct, calcPB } from "../utils";
+import { f, calcPFfromPct, inferPFpct, calcPB } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 const H2 = "font-bold text-base text-gray-900";
@@ -25,13 +25,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
   // 통합 슬라이더 % — 현재 F_g에서 역산 (개별 슬라이더 조정 후 표시 정합)
   const pfPctImplied = inferPFpct(F_g, B_g, n_reg_g);
 
-  // 동적 baseline — Σ regDist × PB × M_clinics (등록환자 기본수가 기준, 동적) · v7.6.0: M1 → PB
-  const PB_g = calcPB(B_g, state.L1);
-  const pfBaseline = PB_g.reduce((s, pb, i) => s + (regDist[i] || 0) * pb * M, 0);
-  // 현재 PF로 인한 공단지출 추가 = Σ F_g × n_reg_g (v7.9.4: 수가 시뮬은 Track C 고정 → 배수 1.0, Track 탭 선택과 미연동)
-  const pfMul = 1;
-  const pfExpenditure = F_g.reduce((s, v, i) => s + (v || 0) * (n_reg_g[i] || 0), 0) * pfMul;
-  const pfPctOfBaseline = pfBaseline > 0 ? (pfExpenditure / pfBaseline) * 100 : 0;
+  // v7.10.2: 공단지출 미니 표시(pfBaseline·pfExpenditure) 삭제 — KPI 카드가 공단 지출 변화를 표시
 
   // 통합 슬라이더 onChange — 분배 규칙으로 4군 자동 산출
   const setPfPct = (newPct) => {
@@ -62,16 +56,13 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
 
       {/* ① 통합 슬라이더 (B의 X%, 0~20%, 디폴트 10%) — v7.2.1: 현재 슬라이더 % 표기 추가 (B 기준 N.N%) */}
       <div className="rounded-lg border bg-white px-3 py-2.5"
-        style={{ borderColor: "#bfdbfe", background: "linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)" }}>
+        style={{ borderColor: "#cbd5e1" }}>   {/* v7.10.2: PB 카드와 톤 통일 (파랑 그라디언트 → 흰색) */}
         <div className="flex items-baseline justify-between gap-2 flex-wrap mb-1">
           <div className="text-xs text-slate-600 tabular-nums">
             <span className="font-semibold text-slate-700">B 기준</span>
             <span className="ml-1 text-base font-extrabold text-blue-700">{Math.max(0, Math.min(PF_PCT_MAX, pfPctImplied)).toFixed(1)}%</span>
           </div>
-          <div className="text-xs font-semibold tabular-nums" style={{ color: pfExpenditure >= 0 ? "#0369a1" : "#dc2626" }}>
-            공단지출 {pfExpenditure >= 0 ? "+" : "−"}{Math.round(Math.abs(pfExpenditure) / 1e8).toLocaleString("ko-KR")}억   {/* v7.10.1: 억 정수 */}
-            {pfMul < 1 && <span className="ml-1 font-normal text-slate-500">(Track 배수 ×{pfMul.toFixed(1)})</span>}
-          </div>
+          {/* v7.10.2: "공단지출 +X억" 미니 표시 삭제 (사용자 결정) */}
         </div>
         <input type="range" min={0} max={PF_PCT_MAX} step={0.5}
           value={Math.max(0, Math.min(PF_PCT_MAX, pfPctImplied))}
@@ -194,7 +185,7 @@ export const ClinicSummaryStrip = memo(function ClinicSummaryStrip({ state }) {
         {" + 비등록 "}<b className="text-slate-700">{totalUnreg.toLocaleString()}명</b>
       </div>
       <div className="text-[10px] text-gray-400 mt-0.5">
-        ⚙️ 고급 설정 → 의원 수 · 의원당 등록환자수 변경
+        ⚙️ 사업 참여 의원 및 환자 수 설정 → 의원 수 · 의원당 사업 참여 환자 수 변경
       </div>
     </div>
   );
@@ -214,7 +205,7 @@ export const ClinicCountControls = memo(function ClinicCountControls({ state, se
     <div className="space-y-2">
       {/* 의원 수 */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-semibold text-gray-700 shrink-0 w-32">사업 참여 의원 수</span>
+        <span className="text-sm font-semibold text-gray-700 shrink-0 w-44 whitespace-nowrap">사업 참여 의원 수</span>
         <NumBox value={M_clinics} onChange={setM} color="#1f2937" suffix="개" />
         <div className="flex flex-wrap gap-1">
           {CLINIC_COUNT_PRESETS.map(p => {
@@ -236,7 +227,7 @@ export const ClinicCountControls = memo(function ClinicCountControls({ state, se
       {/* 의원당 등록환자수 (regDist 합 비례 스케일) */}
       {scaleRegDist && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-semibold text-gray-700 shrink-0 w-32">의원당 등록환자수</span>
+          <span className="text-sm font-semibold text-gray-700 shrink-0 w-44 whitespace-nowrap">의원당 사업 참여 환자 수</span>   {/* v7.10.2: 문구 변경 */}
           <NumBox value={Math.round(regSum)} onChange={v => scaleRegDist(Math.max(0, Math.round(v)))} color="#2563eb" suffix="명" />
           <div className="flex flex-wrap gap-1">
             {REG_PER_CLINIC_PRESETS.map(v => {
