@@ -203,18 +203,15 @@ export const ClinicSummaryStrip = memo(function ClinicSummaryStrip({ state }) {
   );
 });
 
-/* v7.1.2: ClinicCountControls — 고급설정 안에 들어가는 의원 수 + 의원당 등록환자수 컨트롤.
-   기본 프리셋 [100, 1000, 3000, 2923(일만시)]. 등록환자수 프리셋 [1000, 1500, 2000, 3000, 4000]. */
+/* v7.1.2: ClinicCountControls — "사업 참여 의원 및 환자 수 설정" 박스 안의 의원 수 + 의원당 등록환자수 컨트롤.
+   v7.10.0: 프리셋 [100, 1000, 3000, 10000] (일만시 2,923 프리셋·"↩ 2,923개로" 복귀 버튼 삭제), 등록환자수 프리셋 [700, 1000, 1500, 2000]. */
 export const ClinicCountControls = memo(function ClinicCountControls({ state, set, scaleRegDist }) {
-  const { M_clinics, datasetM, datasetLabel, regDist } = state;
+  const { M_clinics, regDist } = state;
   const regSum = regDist.reduce((s, v) => s + v, 0);
 
   const setM = (m) => {
     const newM = Math.max(1, Math.round(m));
     set("M_clinics", newM);
-  };
-  const resetToDataset = () => {
-    if (datasetM) setM(datasetM);
   };
   return (
     <div className="space-y-2">
@@ -237,13 +234,6 @@ export const ClinicCountControls = memo(function ClinicCountControls({ state, se
             );
           })}
         </div>
-        {datasetM && datasetM !== M_clinics && (
-          <button onClick={resetToDataset}
-            className="ml-auto text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white"
-            title={`업로드된 데이터 (${datasetLabel || ""})의 의원 수로 복귀`}>
-            ↩ {datasetM.toLocaleString()}개로
-          </button>
-        )}
       </div>
 
       {/* 의원당 등록환자수 (regDist 합 비례 스케일) */}
