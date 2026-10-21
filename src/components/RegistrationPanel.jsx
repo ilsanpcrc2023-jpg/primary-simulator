@@ -124,12 +124,11 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
       <div className="px-4 pt-3 pb-1">
         <h2 className="font-extrabold text-lg tracking-tight leading-tight flex items-center gap-2 flex-wrap" style={{ color: "#3730a3" }}>
           일차의료수가(P)
-          {/* v7.10.3: P = PB + PF 산식 배지 (이전 PB/PF 카드 사이 "+"/"=" 연결 배지 대체) */}
-          <span className="text-sm font-extrabold tabular-nums bg-white border border-indigo-300 rounded-full px-2.5 py-0.5 text-indigo-700">P = PB + PF</span>
+          {/* v7.10.3: P = PB + PF 산식 배지 · v7.10.7: 아래 줄 부제(일차의료 기본수가(PB) + 일차의료 기능보정(PF))를 배지 안으로 통합 */}
+          <span className="text-xs sm:text-sm font-bold tabular-nums bg-white border border-indigo-300 rounded-full px-2.5 py-0.5 text-indigo-700">
+            P = PB<span className="font-semibold text-indigo-700/80">(일차의료 기본수가)</span> + PF<span className="font-semibold text-indigo-700/80">(일차의료 기능보정)</span>
+          </span>
         </h2>
-        <div className="text-xs font-semibold text-indigo-700/80 mt-0.5">
-          일차의료 기본수가(PB) + 일차의료 기능보정(PF)
-        </div>
       </div>
       <div className="px-4 pb-3 pt-2">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
