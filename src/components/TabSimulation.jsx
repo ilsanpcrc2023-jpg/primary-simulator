@@ -140,7 +140,7 @@ export default memo(function TabSimulation({
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2">
           <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-700 text-white text-xs font-extrabold shadow-sm">1</span>
           일차의료 기본수가 (PB)
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white text-slate-600 border border-slate-300">환자군 위험도(HCC) 기반</span>   {/* v7.10.6: PF 배지와 동일 스타일 */}
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-400">환자군 위험도(HCC) 기반</span>   {/* v7.10.7: P 카드 배지처럼 rounded-full · 배경 slate-200 */}
         </h2>
         <button onClick={resetP}
           className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
@@ -174,9 +174,9 @@ export default memo(function TabSimulation({
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2 flex-wrap">
           <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-700 text-white text-xs font-extrabold shadow-sm">2</span>
           일차의료 기능보정 (PF)
-          {/* v7.10.6: PB 배지와 동일 스타일(흰 배경·slate) */}
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white text-slate-600 border border-slate-300">일차의료 기능강화</span>
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white text-slate-600 border border-slate-300">환자등록관리</span>
+          {/* v7.10.7: PB 배지와 동일 — rounded-full · 배경 slate-200 */}
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-400">일차의료 기능강화</span>
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-400">환자등록관리</span>
         </h2>
       </div>
       <FCard state={state} setFAll={setFAll} updF={updF} setPfRule={setPfRule} resetF={resetF} bare />
