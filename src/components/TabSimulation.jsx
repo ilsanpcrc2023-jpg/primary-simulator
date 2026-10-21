@@ -50,8 +50,11 @@ export default memo(function TabSimulation({
   fileRef, handleFile, handleExport,
   reg, regRatios,
 }) {
-  const { base, P, L1, L2, showDetail, uploadBanner, F_g, M_clinics } = state;
+  const { base, P, L1, L2, showDetail, uploadBanner, F_g, M_clinics, regDist } = state;
   const M = Math.max(1, M_clinics);
+  // v7.10.2: 의원당 사업 참여 환자 수 (= Σ regDist) · 사업 전체 참여 환자 수 (= × 의원 수)
+  const perClinicReg = Math.round((regDist || []).reduce((a, b) => a + (b || 0), 0));
+  const totalReg = Math.round(((regDist || []).reduce((a, b) => a + (b || 0), 0)) * M);
   const [policyExpanded, setPolicyExpanded] = useState(mode === "policy");
   // v6.10.0: 균형추 controlled accordion 제거. 고급 패널만 유지.
   // v7.1.3: 수가 산출 구조 박스 삭제 (formula 컬럼 헤더와 중복 · showFormula state 제거).
@@ -130,10 +133,10 @@ export default memo(function TabSimulation({
     </div>
   );
 
-  // ① PB 카드 (연회색) — v6.11.0: 배지 "환자군 위험도(HCC) 기반" · 안내문 삭제
+  // ① PB 카드 — v6.11.0: 배지 "환자군 위험도(HCC) 기반" · 안내문 삭제 · v7.10.2: PF 카드와 배경 통일(slate), P 카드(indigo)와 구분
   const PBcard = (
     <div className="rounded-xl border shadow-sm p-4"
-      style={{ background: "#f8fafc", borderColor: "#e2e8f0" }}>
+      style={{ background: "#f8fafc", borderColor: "#cbd5e1" }}>
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2">
           <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-200 text-slate-700 text-xs font-extrabold">1</span>
@@ -163,13 +166,13 @@ export default memo(function TabSimulation({
     </div>
   );
 
-  // ② PF 카드 (연파랑) — v6.11.0: 배지 2종(일차의료 기능강화·환자등록관리) · 설명문 삭제
+  // ② PF 카드 — v6.11.0: 배지 2종(일차의료 기능강화·환자등록관리) · 설명문 삭제 · v7.10.2: PB 카드와 배경 통일(slate)
   const PFcard = (
     <div className="rounded-xl border shadow-sm p-4"
-      style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#bfdbfe" }}>
+      style={{ background: "#f8fafc", borderColor: "#cbd5e1" }}>
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2 flex-wrap">
-          <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-blue-200 text-blue-800 text-xs font-extrabold">2</span>
+          <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-200 text-slate-700 text-xs font-extrabold">2</span>
           일차의료 기능보정 (PF)
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">일차의료 기능강화</span>
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">환자등록관리</span>
@@ -193,10 +196,12 @@ export default memo(function TabSimulation({
       {showAdvanced && (
         <div className="px-4 pb-4 pt-2 border-t border-dashed border-slate-300">
           <ClinicCountControls state={state} set={set} scaleRegDist={scaleRegDist} />
-          <div className="mt-3 text-[10px] text-slate-400 leading-relaxed">
-            ※ 환자군 기준의료비(B) · 평균 타원이용비중(L1)은 데이터 관리 카드의
-            <b className="text-slate-500"> 환자군별 상세 편집 테이블</b>에서 직접 편집.
-          </div>
+          {mode === "policy" && (
+            <div className="mt-3 text-[10px] text-slate-400 leading-relaxed">
+              ※ 환자군 기준의료비(B) · 평균 타원이용비중(L1)은 데이터 관리 카드의
+              <b className="text-slate-500"> 환자군별 상세 편집 테이블</b>에서 직접 편집.
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -234,8 +239,20 @@ export default memo(function TabSimulation({
 
     {/* v6.11.0: 정책 모드 — PB 카드 → PF 카드 → TCard → C 슬라이더 → KPI → 차트 → 고급 설정 → 수가 산출 구조.
         공식 박스 삭제, advanced panel 위치는 하단(formula box 위)으로 이동. */}
+    {/* v7.10.2: P = PB + PF 시각화 — PB·PF 카드(slate 통일) 사이 "+", PF 카드와 P 카드(indigo) 사이 "=" 연결 배지 */}
     {mode === "policy" && PBcard}
+    {mode === "policy" && (
+      <div className="flex justify-center -my-2 relative z-10" aria-hidden="true">
+        <span className="w-8 h-8 rounded-full bg-white border-2 border-slate-300 text-slate-600 text-lg font-extrabold grid place-items-center shadow-sm">+</span>
+      </div>
+    )}
     {mode === "policy" && PFcard}
+    {mode === "policy" && (
+      <div className="flex justify-center items-center gap-2 -my-2 relative z-10" aria-hidden="true">
+        <span className="w-8 h-8 rounded-full bg-white border-2 border-indigo-400 text-indigo-700 text-lg font-extrabold grid place-items-center shadow-sm">=</span>
+        <span className="text-[11px] font-bold text-indigo-700 bg-white border border-indigo-200 rounded-full px-2 py-0.5 shadow-sm">P = PB + PF</span>
+      </div>
+    )}
 
     {/* ④ 일차의료수가 — 의원 모드에서는 "환자군별 공단지급 수가" 라벨, 공식·L1 개별 표시 숨김 */}
     <TCard state={state} G={G} mode={mode} />
@@ -294,7 +311,10 @@ export default memo(function TabSimulation({
       <div className="rounded-2xl border-2 shadow-md p-5" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", borderColor: "#86efac" }}>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider">의원 수입 변화</span>
-          {/* v7.10.0: "기준: Track C …" 안내는 관점 선택 행 우측으로 이동 */}
+          {/* v7.10.0: "기준: Track C …" 안내는 관점 선택 행 우측으로 이동 · v7.10.2: 의원당 사업 참여 환자 수 표시 */}
+          <span className="text-[10px] text-emerald-700/80 font-semibold tabular-nums">
+            의원당 사업 참여 환자 수 <b className="text-emerald-800">{f(perClinicReg)}명</b>
+          </span>
         </div>
         <div className="bg-white rounded-xl px-4 py-5 text-center shadow-sm border border-emerald-100">
           <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight"
@@ -309,8 +329,12 @@ export default memo(function TabSimulation({
       </div>
 
       <div className="rounded-2xl border-2 shadow-md p-5" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderColor: "#93c5fd" }}>
-        <div className="flex items-center mb-3 gap-2">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <span className="text-[11px] font-extrabold text-blue-700 uppercase tracking-wider">공단 지출 변화</span>
+          {/* v7.10.2: 사업 참여 의원 수 · 환자 수 표시 */}
+          <span className="text-[10px] text-blue-700/80 font-semibold tabular-nums">
+            사업 참여 의원 <b className="text-blue-800">{f(M)}개</b> · 환자 <b className="text-blue-800">{f(totalReg)}명</b>
+          </span>
         </div>
         <div className="bg-white rounded-xl px-4 py-5 text-center shadow-sm border border-blue-100">
           <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight text-blue-700">
@@ -323,8 +347,8 @@ export default memo(function TabSimulation({
 
     {/* v7.10.0: ClinicSummaryStrip(의원 수·의원당 환자수 1줄 요약) · 의원 수입/공단 지출 비교 차트 · Win-Win-Win 박스 삭제 (사용자 결정) */}
 
-    {/* v6.11.0: 고급 설정 — 위치를 수가 산출 구조 위로 이동 (정책 모드 전용) */}
-    {mode === "policy" && advancedPanel}
+    {/* v6.11.0: 고급 설정 — 위치를 수가 산출 구조 위로 이동 · v7.10.2: 의원 모드에서도 표시 */}
+    {advancedPanel}
 
     {/* v7.1.3: 수가 산출 구조 박스 삭제 — formula는 환자군별 상세 편집 테이블 컬럼 헤더(B=A×CR, PB=B×C1, P=PB+PF)에 이미 노출. */}
 
