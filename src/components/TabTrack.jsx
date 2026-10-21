@@ -1,5 +1,4 @@
 import { memo, useState, useEffect } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import NumBox from "./shared/NumBox";
 import { SH, C_DELTA_MAX, PF_PCT_MAX } from "../constants";
 import { f, pct, fMan, fAuto, diffMan } from "../utils";
@@ -8,6 +7,10 @@ const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 
 // v7.9.12/v7.9.13: Track 카드 부제(FFS 100% · 혼합 50:50 · 환자군 100%) 공용 배지 — Track 선택·수입 비교·PF 박스 3곳 동일 스타일
 const TRACK_TINT = { 0: "#f0fdf4", 50: "#eff6ff", 100: "#fff7ed" };
+// v7.10.11: 수가 시뮬 탭 PB/PF 카드(웜 베이지)·P 카드(indigo)와 동일 스타일
+const INPUT_CARD = { background: "#f4efe4", borderColor: "#b9a98a" };
+const NUM_BADGE = "inline-grid place-items-center w-6 h-6 rounded-md bg-stone-700 text-white text-xs font-extrabold shadow-sm";
+const PILL = "text-xs sm:text-sm font-bold bg-white border border-stone-400 rounded-full px-2.5 py-0.5 text-stone-700";
 function TrackSubBadge({ text, color, tint, active }) {
   return (
     <div className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] sm:text-xs font-bold leading-tight"
@@ -116,10 +119,16 @@ export default memo(function TabTrack({
       );
     })()}
 
-    {/* ③ Track 별 의원 수입 비교 — v7.0: 단일 변화액 한 줄 (포괄관리성과 포함, PT 미포함) */}
-    <div className={card + " p-4"}>
-      <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
-        <h2 className="font-bold text-base text-gray-900">💰 <span className="text-sm font-semibold text-gray-600">(일차의료 기능보정 (PF) 제외)</span> Track 별 의원 수입 비교 <span className="text-xs font-normal text-gray-500">(참여 전 FFS 대비 · 의원당)</span></h2>
+    {/* ③ Track 별 의원 수입 비교 — v7.0: 단일 변화액 한 줄 (포괄관리성과 포함, PT 미포함)
+        v7.10.11: 수가 시뮬 탭 ① PB 카드와 동일 스타일 · 타이틀 "일차의료 기본수가(PB)에 의한 의원 수입" */}
+    <div className="rounded-xl border shadow-sm p-4" style={INPUT_CARD}>
+      <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <h2 className="font-bold text-base text-slate-800 flex items-center gap-2 flex-wrap">
+          <span className={NUM_BADGE}>1</span>
+          일차의료 기본수가(PB)에 의한 의원 수입
+          <span className={PILL}>일차의료 기능보정(PF) 제외</span>
+          <span className={PILL}>참여 전 FFS 대비 · 의원당</span>
+        </h2>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -130,7 +139,7 @@ export default memo(function TabTrack({
               aria-selected={active}
               className="rounded-xl p-4 text-center transition-all relative cursor-pointer w-full"
               style={{
-                background: active ? "#fffbeb" : "#fff",
+                background: active ? TRACK_TINT[t.hc] : "#fff",
                 border: active ? `3px solid ${t.c}` : `1.5px solid #e5e7eb`,
                 boxShadow: active ? `0 0 0 3px ${t.c}22, 0 4px 14px ${t.c}33` : "0 1px 3px rgba(0,0,0,0.04)",
                 transform: active ? "translateY(-2px)" : "none",
@@ -158,10 +167,10 @@ export default memo(function TabTrack({
         })}
       </div>
 
-      <div className="mt-3 text-[11px] text-gray-500 leading-relaxed">
+      <div className="mt-3 text-[11px] text-stone-600 leading-relaxed">
         ※ 의원당 시범사업 참여 환자 수 = <b>{f(perClinicReg)}명</b>
         <br/>※ 일차의료기능 보정 (PF) 제외, 운영지원금(단독모형) 제외
-        <br/><span className="text-gray-400">※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도.</span>
+        <br/><span className="text-stone-500">※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도.</span>
       </div>
     </div>
 
@@ -169,11 +178,17 @@ export default memo(function TabTrack({
     <div className="space-y-3">
           {/* v7.9.8: PT 박스 → 일차의료 기능 보정(PF) 박스 (박스 틀 유지). Track별 PF %(B 기준, 디폴트 A 5 / B 7.5 / C 10) 입력 → PF 수입액(의원당 연간) 표시.
               수가 시뮬레이션 탭 PF 슬라이더와 미연동 · Track 카드 변화액에는 미포함(PF 제외 원칙 유지). PT state(pt_base·ptPct*)는 엔진에 보존, 화면 미표시. */}
-          <div className="rounded-xl border-2 shadow-sm p-4" style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderColor: "#fbbf24" }}>
-            <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
-              <h3 className="font-bold text-sm text-amber-900">💠 일차의료 기능보정 (PF) <span className="text-xs font-normal text-amber-700">· 의원당 연간 수입액 · 위 변화액 별도</span></h3>
+          {/* v7.10.11: 수가 시뮬 탭 ② PF 카드와 동일 스타일(웜 베이지) · 타이틀 "일차의료 기능보정(PF)에 의한 의원 수입" */}
+          <div className="rounded-xl border shadow-sm p-4" style={INPUT_CARD}>
+            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+              <h2 className="font-bold text-base text-slate-800 flex items-center gap-2 flex-wrap">
+                <span className={NUM_BADGE}>2</span>
+                일차의료 기능보정(PF)에 의한 의원 수입
+                <span className={PILL}>의원당 연간 수입액</span>
+                <span className={PILL}>위 변화액 별도</span>
+              </h2>
               <button onClick={resetTrackPfPct}
-                className="text-xs text-amber-700 hover:text-amber-900 hover:bg-amber-100 rounded px-2 py-1 transition"
+                className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white"
                 title="PF % A 5 / B 7.5 / C 10%로 복귀">↩ 초기화</button>
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -186,8 +201,8 @@ export default memo(function TabTrack({
                 const amt = tracks.find(x => x.hc === t.hc)?.pfAmt ?? 0;
                 return (
                   <div key={t.n}
-                    className="rounded-lg p-2 text-center transition"
-                    style={{ background: active ? "#fef9c3" : "#fffbeb", border: `2px solid ${active ? "#f59e0b" : "#fde68a"}` }}>
+                    className="rounded-lg p-2 text-center transition bg-white/90 shadow-sm"
+                    style={{ borderLeft: `5px solid ${t.c}`, outline: active ? `2px solid ${t.c}` : "none", outlineOffset: -2 }}>
                     <button onClick={() => set("hccPct", t.hc)}
                       aria-selected={active}
                       className="block w-full text-xs font-bold cursor-pointer"
@@ -195,18 +210,18 @@ export default memo(function TabTrack({
                     {/* v7.9.13: "일차의료 기능보정 (PF)" 라벨 삭제 → 부제 배지 (Track 선택 카드와 동일) */}
                     <TrackSubBadge text={t.d} color={t.c} tint={TRACK_TINT[t.hc]} active={active} />
                     <div className="flex items-center justify-center gap-1 mt-0.5">
-                      <span className="text-[10px] text-amber-700/70">B ×</span>
+                      <span className="text-[10px] text-stone-500">B ×</span>
                       <NumBox value={t.pctVal} decimals={1}
                         onChange={v => set(t.key, Math.max(0, Math.min(PF_PCT_MAX, Math.round(v * 10) / 10)))}
                         color="#b45309" suffix="%" />
                     </div>
-                    <div className="text-base font-extrabold text-amber-900 mt-0.5">{fMan(amt)}</div>
-                    <div className="text-[10px] text-amber-700/70">PF 수입액 / 년</div>
+                    <div className="text-base font-extrabold mt-0.5" style={{ color: t.c }}>{fMan(amt)}</div>
+                    <div className="text-[10px] text-stone-500">PF 수입액 / 년</div>
                   </div>
                 );
               })}
             </div>
-            <div className="mt-2 text-[10px] text-amber-800/70">
+            <div className="mt-3 text-[11px] text-stone-600 leading-relaxed">
               ※ 의원당 시범사업 참여 환자 수 = <b>{f(perClinicReg)}명</b>
               <br/>※ PF %는 환자군 기준의료비(B) 기준
               <br/>※ PF 수입액 = Σ 환자군별 B × PF% × 의원당 등록환자수
@@ -216,23 +231,42 @@ export default memo(function TabTrack({
           {/* v7.0: 포괄관리성과 박스 삭제 — Track 비교 카드의 변화액에 이미 반영됨 */}
     </div>
 
-    {/* ⑤ Track 차트 */}
-    <div className={card + " p-3"}>
-      <h3 className="text-xs font-bold text-gray-700 mb-2">Track별 환자군 1인당 실지불액</h3>
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={G.map((r, i) => ({
-          name: SH[i], "Track A": Math.round(r.tA), "Track B": Math.round(r.tB), "Track C": Math.round(r.tC),
-        }))} barGap={1} barCategoryGap="15%">
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-          <YAxis tickFormatter={v => (v / 10000).toFixed(0) + "만"} tick={{ fontSize: 10 }} width={36} />
-          <Tooltip formatter={v => f(v) + "원"} contentStyle={{ fontSize: 11 }} />
-          <Legend wrapperStyle={{ fontSize: 10 }} />
-          <Bar dataKey="Track A" fill="#86efac" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="Track B" fill="#93c5fd" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="Track C" fill="#fdba74" radius={[3, 3, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+    {/* ⑤ v7.10.11: "Track별 환자군 1인당 실지불액" 차트 삭제 → 일차의료수가(P)에 의한 의원 수입 박스 (수가 시뮬 탭 P 카드 스타일)
+        합계 = ① PB에 의한 수입 변화액(포괄관리성과 × Track 배수) + ② PF 수입액(Track별 PF %) */}
+    <div className="rounded-xl border-2 shadow-md overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#4f46e5" }}>
+      <div className="px-4 pt-3 pb-1">
+        <h2 className="font-extrabold text-lg tracking-tight leading-tight flex items-center gap-2 flex-wrap" style={{ color: "#3730a3" }}>
+          일차의료수가(P)에 의한 의원 수입
+          <span className="text-xs sm:text-sm font-bold tabular-nums bg-white border border-indigo-300 rounded-full px-2.5 py-0.5 text-indigo-700">
+            P = PB<span className="font-semibold text-indigo-700/80">(① 변화액)</span> + PF<span className="font-semibold text-indigo-700/80">(② 수입액)</span>
+          </span>
+        </h2>
+      </div>
+      <div className="px-4 pb-3 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {tracks.map(t => {
+            const active = hccPct === t.hc;
+            const total = (t.netChange || 0) + (t.pfAmt || 0);
+            return (
+              <button key={t.n} onClick={() => set("hccPct", t.hc)} aria-selected={active}
+                className="rounded-lg px-2 py-2 bg-white/90 shadow-sm min-w-0 text-center cursor-pointer transition"
+                style={{ borderLeft: `5px solid ${t.c}`, outline: active ? `2px solid ${t.c}` : "none", outlineOffset: -2 }}>
+                <div className="text-sm font-extrabold" style={{ color: t.c }}>{t.n}</div>
+                <TrackSubBadge text={t.d} color={t.c} tint={TRACK_TINT[t.hc]} active={active} />
+                <div className="mt-2 text-2xl sm:text-3xl font-extrabold tabular-nums text-indigo-900 whitespace-nowrap">{diffMan(total)}</div>
+                <div className="text-[11px] text-indigo-700/80 mt-0.5">/ 년 · 참여 전 대비</div>
+                <div className="mt-1.5 text-[10px] text-indigo-700/70 tabular-nums">
+                  PB {diffMan(t.netChange)} + PF {fMan(t.pfAmt)}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-3 text-[11px] text-indigo-800/70 leading-relaxed">
+          ※ 의원당 시범사업 참여 환자 수 = <b>{f(perClinicReg)}명</b>
+          <br/>※ 운영지원금(단독모형) 제외 · 의원 전체 수입(비급여·기타) 영향은 별도
+        </div>
+      </div>
     </div>
 
   </>);
