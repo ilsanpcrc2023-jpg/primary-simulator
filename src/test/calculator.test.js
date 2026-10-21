@@ -630,35 +630,36 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     // v7.1.5: 일만시 모드 버튼 → 초기화 버튼으로 교체. resetReg 호출 → RESET_REG 액션.
     // v7.5.5: regDist 디폴트 = RN 기준 ratio_i × 1,000명 (0.1명 단위 · 등록 분포비 = 기준 분포비 2자리).
     // v7.9.0: baseline 260909 → [192.4, 229.7, 280.1, 297.9] (이전 exc_zero [201.6, 197.7, 293.8, 306.8]).
+    // v7.10.5: 0.0001명 정밀도 → [192.3524, 229.7008, 280.0644, 297.8824] (합 1000.0000, 엑셀 정합).
     const resetM = INIT_DEFAULT_M;             // 10,000 (v7.10.0)
-    const resetRegDist = INIT_REG_DIST;        // [192.4, 229.7, 280.1, 297.9]
+    const resetRegDist = INIT_REG_DIST;        // [192.3524, 229.7008, 280.0644, 297.8824]
     const resetRegSum = resetRegDist.reduce((s, v) => s + v, 0);
     const resetTotalReg = resetM * resetRegSum;
     expect(resetM).toBe(10000);
-    expect(resetRegDist).toEqual([192.4, 229.7, 280.1, 297.9]);
-    expect(resetRegSum).toBeCloseTo(1000.1, 6);          // 군별 독립 0.1명 반올림 → 1000.1
-    expect(resetTotalReg).toBeCloseTo(10001000, 2);      // 사업 전체 등록환자 (≈ 10,000,000 · v7.10.0)
+    expect(resetRegDist).toEqual([192.3524, 229.7008, 280.0644, 297.8824]);
+    expect(resetRegSum).toBeCloseTo(1000, 3);            // v7.10.5: 0.0001명 반올림 → 1000.0000 (±0.0002)
+    expect(resetTotalReg).toBeCloseTo(10000000, 0);      // 사업 전체 등록환자 (= 10,000,000 · v7.10.0/v7.10.5)
   });
 
-  it('10,000개 의원 디폴트 (v7.10.0): 40,750,000명 = 등록 10,001,000명 + 비등록 30,749,000명 (regDist 합 1000.1, RN 기준)', () => {
+  it('10,000개 의원 디폴트 (v7.10.0/v7.10.5): 40,750,000명 = 등록 10,000,000명 + 비등록 30,750,000명 (regDist 합 1000.0, RN 기준)', () => {
     const M = INIT_DEFAULT_M;
     const totalN = INIT_DEFAULT_TOTAL_N;
     const perClinic = totalN / M;
     expect(perClinic).toBe(4075);
-    const regDistSum = INIT_REG_DIST.reduce((s, v) => s + v, 0);   // v7.9.0 [192.4,229.7,280.1,297.9] = 1000.1
-    expect(regDistSum).toBeCloseTo(1000.1, 6);
+    const regDistSum = INIT_REG_DIST.reduce((s, v) => s + v, 0);   // v7.10.5 [192.3524,229.7008,280.0644,297.8824] = 1000.0000
+    expect(regDistSum).toBeCloseTo(1000, 3);
     const totalReg = M * regDistSum;
     const totalUnreg = totalN - totalReg;
-    expect(totalReg).toBeCloseTo(10001000, 2);
-    expect(totalUnreg).toBeCloseTo(30749000, 2);
+    expect(totalReg).toBeCloseTo(10000000, 0);
+    expect(totalUnreg).toBeCloseTo(30750000, 0);
   });
 });
 
 // v7.2.0 → v7.5: 엑셀 약어 체계 정비 + regDist 디폴트 데이터 비례 (exc_zero 갱신)
-describe('v7.5 → v7.9.0 · regDist 디폴트 = 데이터 비례 [192.4, 229.7, 280.1, 297.9] (baseline 260909 · RN 기준 · 0.1명 단위)', () => {
-  it('INIT_REG_DIST = [192.4, 229.7, 280.1, 297.9] (RN 기준 ratio_i × 1,000명, 등록 분포비 = 기준 분포비 2자리)', () => {
-    expect(INIT_REG_DIST).toEqual([192.4, 229.7, 280.1, 297.9]);
-    expect(INIT_REG_DIST.reduce((s, v) => s + v, 0)).toBeCloseTo(1000.1, 6);
+describe('v7.5 → v7.10.5 · regDist 디폴트 = 데이터 비례 [192.3524, 229.7008, 280.0644, 297.8824] (baseline 260909 · RN 기준 · 0.0001명 단위)', () => {
+  it('INIT_REG_DIST = [192.3524, 229.7008, 280.0644, 297.8824] (RN 기준 ratio_i × 1,000명 · 합 1000.0000 · 엑셀 5.2 탭 정합)', () => {
+    expect(INIT_REG_DIST).toEqual([192.3524, 229.7008, 280.0644, 297.8824]);
+    expect(INIT_REG_DIST.reduce((s, v) => s + v, 0)).toBeCloseTo(1000, 3);
     // 이전 v7.5 exc_zero [201.6, 197.7, 293.8, 306.8] 폐기
     expect(INIT_REG_DIST).not.toEqual([201.6, 197.7, 293.8, 306.8]);
   });
@@ -668,11 +669,11 @@ describe('v7.5 → v7.9.0 · regDist 디폴트 = 데이터 비례 [192.4, 229.7,
     expect(INIT_REG_DIST).not.toEqual([100, 600, 200, 100]);
   });
 
-  it('v7.5.5 RN 비례 검증: RN[i] / sum(RN) × 1000 (0.1명 반올림) = INIT_REG_DIST[i] · NT 비례와는 다름', () => {
-    // INIT_BASE의 N (= RN, 일만시 참여의원 환자수 12,411,152명) 비례 배분이 INIT_REG_DIST와 정합
+  it('v7.5.5 RN 비례 검증: RN[i] / sum(RN) × 1000 (v7.10.5: 0.0001명 반올림) = INIT_REG_DIST[i] · NT 비례와는 다름', () => {
+    // INIT_BASE의 N (= RN, 일만시 참여의원 환자수) 비례 배분이 INIT_REG_DIST와 정합
     const N = INIT_BASE.map(b => b.N);
     const totalN = N.reduce((s, v) => s + v, 0);
-    const RR = N.map(n => Math.round((n / totalN) * 10000) / 10);
+    const RR = N.map(n => Math.round((n / totalN) * 1000 * 1e4) / 1e4);
     expect(RR).toEqual(INIT_REG_DIST);
     // NT(전체 환자수) 비례 [287.8, 211.0, 251.2, 250.0]과는 다름 (v7.5.4에서 시도 후 RN 기준으로 복귀, 사용자 결정)
     const NT = INIT_BASE.map(b => b.NT);
@@ -901,11 +902,20 @@ describe('v7.9.8 · Track 탭 PF % 디폴트 A 5 / B 7.5 / C 10', () => {
     expect(INIT_TRACK_PF_PCT_C).toBe(10);
   });
   it('PF 수입액(의원당) = Σ B_g × pct/100 × regDist_g — Track C 10%는 수가 시뮬 디폴트 PF 10% 의원당 가산과 동일', () => {
-    const regDist = [192.4, 229.7, 280.1, 297.9];
+    const regDist = INIT_REG_DIST;   // v7.10.5: [192.3524, 229.7008, 280.0644, 297.8824]
     const pfC = INIT_P.reduce((s, b, i) => s + b * INIT_TRACK_PF_PCT_C / 100 * regDist[i], 0);
     const pfSim = INIT_F.reduce((s, f, i) => s + f * regDist[i], 0);
     expect(Math.abs(pfC - pfSim)).toBeLessThan(regDist.reduce((a, b) => a + b, 0) * 0.5 + 1);   // INIT_F 정수 반올림 오차 이내
     const pfA = INIT_P.reduce((s, b, i) => s + b * INIT_TRACK_PF_PCT_A / 100 * regDist[i], 0);
     expect(pfA).toBeCloseTo(pfC / 2, 6);
+  });
+});
+
+// v7.10.5: 엑셀 「5.2 환자군_Track별」 D6 정합 — 의원당 PF 수입(Track C · ΔC 0 · PF 10%) = 5,865만원
+describe('v7.10.5 · 엑셀 5.2 탭 정합 (regDist 0.0001명)', () => {
+  it('Σ INIT_REG_DIST × INIT_F = 5,865만원 (반올림) — 엑셀 D6 5,865.0026만원과 동일 표시', () => {
+    const per = INIT_REG_DIST.reduce((s, r, i) => s + r * INIT_F[i], 0);
+    expect(Math.round(per / 1e4)).toBe(5865);
+    expect(Math.abs(per - 58650026)).toBeLessThan(200);   // B·PF 정수 반올림 오차(≈ −76원)만 남음
   });
 });

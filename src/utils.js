@@ -1,3 +1,4 @@
+import { REG_DIST_DECIMALS } from "./constants";   // v7.10.5: regDist 정밀도 (0.0001명)
 export const f = v => Math.round(v).toLocaleString("ko-KR");
 export const fE = v => (v / 1e8).toFixed(1);
 export const fSv = v => v >= 1e12 ? (v / 1e12).toFixed(2) + "조" : f(Math.round(v / 1e8)) + "억";
@@ -112,13 +113,15 @@ export function refRatiosFromBase(base) {
 //   등록 분포비(%) = regDist / (total/100) 가 (ratio_i × 100).toFixed(2)와 정확히 일치하도록
 //   각 군을 독립 반올림한다 (largest-remainder 합 보정은 2자리 동일성을 깨뜨리므로 폐기).
 //   INIT_BASE(v7.5 exc_zero) → [201.7, 197.7, 293.8, 306.8] = INIT_REG_DIST.
-export function regDistFromRatios(ratios, total = 1000, decimals = 1) {
+//   v7.10.5: 기본 정밀도 0.1명 → REG_DIST_DECIMALS(0.0001명) — 엑셀 정합 (Σ regDist ≈ total).
+export function regDistFromRatios(ratios, total = 1000, decimals = REG_DIST_DECIMALS) {
   const k = Math.pow(10, decimals);
   return ratios.map(r => Math.round(r * total * k) / k);
 }
 
-// v7.5.3: regDist 값 정규화 — 0 floor + 0.1명 단위 반올림 (reducer 공용).
-export const roundRegDist = (v) => Math.max(0, Math.round((Number(v) || 0) * 10) / 10);
+// v7.5.3: regDist 값 정규화 — 0 floor + 반올림 (reducer 공용). v7.10.5: 0.1명 → 0.0001명 단위.
+const _REG_K = Math.pow(10, REG_DIST_DECIMALS);
+export const roundRegDist = (v) => Math.max(0, Math.round((Number(v) || 0) * _REG_K) / _REG_K);
 
 // v6.10.0: 현재 F_g에서 통합 슬라이더 % 역산 (사용자가 개별 슬라이더 조정 후 표시용).
 //   pfPct_implied = (Σ F_g[i] × n_reg_g[i]) / (Σ B[i] × n_reg_g[i]) × 100
