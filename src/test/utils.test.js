@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { f, fE, fSv, pct, diffE, calcPB, PBtoB, ratiosFromBase, refRatiosFromBase, regDistFromRatios, roundRegDist } from '../utils';
+import { f, fE, fSv, pct, diffE, calcPB, PBtoB, ratiosFromBase, refRatiosFromBase, regDistFromRatios, roundRegDist, fAutoInt, diffAutoInt } from '../utils';
 import { INIT_BASE, INIT_REG_DIST, COPAY_RATE, INIT_COPAY_RATES } from '../constants';
 
 describe('format utilities', () => {
@@ -145,5 +145,24 @@ describe('v7.6.4 / v7.9.0 COPAY_RATE / INIT_COPAY_RATES', () => {
     expect(INIT_COPAY_RATES).toHaveLength(4);
     expect(INIT_COPAY_RATES).toEqual([0.280506, 0.2856, 0.264511, 0.205334]);
     INIT_COPAY_RATES.forEach(v => { expect(v).toBeGreaterThan(0); expect(v).toBeLessThan(1); });
+  });
+});
+
+// v7.10.1: 공단 지출 변화 KPI — 억원 정수 표기 (소수점 미표시)
+describe('v7.10.1 · fAutoInt / diffAutoInt (억원 정수)', () => {
+  it('fAutoInt: 5,865.5억 → "5,866억원" (반올림 · 천단위 구분)', () => {
+    expect(fAutoInt(5865.5e8)).toBe('5,866억원');
+    expect(fAutoInt(58.7e8)).toBe('59억원');
+    expect(fAutoInt(-12.4e8)).toBe('-12억원');
+  });
+  it('fAutoInt: 1억 미만은 fAuto 규칙 (만원/원)', () => {
+    expect(fAutoInt(5866e4)).toBe('5,866만원');
+    expect(fAutoInt(0)).toBe('0원');
+  });
+  it('diffAutoInt: 부호 포함, 소수점 없음', () => {
+    expect(diffAutoInt(0, 5865.5e8)).toBe('+5,866억원');
+    expect(diffAutoInt(100e8, 60e8)).toBe('-40억원');
+    expect(diffAutoInt(0, 0.4e8)).toBe('+4,000만원');
+    expect(diffAutoInt(0, 0)).toBe('+0원');
   });
 });

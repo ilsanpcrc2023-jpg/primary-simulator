@@ -3,7 +3,7 @@ import NumBox from "./shared/NumBox";
 import { FCard, TCard, ClinicCountControls } from "./RegistrationPanel";
 import { SH, CL, INIT_COPAY_RATES, C_DELTA_MAX, INIT_PER_CLINIC, INIT_REG_DIST, INIT_DEFAULT_M } from "../constants";
 import presets from "../data/presets/index";
-import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB, refRatiosFromBase } from "../utils";
+import { f, fE, pct, diffAutoInt, fMan, diffMan, calcPB, PBtoB, refRatiosFromBase } from "../utils";
 
 const TRACK_LABELS = { 0: "Track A 유지", 50: "Track B 혼합", 100: "Track C 환자군" };
 
@@ -314,7 +314,7 @@ export default memo(function TabSimulation({
         </div>
         <div className="bg-white rounded-xl px-4 py-5 text-center shadow-sm border border-blue-100">
           <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight text-blue-700">
-            {diffAuto(T.nhi0, T.nhi + perfMemo.perf_nhi)}<span className="text-base text-gray-500 font-bold"> / 년</span>
+            {diffAutoInt(T.nhi0, T.nhi + perfMemo.perf_nhi)}<span className="text-base text-gray-500 font-bold"> / 년</span>   {/* v7.10.1: 억원 정수 */}
           </div>
           <div className="text-[11px] text-gray-500 font-normal mt-1">사업 전체 공단 지출 변화액</div>
         </div>

@@ -5,7 +5,7 @@ import { f, fE, calcPFfromPct, inferPFpct, calcPB } from "../utils";
 
 const card = "bg-white rounded-xl border border-gray-200 shadow-sm";
 const H2 = "font-bold text-base text-gray-900";
-const F_MAX = 600000;
+const F_MAX = 600000;   // v7.10.1: FCard 환자군별 슬라이더 삭제로 현재 미사용 (RegScaleCard 등 호환 보존)
 // v7.8.0: PF_PCT_MAX(40)는 constants.js로 이동 (v6.10.0 상한 20 → 40, 사용자 결정)
 
 // v6.11.0: 역비례 옵션 삭제 (정책 근거 약함)
@@ -69,7 +69,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
             <span className="ml-1 text-base font-extrabold text-blue-700">{Math.max(0, Math.min(PF_PCT_MAX, pfPctImplied)).toFixed(1)}%</span>
           </div>
           <div className="text-xs font-semibold tabular-nums" style={{ color: pfExpenditure >= 0 ? "#0369a1" : "#dc2626" }}>
-            공단지출 {pfExpenditure >= 0 ? "+" : "−"}{fE(Math.abs(pfExpenditure))}억
+            공단지출 {pfExpenditure >= 0 ? "+" : "−"}{Math.round(Math.abs(pfExpenditure) / 1e8).toLocaleString("ko-KR")}억   {/* v7.10.1: 억 정수 */}
             {pfMul < 1 && <span className="ml-1 font-normal text-slate-500">(Track 배수 ×{pfMul.toFixed(1)})</span>}
           </div>
         </div>
@@ -112,21 +112,18 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
         )}
       </div>
 
-      {/* ③ 환자군별 슬라이더 4개 — v6.11.0: "B의 X%" 라벨 삭제 */}
-      <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
+      {/* ③ 환자군별 PF 값 — v7.10.1: 슬라이더·NumBox 수기 조정 삭제, 통합 PF %(분배 규칙)에 따른 군별 산출값만 표시 */}
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
         {SH.map((g, i) => {
-          const F_clamped = Math.max(0, Math.min(F_g[i], F_MAX));
+          const pctOfB = B_g[i] > 0 ? ((F_g[i] || 0) / B_g[i]) * 100 : 0;
           return (
-            <div key={i} className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold" style={{ color: CL[i] }}>{g}</span>
-                <NumBox value={F_g[i]} onChange={v => updF(i, v)} color={CL[i]} suffix="원" />
+            <div key={i} className="rounded-lg px-2 py-2 bg-white/90 shadow-sm min-w-0 text-center"
+              style={{ borderLeft: `5px solid ${CL[i]}` }}>
+              <div className="text-[11px] font-bold" style={{ color: CL[i] }}>{g}</div>
+              <div className="mt-0.5 text-sm sm:text-base font-extrabold tabular-nums whitespace-nowrap" style={{ color: CL[i] }}>
+                {f(Math.round(F_g[i] || 0))}<span className="text-[10px] font-bold ml-0.5">원</span>
               </div>
-              <input type="range" min={0} max={F_MAX} step={1000} value={F_clamped}
-                onChange={e => updF(i, parseFloat(e.target.value))}
-                aria-label={`${g} 일차의료 기능보정 PF 슬라이더`}
-                className="w-full big-thumb"
-                style={{ '--thumb-bg': CL[i], accentColor: CL[i] }} />
+              <div className="text-[10px] text-slate-500 tabular-nums">B 기준 {pctOfB.toFixed(1)}%</div>
             </div>
           );
         })}
