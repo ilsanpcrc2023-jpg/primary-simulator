@@ -125,9 +125,8 @@ export default memo(function TabTrack({
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2 flex-wrap">
           <span className={NUM_BADGE}>1</span>
-          일차의료 기본수가(PB)에 의한 의원 수입
-          <span className={PILL}>일차의료 기능보정(PF) 제외</span>
-          <span className={PILL}>참여 전 FFS 대비 · 의원당</span>
+          일차의료 기본수가(PB)
+          <span className={PILL}>의원당 연간 수입액</span>   {/* v7.10.12: 배지 1개로 통일 */}
         </h2>
       </div>
 
@@ -183,9 +182,8 @@ export default memo(function TabTrack({
             <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
               <h2 className="font-bold text-base text-slate-800 flex items-center gap-2 flex-wrap">
                 <span className={NUM_BADGE}>2</span>
-                일차의료 기능보정(PF)에 의한 의원 수입
-                <span className={PILL}>의원당 연간 수입액</span>
-                <span className={PILL}>위 변화액 별도</span>
+                일차의료 기능보정(PF)
+                <span className={PILL}>의원당 연간 수입액</span>   {/* v7.10.12: 배지 1개로 통일 */}
               </h2>
               <button onClick={resetTrackPfPct}
                 className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white"
@@ -236,10 +234,10 @@ export default memo(function TabTrack({
     <div className="rounded-xl border-2 shadow-md overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#4f46e5" }}>
       <div className="px-4 pt-3 pb-1">
         <h2 className="font-extrabold text-lg tracking-tight leading-tight flex items-center gap-2 flex-wrap" style={{ color: "#3730a3" }}>
-          일차의료수가(P)에 의한 의원 수입
-          <span className="text-xs sm:text-sm font-bold tabular-nums bg-white border border-indigo-300 rounded-full px-2.5 py-0.5 text-indigo-700">
-            P = PB<span className="font-semibold text-indigo-700/80">(① 변화액)</span> + PF<span className="font-semibold text-indigo-700/80">(② 수입액)</span>
-          </span>
+          일차의료수가(P)
+          {/* v7.10.12: 배지 "의원당 연간 수입액" + "P = PB + PF" */}
+          <span className="text-xs sm:text-sm font-bold bg-white border border-indigo-300 rounded-full px-2.5 py-0.5 text-indigo-700">의원당 연간 수입액</span>
+          <span className="text-xs sm:text-sm font-bold tabular-nums bg-white border border-indigo-300 rounded-full px-2.5 py-0.5 text-indigo-700">P = PB + PF</span>
         </h2>
       </div>
       <div className="px-4 pb-3 pt-2">
