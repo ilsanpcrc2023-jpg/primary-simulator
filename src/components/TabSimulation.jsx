@@ -76,7 +76,7 @@ export default memo(function TabSimulation({
   const ratios = ratiosOverridden ? state.baseRatios : ratiosMeasured;
 
   // L2 기본값 · 표시값 (null이면 L1 가중평균)
-  const L2_display = L2 ?? perfMemo.L1avg;
+  const L2_display = L2 ?? perfMemo.L2default ?? perfMemo.L1avg;   // v7.10.6: 디폴트 ΔC 3.0%p
 
   // 의원당 수입 절대값 (L2 반응 · 성과급 포함)
   const perClinicBaseline = decomp.baselineIncome / M;
@@ -140,7 +140,7 @@ export default memo(function TabSimulation({
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2">
           <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-700 text-white text-xs font-extrabold shadow-sm">1</span>
           일차의료 기본수가 (PB)
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">환자군 위험도(HCC) 기반</span>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white text-slate-600 border border-slate-300">환자군 위험도(HCC) 기반</span>   {/* v7.10.6: PF 배지와 동일 스타일 */}
         </h2>
         <button onClick={resetP}
           className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
@@ -174,8 +174,9 @@ export default memo(function TabSimulation({
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2 flex-wrap">
           <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-700 text-white text-xs font-extrabold shadow-sm">2</span>
           일차의료 기능보정 (PF)
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">일차의료 기능강화</span>
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">환자등록관리</span>
+          {/* v7.10.6: PB 배지와 동일 스타일(흰 배경·slate) */}
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white text-slate-600 border border-slate-300">일차의료 기능강화</span>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white text-slate-600 border border-slate-300">환자등록관리</span>
         </h2>
       </div>
       <FCard state={state} setFAll={setFAll} updF={updF} setPfRule={setPfRule} resetF={resetF} bare />
