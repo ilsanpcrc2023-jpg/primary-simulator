@@ -155,8 +155,8 @@ export default memo(function TabTrack({
 
               {/* 변화액 (지불체계 전환 효과 + 포괄관리성과, PT 별도) */}
               <div className="mt-4">
-                <div className={`font-extrabold tabular-nums ${active ? "text-3xl sm:text-4xl" : "text-2xl sm:text-3xl"}`}
-                  style={{ color: t.netChange >= 0 ? "#16a34a" : "#dc2626" }}>
+                {/* v7.10.13: 금액 색 = Track 색 · 크기 세 박스 공통 (활성 확대·부호별 녹/빨 폐기) */}
+                <div className="text-2xl sm:text-3xl font-extrabold tabular-nums whitespace-nowrap" style={{ color: t.c }}>
                   {diffMan(t.netChange)}
                 </div>
                 <div className="text-[11px] text-gray-500 font-normal mt-1">/ 년 · 참여 전 대비</div>
@@ -213,7 +213,7 @@ export default memo(function TabTrack({
                         onChange={v => set(t.key, Math.max(0, Math.min(PF_PCT_MAX, Math.round(v * 10) / 10)))}
                         color="#b45309" suffix="%" />
                     </div>
-                    <div className="text-base font-extrabold mt-0.5" style={{ color: t.c }}>{fMan(amt)}</div>
+                    <div className="mt-1 text-2xl sm:text-3xl font-extrabold tabular-nums whitespace-nowrap" style={{ color: t.c }}>{fMan(amt)}</div>   {/* v7.10.13: 크기 통일 */}
                     <div className="text-[10px] text-stone-500">PF 수입액 / 년</div>
                   </div>
                 );
@@ -251,7 +251,7 @@ export default memo(function TabTrack({
                 style={{ borderLeft: `5px solid ${t.c}`, outline: active ? `2px solid ${t.c}` : "none", outlineOffset: -2 }}>
                 <div className="text-sm font-extrabold" style={{ color: t.c }}>{t.n}</div>
                 <TrackSubBadge text={t.d} color={t.c} tint={TRACK_TINT[t.hc]} active={active} />
-                <div className="mt-2 text-2xl sm:text-3xl font-extrabold tabular-nums text-indigo-900 whitespace-nowrap">{diffMan(total)}</div>
+                <div className="mt-2 text-2xl sm:text-3xl font-extrabold tabular-nums whitespace-nowrap" style={{ color: t.c }}>{diffMan(total)}</div>   {/* v7.10.13: 색 = Track 색 */}
                 <div className="text-[11px] text-indigo-700/80 mt-0.5">/ 년 · 참여 전 대비</div>
                 <div className="mt-1.5 text-[10px] text-indigo-700/70 tabular-nums">
                   PB {diffMan(t.netChange)} + PF {fMan(t.pfAmt)}
