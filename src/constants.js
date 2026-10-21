@@ -65,9 +65,15 @@ export const INIT_R = INIT_F;                // 하위 호환 alias (v6.9.x까�
 // v7.5.5: 기준 분포비 = RN(일만시 참여의원 환자수 12,411,152명) 기준 (사용자 결정 — v7.5.4의 NT 기준은 복귀).
 //   exc_zero baseline RN [2,502,705 · 2,453,897 · 3,646,697 · 3,807,853]
 //   → ratio_i 20.16 / 19.77 / 29.38 / 30.68 % → INIT_REG_DIST [201.6, 197.7, 293.8, 306.8] (합 999.9 — 군별 독립 반올림)
+// v7.10.5: regDist 정밀도 0.1명 → 0.0001명 (사용자 결정 1안 — 엑셀 5.2 탭과 정합).
+//   0.1명 반올림은 Σ regDist = 1000.1명이 되어 의원당 PF 수입이 엑셀(분포비 정밀 × 1,000명)보다 약 5,000원 커지고
+//   만원 반올림 경계에서 5,866 vs 5,865로 갈렸음. 4자리면 Σ = 1000.0000(±0.0002) → 엑셀과 동일 5,865만원.
+//   등록 분포비(%) 소수 2자리 동일성(v7.5.3)은 더 높은 정밀도에서 그대로 성립.
+export const REG_DIST_DECIMALS = 4;
 const _sumN = INIT_BASE.reduce((s, g) => s + (g?.N || 0), 0);
+const _rk = Math.pow(10, REG_DIST_DECIMALS);
 export const INIT_REG_DIST = _sumN > 0
-  ? INIT_BASE.map(g => Math.round((g.N / _sumN) * 1000 * 10) / 10)
+  ? INIT_BASE.map(g => Math.round((g.N / _sumN) * 1000 * _rk) / _rk)
   : [201.6, 197.7, 293.8, 306.8];
 
 // v7.6.1: 본인부담 항은 산식에서 완전 제거 (사용자 결정 — 참여 후 수입·공단 지출에 잘못 더해지던 값).

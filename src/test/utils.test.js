@@ -88,13 +88,16 @@ describe('v7.5.1 ratiosFromBase / regDistFromRatios', () => {
     expect(ratiosFromBase([{ N: 0 }, { N: 0 }])).toEqual([0.5, 0.5]);
   });
 
-  it('regDistFromRatios: ratio × total을 0.1명 단위로 반올림 (등록 분포비 % 소수 2자리와 1:1)', () => {
+  it('regDistFromRatios: ratio × total을 0.0001명 단위로 반올림 (v7.10.5 · 이전 0.1명)', () => {
     const out = regDistFromRatios([0.2016, 0.1977, 0.2938, 0.3069], 1000);
     expect(out).toEqual([201.6, 197.7, 293.8, 306.9]);
     expect(out.reduce((s, v) => s + v, 0)).toBeCloseTo(1000, 6);
-    // 군별 독립 반올림이라 합은 ±0.2명 이내에서 1,000과 어긋날 수 있음 (2자리 동일성이 우선)
+    // 군별 독립 반올림이라 합은 ±0.0002명 이내에서 1,000과 어긋날 수 있음
     const out2 = regDistFromRatios([0.20165, 0.19772, 0.29382, 0.30681], 1000);
-    expect(Math.abs(out2.reduce((s, v) => s + v, 0) - 1000)).toBeLessThan(0.3);
+    expect(out2).toEqual([201.65, 197.72, 293.82, 306.81]);
+    expect(Math.abs(out2.reduce((s, v) => s + v, 0) - 1000)).toBeLessThan(0.0003);
+    // decimals 인자로 종전 0.1명 동작 유지 가능
+    expect(regDistFromRatios([0.20165, 0.19772, 0.29382, 0.30681], 1000, 1)).toEqual([201.7, 197.7, 293.8, 306.8]);
   });
 
   it('v7.5.5: refRatiosFromBase = RN 기준 (N_i / ΣN) — NT는 참고 표시일 뿐 기준 분포비에 쓰이지 않음', () => {
@@ -111,7 +114,7 @@ describe('v7.5.1 ratiosFromBase / regDistFromRatios', () => {
   it('regDistFromRatios: INIT_BASE(v7.9.0 baseline 260909) RN 기준에 적용하면 INIT_REG_DIST와 일치 (등록 분포비 디폴트 = 기준 분포비)', () => {
     const ratios = refRatiosFromBase(INIT_BASE);
     expect(regDistFromRatios(ratios, 1000)).toEqual(INIT_REG_DIST);
-    expect(INIT_REG_DIST).toEqual([192.4, 229.7, 280.1, 297.9]);
+    expect(INIT_REG_DIST).toEqual([192.3524, 229.7008, 280.0644, 297.8824]);   // v7.10.5: 0.0001명 정밀도
   });
 
   it('v7.5.3/v7.5.5: 디폴트 등록 분포비(%)는 기준 분포비(%, RN 기준)와 소수점 2자리까지 동일', () => {
@@ -121,18 +124,21 @@ describe('v7.5.1 ratiosFromBase / regDistFromRatios', () => {
     });
     // v7.9.0 baseline 260909 RN 기준값: 19.24 / 22.97 / 28.01 / 29.79 % (이전 exc_zero 20.16 / 19.77 / 29.38 / 30.68)
     expect(INIT_REG_DIST.map(rr => (rr / 10).toFixed(2))).toEqual(['19.24', '22.97', '28.01', '29.79']);
+    expect(INIT_REG_DIST).toEqual([192.3524, 229.7008, 280.0644, 297.8824]);   // v7.10.5
   });
 
-  it('regDistFromRatios: total 스케일(1,500명)에서도 0.1 단위·근사 합 보존', () => {
+  it('regDistFromRatios: total 스케일(1,500명)에서도 0.0001 단위·근사 합 보존', () => {
     const out = regDistFromRatios(refRatiosFromBase(INIT_BASE), 1500);
-    expect(Math.abs(out.reduce((s, v) => s + v, 0) - 1500)).toBeLessThan(0.3);
-    out.forEach(v => expect(Math.round(v * 10) / 10).toBe(v));
+    expect(Math.abs(out.reduce((s, v) => s + v, 0) - 1500)).toBeLessThan(0.0003);
+    out.forEach(v => expect(Math.round(v * 1e4) / 1e4).toBe(v));
   });
 
-  it('roundRegDist: 0 floor + 0.1명 반올림', () => {
-    expect(roundRegDist(201.65)).toBe(201.7);
+  it('roundRegDist: 0 floor + 0.0001명 반올림 (v7.10.5 · 이전 0.1명)', () => {
+    expect(roundRegDist(201.65)).toBe(201.65);
+    expect(roundRegDist(201.65004)).toBe(201.65);
+    expect(roundRegDist(201.65006)).toBe(201.6501);
     expect(roundRegDist(-3)).toBe(0);
-    expect(roundRegDist('12.34')).toBe(12.3);
+    expect(roundRegDist('12.34')).toBe(12.34);
     expect(roundRegDist(undefined)).toBe(0);
   });
 });

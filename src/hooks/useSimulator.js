@@ -233,7 +233,7 @@ function reducer(state, action) {
       return { ...state, ssPctA: INIT_SS_PCT_A, ssPctB: INIT_SS_PCT_B, ssPctC: INIT_SS_PCT_C };
     case "RESET_SS_COST":
       return { ...state, ssCostBase: INIT_SS_COST_BASE, ssProjectCost: INIT_SS_PROJECT_COST };
-    // v7.5.3: regDist는 0.1명 단위 (등록 분포비 % 소수 2자리와 1:1 대응). roundRegDist 공용.
+    // v7.5.3: regDist 반올림 단위 (v7.10.5: 0.1명 → 0.0001명, 엑셀 정합). roundRegDist 공용.
     case "SET_REGDIST_AT": {
       const regDist = [...state.regDist];
       regDist[action.i] = roundRegDist(action.value);
