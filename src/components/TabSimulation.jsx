@@ -135,12 +135,12 @@ export default memo(function TabSimulation({
   // ① PB 카드 — v6.11.0: 배지 "환자군 위험도(HCC) 기반" · 안내문 삭제 · v7.10.2: PF 카드와 배경 통일(slate), P 카드(indigo)와 구분
   const PBcard = (
     <div className="rounded-xl border shadow-sm p-4"
-      style={{ background: "#e8eef7", borderColor: "#94a3b8" }}>   {/* v7.10.3: 흰색 → 연한 슬레이트 블루 (가시성) */}
+      style={{ background: "#f4efe4", borderColor: "#b9a98a" }}>   {/* v7.10.8: 파란 계열 → 웜 베이지 (P 카드 indigo와 구분) */}
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2">
-          <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-700 text-white text-xs font-extrabold shadow-sm">1</span>
+          <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-stone-700 text-white text-xs font-extrabold shadow-sm">1</span>
           일차의료 기본수가 (PB)
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-400">환자군 위험도(HCC) 기반</span>   {/* v7.10.7: P 카드 배지처럼 rounded-full · 배경 slate-200 */}
+          <span className="text-xs sm:text-sm font-bold bg-white border border-stone-400 rounded-full px-2.5 py-0.5 text-stone-700">환자군 위험도(HCC) 기반</span>   {/* v7.10.8: P 카드 배지와 동일 형식 (흰 배경·색 테두리·rounded-full·text-xs/sm) · stone 계열 */}
         </h2>
         <button onClick={resetP}
           className="text-xs text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded px-2 py-0.5 bg-white">
@@ -169,14 +169,14 @@ export default memo(function TabSimulation({
   // ② PF 카드 — v6.11.0: 배지 2종(일차의료 기능강화·환자등록관리) · 설명문 삭제 · v7.10.2: PB 카드와 배경 통일(slate)
   const PFcard = (
     <div className="rounded-xl border shadow-sm p-4"
-      style={{ background: "#e8eef7", borderColor: "#94a3b8" }}>   {/* v7.10.3: 흰색 → 연한 슬레이트 블루 (가시성) */}
+      style={{ background: "#f4efe4", borderColor: "#b9a98a" }}>   {/* v7.10.8: 파란 계열 → 웜 베이지 (P 카드 indigo와 구분) */}
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2 flex-wrap">
-          <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-700 text-white text-xs font-extrabold shadow-sm">2</span>
+          <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-stone-700 text-white text-xs font-extrabold shadow-sm">2</span>
           일차의료 기능보정 (PF)
-          {/* v7.10.7: PB 배지와 동일 — rounded-full · 배경 slate-200 */}
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-400">일차의료 기능강화</span>
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-400">환자등록관리</span>
+          {/* v7.10.8: PB·P 카드 배지와 동일 형식 · stone 계열 */}
+          <span className="text-xs sm:text-sm font-bold bg-white border border-stone-400 rounded-full px-2.5 py-0.5 text-stone-700">일차의료 기능강화</span>
+          <span className="text-xs sm:text-sm font-bold bg-white border border-stone-400 rounded-full px-2.5 py-0.5 text-stone-700">환자등록관리</span>
         </h2>
       </div>
       <FCard state={state} setFAll={setFAll} updF={updF} setPfRule={setPfRule} resetF={resetF} bare />
