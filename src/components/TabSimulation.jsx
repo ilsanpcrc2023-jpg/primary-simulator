@@ -1,9 +1,7 @@
 import { memo, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import NumBox from "./shared/NumBox";
-import WinWinWin from "./WinWinWin";
-import { FCard, TCard, ClinicSummaryStrip, ClinicCountControls } from "./RegistrationPanel";
-import { SH, CL, INIT_COPAY_RATES, INIT_PF_PCT, OFFICIAL_BASELINE_META, C_DELTA_MAX, ON, INIT_M_CLINICS, INIT_PER_CLINIC, INIT_REG_DIST } from "../constants";
+import { FCard, TCard, ClinicCountControls } from "./RegistrationPanel";
+import { SH, CL, INIT_COPAY_RATES, C_DELTA_MAX, INIT_PER_CLINIC, INIT_REG_DIST, INIT_DEFAULT_M } from "../constants";
 import presets from "../data/presets/index";
 import { f, fE, pct, diffAuto, fMan, diffMan, calcPB, PBtoB, refRatiosFromBase } from "../utils";
 
@@ -49,7 +47,7 @@ export default memo(function TabSimulation({
   updRegDist, setRegDistAll, scaleRegDist, reset, loadPreset,
   G, T, decomp, performance: perfMemo, tracks,
   incChg, nhiChg,
-  fileRef, handleFile, handleExport, handleCommitBaseline,
+  fileRef, handleFile, handleExport,
   reg, regRatios,
 }) {
   const { base, P, L1, L2, showDetail, uploadBanner, F_g, M_clinics } = state;
@@ -57,7 +55,7 @@ export default memo(function TabSimulation({
   const [policyExpanded, setPolicyExpanded] = useState(mode === "policy");
   // v6.10.0: 균형추 controlled accordion 제거. 고급 패널만 유지.
   // v7.1.3: 수가 산출 구조 박스 삭제 (formula 컬럼 헤더와 중복 · showFormula state 제거).
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(true);   // v7.10.0: 기본 펼침
 
   // v6.9.3: PB = B × (1 − L1) — UI 표시값. 슬라이더 onChange는 PBtoB로 B 역산.
   const PB = calcPB(P, L1);
@@ -83,7 +81,6 @@ export default memo(function TabSimulation({
   const perClinicAfter = decomp.afterIncome / M;
   const perClinicPanel = decomp.panelEffect / M;
   const perClinicModel = decomp.modelEffect / M;
-  const perClinicPerf = decomp.performanceEffect / M;   // L2 성과급 (현재 선택 Track 반영)
   const perClinicNet = decomp.netChange / M;
 
   // v6.9.3: 의원 공단지급분 변화 KPI (정책 모드) — modelEffect의 PB drift 제거, PF 가산만 노출.
@@ -191,8 +188,7 @@ export default memo(function TabSimulation({
       <button onClick={() => setShowAdvanced(v => !v)}
         className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-slate-100 transition text-left">
         <span className="text-slate-400 text-xs">{showAdvanced ? "▲" : "▼"}</span>
-        <span className="text-sm font-semibold text-slate-700">⚙️ 고급 설정</span>
-        <span className="text-[10px] text-slate-400">의원 수 · 의원당 등록환자수</span>
+        <span className="text-sm font-semibold text-slate-700">⚙️ 사업 참여 의원 및 환자 수 설정</span>
       </button>
       {showAdvanced && (
         <div className="px-4 pb-4 pt-2 border-t border-dashed border-slate-300">
@@ -230,6 +226,10 @@ export default memo(function TabSimulation({
           );
         })}
       </div>
+      {/* v7.10.0: KPI 카드(의원 모드)에서 이동 — 수가 시뮬 기준 Track 안내 */}
+      <span className="text-[10px] text-gray-500 font-semibold">
+        기준: <b className="text-gray-700">Track C (환자군 100%)</b> · Track별 비교는 Track 탭
+      </span>
     </div>
 
     {/* v6.11.0: 정책 모드 — PB 카드 → PF 카드 → TCard → C 슬라이더 → KPI → 차트 → 고급 설정 → 수가 산출 구조.
@@ -294,11 +294,7 @@ export default memo(function TabSimulation({
       <div className="rounded-2xl border-2 shadow-md p-5" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", borderColor: "#86efac" }}>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider">의원 수입 변화</span>
-          {mode === "clinic" && (
-            <span className="text-[10px] text-emerald-700/70 font-semibold">
-              기준: <b className="text-emerald-800">Track C (환자군 100%)</b> · Track별 비교는 Track 탭
-            </span>
-          )}
+          {/* v7.10.0: "기준: Track C …" 안내는 관점 선택 행 우측으로 이동 */}
         </div>
         <div className="bg-white rounded-xl px-4 py-5 text-center shadow-sm border border-emerald-100">
           <div className="text-3xl sm:text-4xl font-extrabold tabular-nums leading-tight"
@@ -325,56 +321,7 @@ export default memo(function TabSimulation({
       </div>
     </div>
 
-    {/* v7.1.2: 참여 의원 수 + 의원당 등록환자수 — 슬림 1줄 요약만 (변경 컨트롤은 고급 설정으로 이동).
-        정책 모드에서만 노출 (의원 모드는 의원 1개 시뮬 관점이라 불필요). */}
-    {mode === "policy" && <ClinicSummaryStrip state={state} />}
-
-    {/* ⑨ 차트 */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      <div className={card + " p-3"}>
-        <h3 className="text-xs font-bold text-gray-700 mb-2">의원 수입 비교 (환자군별, 억원 · 선지급)</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={G.map((r, i) => ({ name: SH[i], "기존": r.inc0 / 1e8, "참여 후": r.inc / 1e8 }))} barGap={1}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-            <YAxis tickFormatter={v => v.toFixed(0) + "억"} tick={{ fontSize: 10 }} width={36} />
-            <Tooltip formatter={v => v.toFixed(1) + "억"} contentStyle={{ fontSize: 11 }} />
-            <Legend wrapperStyle={{ fontSize: 10 }} />
-            <Bar dataKey="기존" fill="#d1d5db" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="참여 후" fill="#22c55e" radius={[3, 3, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-      <div className={card + " p-3"}>
-        <h3 className="text-xs font-bold text-gray-700 mb-2">공단 지출 비교 (억원)</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={[
-            { name: "기존", v: T.nhi0 / 1e8 },
-            { name: "참여 후", v: T.nhi / 1e8 },
-          ]} barSize={50}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-            <YAxis tickFormatter={v => v.toFixed(0)} tick={{ fontSize: 10 }} width={40} />
-            <Tooltip formatter={v => v.toFixed(1) + "억"} contentStyle={{ fontSize: 11 }} />
-            <Bar dataKey="v" radius={[4, 4, 0, 0]}>
-              <Cell fill="#d1d5db" /><Cell fill="#f59e0b" />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-
-    {/* v7.0: 의원 모드 Track 비교 요약 박스 삭제 (Track 탭에 동일 정보, 중복 제거) */}
-
-    {/* ⑩ Win-Win-Win */}
-    <WinWinWin items={[
-      { t: "국민 (환자)", c: "#059669", bg: "#ecfdf5", bd: "#a7f3d0",
-        txt: "주치의 환자관리\n본인부담 현행 유지\n불필요한 병원 이용 감소" },
-      { t: "의원 (의사)", c: "#2563eb", bg: "#eff6ff", bd: "#bfdbfe",
-        txt: `환자군 기반 적절 보상\n의원당 ${diffMan(perClinicNet)}\n포괄관리성과 ${diffMan(perClinicPerf)}/년` },
-      { t: "공단 (정부)", c: "#dc2626", bg: "#fef2f2", bd: "#fecaca",
-        txt: `지출 ${diffAuto(T.nhi0, T.nhi + perfMemo.perf_nhi)}\n예측 가능성 향상\n*Shared Saving 효과 별도` },
-    ]} />
+    {/* v7.10.0: ClinicSummaryStrip(의원 수·의원당 환자수 1줄 요약) · 의원 수입/공단 지출 비교 차트 · Win-Win-Win 박스 삭제 (사용자 결정) */}
 
     {/* v6.11.0: 고급 설정 — 위치를 수가 산출 구조 위로 이동 (정책 모드 전용) */}
     {mode === "policy" && advancedPanel}
@@ -391,27 +338,7 @@ export default memo(function TabSimulation({
       </button>
       {showDetail && (
         <div className="px-3 pb-3 border-t border-gray-100">
-          {/* v7.5: 자료 분석 절차 (NHIS-HCC v3.0 2025 baseline · 의료비 0원 제외) — 엑셀 시트 텍스트 정합 */}
-          <div className="mt-3 mb-3 rounded-lg border bg-slate-50 px-3 py-2.5"
-            style={{ borderColor: "#cbd5e1" }}>
-            <div className="text-xs font-bold text-slate-700 mb-1.5">📊 자료 분석 절차</div>
-            <div className="text-[11px] text-slate-700 leading-relaxed space-y-1">
-              <div><b className="text-slate-800">1단계 (건보공단 전수자료 HCC 분석)</b></div>
-              <div className="pl-3">1) 2025년 건강보험 이용자 전수자료 <b>48,874,201명</b>으로 NHIS-HCC v3.0 구축 후 <span className="text-slate-500">(의료비 0원 제외)</span></div>
-              <div className="pl-3">2) HCC 4분위(quartile)로 환자군 1~4군 분류</div>
-              <div className="pt-1"><b className="text-slate-800">2단계 (일만시 참여의원 환자 중심 분석)</b></div>
-              <div className="pl-3 text-[10px] text-slate-500 leading-tight">
-                주분석 대상: 일차의료 만성질환관리 시범사업 참여의원 <b className="text-slate-700">{INIT_M_CLINICS.toLocaleString("ko-KR")}개 의원</b>
-                · 환자 <b className="text-slate-700">{ON.toLocaleString("ko-KR")}명</b> (의원당 환자수 <b className="text-slate-700">{INIT_PER_CLINIC.toLocaleString("ko-KR")}명</b>)
-              </div>
-              <div className="pl-3">1) 환자군 평균 의료비 <b>A</b></div>
-              <div className="pl-3">2) 환자군 기준 의료비(의원급외래) <b>B = A × CR</b></div>
-              <div className="pl-3">3) 일차의료 기본수가 <b>PB = B × C1</b> <span className="text-slate-500">(C1 = 1 − L1)</span></div>
-              <div className="pt-1 text-slate-500"><i>cf. 일차의료 정책 보정 후 일차의료수가</i></div>
-              <div className="pl-3 text-slate-600">· 일차의료 기능보정 <b>PF</b> <span className="text-slate-500">(B 기준 N% 정책 슬라이더, 디폴트 {INIT_PF_PCT}%)</span></div>
-              <div className="pl-3 text-slate-600">· 일차의료수가 <b>P = PB + PF</b></div>
-            </div>
-          </div>
+          {/* v7.10.0: 📊 자료 분석 절차 박스 삭제 (사용자 결정) */}
 
           {uploadBanner && (
             <div className={`mt-2 mb-3 rounded-lg px-3 py-2.5 text-xs ${uploadBanner.success ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
@@ -444,7 +371,7 @@ export default memo(function TabSimulation({
             <div className="flex-1 border-2 border-dashed border-amber-200 rounded-lg p-3 text-center hover:border-amber-400 transition cursor-pointer bg-amber-50/30"
               onClick={() => {
                 const distTxt = INIT_REG_DIST.map(v => (v / 10).toFixed(1)).join("/");
-                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: 100개\n· 의원당 환자수: ${INIT_PER_CLINIC.toLocaleString("ko-KR")}명\n· 의원당 등록환자수: 약 1,000명 (분포비 = 일만시 실측 ${distTxt}%)\n· 사업 전체 등록: 약 100,000명\n\n환자군별 RN · L · 분포비만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
+                const msg = `초기화: 1차년도 시범사업 디폴트로 복귀합니다.\n\n· 의원 수: ${INIT_DEFAULT_M.toLocaleString("ko-KR")}개\n· 의원당 환자수: ${INIT_PER_CLINIC.toLocaleString("ko-KR")}명\n· 의원당 등록환자수: 약 1,000명 (분포비 = 일만시 실측 ${distTxt}%)\n· 사업 전체 등록: 약 100,000명\n\n환자군별 RN · L · 분포비만 복귀.\nPF · L1 · B · L2 등 정책 슬라이더는 보존됩니다.\n\n진행할까요?`;
                 if (confirm(msg)) resetReg?.();
               }}>
               <div className="text-amber-500 text-xl mb-0.5">↩</div>
@@ -452,42 +379,7 @@ export default memo(function TabSimulation({
             </div>
           </div>
 
-          <div className="mt-3 pt-2 border-t border-gray-100">
-            <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
-              <div className="text-xs text-gray-500">
-                현재 공식 baseline:
-                {OFFICIAL_BASELINE_META.source === "official_baseline.json" ? (
-                  <span className="ml-1 text-gray-700">
-                    <b>v{OFFICIAL_BASELINE_META.version}</b>
-                    {OFFICIAL_BASELINE_META.updated_at ? ` · ${OFFICIAL_BASELINE_META.updated_at}` : ""}
-                    {OFFICIAL_BASELINE_META.updated_by ? ` · ${OFFICIAL_BASELINE_META.updated_by}` : ""}
-                  </span>
-                ) : (
-                  <span className="ml-1 text-amber-700">fallback (official_baseline.json 없음/불완전)</span>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                if (!handleCommitBaseline) return;
-                const SHL = ["1군", "2군", "3군", "4군"];
-                const fmt = v => Math.round(v).toLocaleString("ko-KR");
-                const preview = state.base.map((b, i) =>
-                  `${SHL[i]}: N=${fmt(b.N)}, M1=${fmt(b.M1)}, L=${b.L.toFixed(4)}, B=${fmt(state.P[i])}`).join("\n");
-                const sumN = state.base.reduce((s, b) => s + b.N, 0);
-                const meta = `의원 수: ${fmt(state.M_clinics)}기관 · 합계 N: ${fmt(sumN)}명 · 라벨: "${state.dataLabel}"`;
-                const msg = `⚠️ 현재 값을 모든 사용자의 공식 baseline으로 등록합니다.\n\n${meta}\n\n${preview}\n\nVercel 재배포 후 (약 1~2분) 모든 사용자의 디폴트가 갱신됩니다.\n환자군 패널 "초기화" 버튼이 위 의원 수·N으로 복귀합니다.\n진행하시겠습니까?`;
-                if (confirm(msg)) handleCommitBaseline();
-              }}
-              className="w-full border-2 border-dashed border-rose-300 rounded-lg py-2.5 text-center hover:border-rose-500 hover:bg-rose-50 transition cursor-pointer bg-rose-50/30">
-              <span className="text-rose-500 text-base mr-1.5">🏛️</span>
-              <span className="text-xs font-bold text-rose-700">현재 값을 공식 baseline으로 등록 (전역 · 관리자)</span>
-            </button>
-            <div className="mt-1 text-[10px] text-gray-400 leading-relaxed">
-              ※ 이 버튼을 누르면 <code>src/data/presets/official_baseline.json</code>이 GitHub에 커밋되고 Vercel이 재배포됩니다.
-              슬라이더 조정·엑셀 업로드만으로는 다른 세션에 영향 없음. 버튼 클릭 시에만 전역 디폴트로 고정.
-            </div>
-          </div>
+          {/* v7.10.0: "현재 공식 baseline" 표시 + 🏛️ 공식 baseline 등록 버튼 삭제 (사용자 결정 · API/hook은 보존) */}
 
           <div className="mt-3 pt-2 border-t border-gray-100">
             <div className="flex items-center justify-between gap-2 py-1.5 flex-wrap">

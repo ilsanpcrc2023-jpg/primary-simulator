@@ -204,7 +204,7 @@ function reducer(state, action) {
     case "RESET_L2_TRACK":
       return { ...state, L2_track: null };
     case "RESET_REG": {
-      // v7.1.1: 초기화는 "1차년도 시범사업 scope"로 복귀 (100개 의원 × 의원당 4,379명).
+      // v7.10.0: 초기화는 INIT_DEFAULT_M(10,000개) × 의원당 anchor 환자수로 복귀 (이전 v7.1.1: 100개).
       //   datasetM·datasetTotalN(2,923 anchor)이 아닌 v1 디폴트(INIT_DEFAULT_M=100)로 reset.
       //   data anchor 전체로 가려면 "일만시 전체 등록 모드" 버튼을 사용.
       //   의원당 환자수는 데이터 anchor에서 산출 (현재 base.N 합 / datasetM ≈ 4,379).

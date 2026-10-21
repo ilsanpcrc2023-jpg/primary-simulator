@@ -98,28 +98,27 @@ export const INIT_DATA_LABEL = validDataLabel
   ? officialBaseline.dataLabel
   : `데이터 baseline (${INIT_M_CLINICS}기관 · ${INIT_TOTAL_N.toLocaleString("ko-KR")}명)`;
 
+// v7.10.0: 사업 참여 의원 수 디폴트 100 → 10,000개 (사용자 결정). 아래 v7.1.1 설명은 이력.
 // v7.1.1: 1차년도 시범사업 디폴트 — 초기 화면은 100개 의원 (1차년도 시범사업 scope).
 //   데이터 anchor (INIT_M_CLINICS = 2,923, official_baseline.json)는 만성질환관리 시범사업 전체 코호트.
 //   초기 디스플레이는 100개 의원 × 의원당 4,379명 = 437,900명. 의원당 등록 1,000명 (regDist 합).
 //   "일만시 전체 등록 모드" 버튼으로 데이터 anchor (M=2,923, 의원당 4,379명 전체 등록) 전환 가능.
-export const INIT_DEFAULT_M = 100;
+export const INIT_DEFAULT_M = 10000;
 export const INIT_DEFAULT_TOTAL_N = Math.max(1, INIT_DEFAULT_M * INIT_PER_CLINIC);
 
-// 의원 수 프리셋 (ClinicCountCard) — 100/1,000/3,000/2,923
+// 의원 수 프리셋 — 100/1,000/3,000/10,000 (v7.10.0: 일만시 2,923 프리셋 삭제 · 디폴트 10,000)
 //   - 100: 1차년도 시범사업
-//   - 1,000·3,000: 확장 단계
-//   - 2,923 = INIT_M_CLINICS: 일만시 (만성질환관리 시범사업 참여의원 전체)
+//   - 1,000·3,000·10,000: 확장 단계
 export const CLINIC_COUNT_PRESETS = [
   { value: 100,             label: "100",                    title: "1차년도 시범사업" },
   { value: 1000,            label: "1,000",                  title: "확장" },
   { value: 3000,            label: "3,000",                  title: "확장" },
-  { value: 10000,           label: "10,000",                 title: "확장 (v7.7.4)" },
-  { value: INIT_M_CLINICS,  label: `일만시 ${INIT_M_CLINICS.toLocaleString("ko-KR")}`, title: "만성질환관리 시범사업 참여의원 전체 (2,923개)" },
+  { value: 10000,           label: "10,000",                 title: "확장 (디폴트 · v7.10.0)" },
 ];
 
-// 의원당 등록환자수 프리셋 (고급설정) — 1,000/1,500/2,000/3,000/4,000명
+// 의원당 등록환자수 프리셋 — 700/1,000/1,500/2,000명 (v7.10.0 · 이전 1,000/1,500/2,000/3,000/4,000)
 //   regDist 합을 비례 스케일 (scaleRegDist).
-export const REG_PER_CLINIC_PRESETS = [1000, 1500, 2000, 3000, 4000];
+export const REG_PER_CLINIC_PRESETS = [700, 1000, 1500, 2000];
 
 // v7.1.4: 일만시 모드는 시범사업안 디폴트 등록환자수(1,000명, INIT_REG_DIST [100,600,200,100])를 사용.
 //   이전 v7.1.1의 FULL_REG_REG_DIST(N비례 분배 ≈ 4,379명 전체 등록)는 폐기.

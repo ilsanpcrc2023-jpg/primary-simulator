@@ -597,13 +597,13 @@ describe('v6.10.0 · 정책 시나리오 프리셋 (환자군 패널)', () => {
 
 // v7.1.1: 1차년도 시범사업 디폴트 (100개 의원) + 일만시 전체 등록 + 프리셋
 describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 모드', () => {
-  it('INIT_DEFAULT_M = 100 (1차년도 시범사업 의원 수)', () => {
-    expect(INIT_DEFAULT_M).toBe(100);
+  it('INIT_DEFAULT_M = 10,000 (v7.10.0 · 이전 v7.1.1 100)', () => {
+    expect(INIT_DEFAULT_M).toBe(10000);
   });
 
-  it('INIT_DEFAULT_TOTAL_N = 100 × INIT_PER_CLINIC = 407,500 (v7.9.0 baseline 260909)', () => {
+  it('INIT_DEFAULT_TOTAL_N = 10,000 × INIT_PER_CLINIC = 40,750,000 (v7.10.0 · baseline 260909)', () => {
     expect(INIT_DEFAULT_TOTAL_N).toBe(INIT_DEFAULT_M * INIT_PER_CLINIC);
-    expect(INIT_DEFAULT_TOTAL_N).toBe(407500);
+    expect(INIT_DEFAULT_TOTAL_N).toBe(40750000);
   });
 
   it('데이터 anchor (INIT_M_CLINICS = 2,923)는 보존 (v7.9.0 baseline 260909)', () => {
@@ -614,34 +614,33 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     expect(INIT_PER_CLINIC).toBe(4075);
   });
 
-  it('CLINIC_COUNT_PRESETS는 5개 (100/1000/3000/10000/2923 일만시 · v7.7.4 10,000 추가)', () => {
-    expect(CLINIC_COUNT_PRESETS).toHaveLength(5);
+  it('CLINIC_COUNT_PRESETS는 4개 (100/1000/3000/10000 · v7.10.0 일만시 2,923 삭제)', () => {
+    expect(CLINIC_COUNT_PRESETS).toHaveLength(4);
     const values = CLINIC_COUNT_PRESETS.map(p => p.value);
-    expect(values).toEqual([100, 1000, 3000, 10000, 2923]);
-    // 일만시 라벨에 "일만시" 단어 포함
-    const ilmansi = CLINIC_COUNT_PRESETS.find(p => p.value === 2923);
-    expect(ilmansi.label).toMatch(/일만시/);
+    expect(values).toEqual([100, 1000, 3000, 10000]);
+    expect(CLINIC_COUNT_PRESETS.some(p => /일만시/.test(p.label))).toBe(false);
+    expect(values).toContain(INIT_DEFAULT_M);
   });
 
-  it('REG_PER_CLINIC_PRESETS는 5개 (1000/1500/2000/3000/4000)', () => {
-    expect(REG_PER_CLINIC_PRESETS).toEqual([1000, 1500, 2000, 3000, 4000]);
+  it('REG_PER_CLINIC_PRESETS는 4개 (700/1000/1500/2000 · v7.10.0)', () => {
+    expect(REG_PER_CLINIC_PRESETS).toEqual([700, 1000, 1500, 2000]);
   });
 
-  it('초기화 (v7.1.5 / v7.2.0 / v7.5): RESET_REG는 1차년도 시범사업 디폴트(M=100, regDist 합 1,000) 복귀', () => {
+  it('초기화 (v7.1.5 / v7.2.0 / v7.5 / v7.10.0): RESET_REG는 디폴트(M=10,000, regDist 합 1,000) 복귀', () => {
     // v7.1.5: 일만시 모드 버튼 → 초기화 버튼으로 교체. resetReg 호출 → RESET_REG 액션.
     // v7.5.5: regDist 디폴트 = RN 기준 ratio_i × 1,000명 (0.1명 단위 · 등록 분포비 = 기준 분포비 2자리).
     // v7.9.0: baseline 260909 → [192.4, 229.7, 280.1, 297.9] (이전 exc_zero [201.6, 197.7, 293.8, 306.8]).
-    const resetM = INIT_DEFAULT_M;             // 100
+    const resetM = INIT_DEFAULT_M;             // 10,000 (v7.10.0)
     const resetRegDist = INIT_REG_DIST;        // [192.4, 229.7, 280.1, 297.9]
     const resetRegSum = resetRegDist.reduce((s, v) => s + v, 0);
     const resetTotalReg = resetM * resetRegSum;
-    expect(resetM).toBe(100);
+    expect(resetM).toBe(10000);
     expect(resetRegDist).toEqual([192.4, 229.7, 280.1, 297.9]);
     expect(resetRegSum).toBeCloseTo(1000.1, 6);          // 군별 독립 0.1명 반올림 → 1000.1
-    expect(resetTotalReg).toBeCloseTo(100010, 3);        // 1차년도 사업 전체 등록환자 (≈ 100,000)
+    expect(resetTotalReg).toBeCloseTo(10001000, 2);      // 사업 전체 등록환자 (≈ 10,000,000 · v7.10.0)
   });
 
-  it('100개 의원 디폴트 (v7.9.0): 407,500명 = 등록 100,010명 + 비등록 307,490명 (regDist 합 1000.1, RN 기준)', () => {
+  it('10,000개 의원 디폴트 (v7.10.0): 40,750,000명 = 등록 10,001,000명 + 비등록 30,749,000명 (regDist 합 1000.1, RN 기준)', () => {
     const M = INIT_DEFAULT_M;
     const totalN = INIT_DEFAULT_TOTAL_N;
     const perClinic = totalN / M;
@@ -650,8 +649,8 @@ describe('v7.1.1 · 1차년도 시범사업 디폴트 + 일만시 전체 등록 
     expect(regDistSum).toBeCloseTo(1000.1, 6);
     const totalReg = M * regDistSum;
     const totalUnreg = totalN - totalReg;
-    expect(totalReg).toBeCloseTo(100010, 3);
-    expect(totalUnreg).toBeCloseTo(307490, 3);
+    expect(totalReg).toBeCloseTo(10001000, 2);
+    expect(totalUnreg).toBeCloseTo(30749000, 2);
   });
 });
 
