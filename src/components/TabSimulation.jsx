@@ -135,7 +135,7 @@ export default memo(function TabSimulation({
   // ① PB 카드 — v6.11.0: 배지 "환자군 위험도(HCC) 기반" · 안내문 삭제 · v7.10.2: PF 카드와 배경 통일(slate), P 카드(indigo)와 구분
   const PBcard = (
     <div className="rounded-xl border shadow-sm p-4"
-      style={{ background: "#f9f6ef", borderColor: "#c9bda6" }}>   {/* v7.10.10: 웜 베이지 더 연하게 (v7.10.8 #f4efe4보다 밝게 · v7.10.9 진하게 한 것은 오해로 취소) */}
+      style={{ background: "#f4efe4", borderColor: "#b9a98a" }}>   {/* v7.10.11: 중간 톤(v7.10.8 값) 복귀 — 사용자 결정 */}
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2">
           <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-stone-700 text-white text-xs font-extrabold shadow-sm">1</span>
@@ -169,7 +169,7 @@ export default memo(function TabSimulation({
   // ② PF 카드 — v6.11.0: 배지 2종(일차의료 기능강화·환자등록관리) · 설명문 삭제 · v7.10.2: PB 카드와 배경 통일(slate)
   const PFcard = (
     <div className="rounded-xl border shadow-sm p-4"
-      style={{ background: "#f9f6ef", borderColor: "#c9bda6" }}>   {/* v7.10.10: 웜 베이지 더 연하게 (v7.10.8 #f4efe4보다 밝게 · v7.10.9 진하게 한 것은 오해로 취소) */}
+      style={{ background: "#f4efe4", borderColor: "#b9a98a" }}>   {/* v7.10.11: 중간 톤(v7.10.8 값) 복귀 — 사용자 결정 */}
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2 flex-wrap">
           <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-stone-700 text-white text-xs font-extrabold shadow-sm">2</span>
