@@ -54,27 +54,21 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
         </div>
       )}
 
-      {/* ① 통합 슬라이더 (B의 X%, 0~20%, 디폴트 10%) — v7.2.1: 현재 슬라이더 % 표기 추가 (B 기준 N.N%) */}
-      <div className="rounded-lg border bg-white px-3 py-2.5"
-        style={{ borderColor: "#cbd5e1" }}>   {/* v7.10.2: PB 카드와 톤 통일 (파랑 그라디언트 → 흰색) */}
-        <div className="flex items-baseline justify-between gap-2 flex-wrap mb-1">
-          <div className="text-xs text-slate-600 tabular-nums">
-            <span className="font-semibold text-slate-700">B 기준</span>
-            <span className="ml-1 text-base font-extrabold text-blue-700">{Math.max(0, Math.min(PF_PCT_MAX, pfPctImplied)).toFixed(1)}%</span>
-          </div>
-          {/* v7.10.2: "공단지출 +X억" 미니 표시 삭제 (사용자 결정) */}
+      {/* ① 통합 슬라이더 (B 기준 %, 0~40%, 디폴트 10%) — v7.10.4: 2줄 간소화 (라벨 + 슬라이더 한 줄 · 눈금 한 줄, 풋노트 삭제) */}
+      <div className="rounded-lg border bg-white px-3 py-2" style={{ borderColor: "#cbd5e1" }}>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-slate-700 tabular-nums shrink-0 whitespace-nowrap">
+            B 기준 <span className="text-base font-extrabold text-blue-700">{Math.max(0, Math.min(PF_PCT_MAX, pfPctImplied)).toFixed(1)}%</span>
+          </span>
+          <input type="range" min={0} max={PF_PCT_MAX} step={0.5}
+            value={Math.max(0, Math.min(PF_PCT_MAX, pfPctImplied))}
+            onChange={e => setPfPct(parseFloat(e.target.value))}
+            aria-label="PF 통합 슬라이더 (B의 X%)"
+            className="flex-1 big-thumb"
+            style={{ '--thumb-bg': "#2563eb", accentColor: "#2563eb" }} />
         </div>
-        <input type="range" min={0} max={PF_PCT_MAX} step={0.5}
-          value={Math.max(0, Math.min(PF_PCT_MAX, pfPctImplied))}
-          onChange={e => setPfPct(parseFloat(e.target.value))}
-          aria-label="PF 통합 슬라이더 (B의 X%)"
-          className="w-full big-thumb"
-          style={{ '--thumb-bg': "#2563eb", accentColor: "#2563eb" }} />
-        <div className="flex justify-between text-[10px] text-slate-500 mt-0.5">
+        <div className="flex justify-between text-[10px] text-slate-500 mt-0.5 pl-24">
           <span>0%</span><span>10%</span><span>20%</span><span>30%</span><span>40%</span>
-        </div>
-        <div className="mt-1 text-[10px] text-slate-500 leading-relaxed">
-          ※ 환자군 기준의료비(B) 기준
         </div>
       </div>
 

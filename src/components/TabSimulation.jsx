@@ -138,7 +138,7 @@ export default memo(function TabSimulation({
       style={{ background: "#e8eef7", borderColor: "#94a3b8" }}>   {/* v7.10.3: 흰색 → 연한 슬레이트 블루 (가시성) */}
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2">
-          <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-200 text-slate-700 text-xs font-extrabold">1</span>
+          <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-700 text-white text-xs font-extrabold shadow-sm">1</span>
           일차의료 기본수가 (PB)
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">환자군 위험도(HCC) 기반</span>
         </h2>
@@ -152,7 +152,8 @@ export default memo(function TabSimulation({
           const PB_val = PB[i];
           const L1_g = L1?.[i] ?? 0.7;
           return (
-            <div key={i} className="flex items-center gap-1.5 bg-white rounded-lg px-2 py-1.5 border border-slate-200">
+            <div key={i} className="flex items-center gap-1.5 bg-white/90 rounded-lg px-2 py-1.5 shadow-sm min-w-0"
+              style={{ borderLeft: `5px solid ${CL[i]}` }}>   {/* v7.10.4: PF 군별 카드와 동일한 왼쪽 색 테두리 */}
               <span className="text-[11px] font-bold shrink-0" style={{ color: CL[i] }}>{g}</span>
               <NumBox value={PB_val} onChange={v => {
                 const newB = Math.max(50000, Math.min(2000000, PBtoB(Math.max(0, Math.round(v)), L1_g)));
@@ -171,7 +172,7 @@ export default memo(function TabSimulation({
       style={{ background: "#e8eef7", borderColor: "#94a3b8" }}>   {/* v7.10.3: 흰색 → 연한 슬레이트 블루 (가시성) */}
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h2 className="font-bold text-base text-slate-800 flex items-center gap-2 flex-wrap">
-          <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-200 text-slate-700 text-xs font-extrabold">2</span>
+          <span className="inline-grid place-items-center w-6 h-6 rounded-md bg-slate-700 text-white text-xs font-extrabold shadow-sm">2</span>
           일차의료 기능보정 (PF)
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">일차의료 기능강화</span>
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">환자등록관리</span>
