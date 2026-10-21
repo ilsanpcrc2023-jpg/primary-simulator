@@ -1,6 +1,6 @@
 import { useReducer, useMemo, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_TRACK_PF_PCT_A, INIT_TRACK_PF_PCT_B, INIT_TRACK_PF_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, COL_ALIASES_EXACT_ONLY, B_MIN, B_MAX, INIT_COPAY_RATES } from "../constants";
+import { INIT_BASE, INIT_P, INIT_F, INIT_REG_DIST, INIT_M_CLINICS, INIT_BASE_PER_CLINIC, INIT_TOTAL_N, INIT_DATA_LABEL, INIT_PT_BASE, INIT_PT_PCT_A, INIT_PT_PCT_B, INIT_PT_PCT_C, INIT_TRACK_PF_PCT_A, INIT_TRACK_PF_PCT_B, INIT_TRACK_PF_PCT_C, INIT_SS_PCT_A, INIT_SS_PCT_B, INIT_SS_PCT_C, INIT_SS_COST_BASE, INIT_SS_PROJECT_COST, INIT_L1, INIT_PF_PCT, INIT_PF_RULE, INIT_C_DELTA, INIT_DEFAULT_M, INIT_DEFAULT_TOTAL_N, INIT_PER_CLINIC, ON, COL_ALIASES, COL_ALIASES_EXACT_ONLY, B_MIN, B_MAX, INIT_COPAY_RATES } from "../constants";
 import { roundRegDist, refRatiosFromBase, regDistFromRatios } from "../utils";
 
 // v7.5.8: 등록 기준 총량 (분포비를 곱하기 전 base) = Σ regDist ÷ Σ 현재 분포비. 디폴트 1,000명.
@@ -420,7 +420,9 @@ export default function useSimulator() {
     if (t <= 0) return 0.7;
     return base.reduce((s, g, i) => s + (L1[i] ?? 0.7) * g.N, 0) / t;
   }, [base, L1]);
-  const L2eff = L2 ?? L1avg;
+  // v7.10.6: L2 = null(디폴트·초기화) → L1avg − INIT_C_DELTA/100 (ΔC 3.0%p). 이전 디폴트는 L1avg(ΔC 0).
+  const L2default = Math.max(0, Math.min(1, L1avg - INIT_C_DELTA / 100));
+  const L2eff = L2 ?? L2default;
   // v7.6.8 (사용자 결정): L2를 스칼라 평균 하나로 전 군에 적용하던 것을 군별 L2_g = L1_g − Δ로 변경.
   //   Δ = L1avg − L2eff (C 슬라이더의 ΔC). Δ = 0이면 모든 군에서 참여 전·후 타원비가 같고 성과도 0 (진짜 무변화 기준점).
   //   state.L2(평균 수준 목표값)·setL2·UI 표시는 그대로 두고, 엔진 안에서만 군별로 환산한다.
@@ -528,16 +530,16 @@ export default function useSimulator() {
     //   v7.6.6에서 곱했던 (1 − 본인부담비)를 성과 항목에서만 되돌려 공단 지출 = 의원 수령액(perf_blended)으로 정합.
     const perf_nhi = perf_blended;
     return {
-      L2eff, L1avg, dL2, L2_g,
+      L2eff, L1avg, L2default, dL2, L2_g,
       perf_raw_total, perf_total, perfByTrack,
       trackMul, pfMul, perf_blended, perf_nhi,
     };
-  }, [G, L1, L2eff, L1avg, dL2, L2_g, pfMul]);
+  }, [G, L1, L2eff, L1avg, L2default, dL2, L2_g, pfMul]);
 
   // v7.9.5 (사용자 결정): Track 탭 전용 성과 메모 — Track 탭의 포괄관리 지표(C) 슬라이더(state.L2_track)만 반영.
   //   수가 시뮬 탭의 performance(state.L2)와 완전히 분리. tracks 메모(Track별 포괄관리성과)는 이 값을 사용.
   const performanceTrack = useMemo(() => {
-    const L2eff_t = L2_track ?? L1avg;
+    const L2eff_t = L2_track ?? L2default;   // v7.10.6: 디폴트 ΔC 3.0%p
     const dL2_t = L1avg - L2eff_t;
     const L2_g_t = L1.map(l => Math.max(0, Math.min(0.999, (l ?? 0.7) - dL2_t)));
     let perf_total = 0;
@@ -546,11 +548,11 @@ export default function useSimulator() {
       perf_total += diff * r.p * r.n_reg;
     });
     return {
-      L2eff: L2eff_t, L1avg, dL2: dL2_t, L2_g: L2_g_t,
+      L2eff: L2eff_t, L1avg, L2default, dL2: dL2_t, L2_g: L2_g_t,
       perf_raw_total: perf_total, perf_total,
       perfByTrack: { A: 0, B: perf_total * 0.5, C: perf_total },
     };
-  }, [G, L1, L2_track, L1avg]);
+  }, [G, L1, L2_track, L1avg, L2default]);
 
   // v6.7: KPI 변화율 — L2 연동
   //   의원 수입  = 선지급 inc + 성과급 perf_blended

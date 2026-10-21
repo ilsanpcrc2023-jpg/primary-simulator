@@ -55,7 +55,7 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
       )}
 
       {/* ① 통합 슬라이더 (B 기준 %, 0~40%, 디폴트 10%) — v7.10.4: 2줄 간소화 (라벨 + 슬라이더 한 줄 · 눈금 한 줄, 풋노트 삭제) */}
-      <div className="rounded-lg border bg-white px-3 py-2" style={{ borderColor: "#cbd5e1" }}>
+      <div className="rounded-lg border px-3 py-2" style={{ background: "#dbeafe", borderColor: "#93c5fd" }}>   {/* v7.10.6: 흰색 → 연파랑 (카드 배경 #e8eef7과 구분) */}
         <div className="flex items-center gap-3">
           <span className="text-xs font-semibold text-slate-700 tabular-nums shrink-0 whitespace-nowrap">
             B 기준 <span className="text-base font-extrabold text-blue-700">{Math.max(0, Math.min(PF_PCT_MAX, pfPctImplied)).toFixed(1)}%</span>

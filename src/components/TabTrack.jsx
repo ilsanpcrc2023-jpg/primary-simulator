@@ -25,7 +25,7 @@ export default memo(function TabTrack({
     trackPfPctA, trackPfPctB, trackPfPctC } = state;
   // v7.9.10: 의원당 시범사업 참여 환자 수 (= Σ regDist) · v7.9.11: 의원당 환자수(totalN/M) 표시 삭제
   const perClinicReg = Math.round((regDist || []).reduce((a, b) => a + (b || 0), 0));
-  const L2_display = L2_track ?? (perfMemo?.L1avg ?? 0.7);   // v7.9.5: Track 탭 전용 (수가 시뮬 L2와 미연동)
+  const L2_display = L2_track ?? (perfMemo?.L2default ?? perfMemo?.L1avg ?? 0.7);   // v7.9.5: Track 탭 전용 · v7.10.6: 디폴트 ΔC 3.0%p
   const ffsPct = 100 - hccPct;
   const M = Math.max(1, M_clinics);
 
