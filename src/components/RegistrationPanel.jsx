@@ -106,7 +106,6 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
       {/* ③ 환자군별 PF 값 — v7.10.1: 슬라이더·NumBox 수기 조정 삭제, 통합 PF %(분배 규칙)에 따른 군별 산출값만 표시 */}
       <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
         {SH.map((g, i) => {
-          const pctOfB = B_g[i] > 0 ? ((F_g[i] || 0) / B_g[i]) * 100 : 0;
           return (
             <div key={i} className="rounded-lg px-2 py-2 bg-white/90 shadow-sm min-w-0 text-center"
               style={{ borderLeft: `5px solid ${CL[i]}` }}>
@@ -114,7 +113,6 @@ export const FCard = memo(function FCard({ state, setFAll, updF, setPfRule, rese
               <div className="mt-0.5 text-sm sm:text-base font-extrabold tabular-nums whitespace-nowrap" style={{ color: CL[i] }}>
                 {f(Math.round(F_g[i] || 0))}<span className="text-[10px] font-bold ml-0.5">원</span>
               </div>
-              <div className="text-[10px] text-slate-500 tabular-nums">B 기준 {pctOfB.toFixed(1)}%</div>
             </div>
           );
         })}
@@ -130,8 +128,10 @@ export const TCard = memo(function TCard({ state, G, mode = "policy" }) {
   return (
     <div className="rounded-xl border-2 shadow-md overflow-hidden" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)", borderColor: "#4f46e5" }}>
       <div className="px-4 pt-3 pb-1">
-        <h2 className="font-extrabold text-lg tracking-tight leading-tight" style={{ color: "#3730a3" }}>
+        <h2 className="font-extrabold text-lg tracking-tight leading-tight flex items-center gap-2 flex-wrap" style={{ color: "#3730a3" }}>
           일차의료수가(P)
+          {/* v7.10.3: P = PB + PF 산식 배지 (이전 PB/PF 카드 사이 "+"/"=" 연결 배지 대체) */}
+          <span className="text-sm font-extrabold tabular-nums bg-white border border-indigo-300 rounded-full px-2.5 py-0.5 text-indigo-700">P = PB + PF</span>
         </h2>
         <div className="text-xs font-semibold text-indigo-700/80 mt-0.5">
           일차의료 기본수가(PB) + 일차의료 기능보정(PF)
