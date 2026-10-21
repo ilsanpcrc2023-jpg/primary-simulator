@@ -16,6 +16,17 @@ export const diffAuto = (a, b) => {
   const d = b - a;
   return (d >= 0 ? "+" : "") + fAuto(d);
 };
+// v7.10.1: 억원 정수 표기 (소수점 미표시) — 공단 지출 변화 KPI 카드용. 1억 미만은 fAuto와 동일.
+export const fAutoInt = (v) => {
+  const abs = Math.abs(v);
+  if (abs >= 1e8) { const n = Math.round(v / 1e8); return (n === 0 ? 0 : n).toLocaleString("ko-KR") + "억원"; }
+  return fAuto(v);
+};
+export const diffAutoInt = (a, b) => {
+  const d = b - a;
+  const sign = Math.abs(d) >= 1e8 ? Math.round(d / 1e8) >= 0 : d >= 0;
+  return (sign ? "+" : "") + fAutoInt(d);
+};
 
 // 만원 단위 고정 포매팅 (의원당 평균처럼 작은 차이 가독성 필요 시)
 export const fMan = (v) => { const n = Math.round(v / 1e4); return (n === 0 ? 0 : n).toLocaleString("ko-KR") + "만원"; };   // v7.9.4: −0 표기 방지
