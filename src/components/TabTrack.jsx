@@ -26,7 +26,7 @@ export default memo(function TabTrack({
 }) {
   const { hccPct, L2_track, M_clinics, regDist,
     trackPfPctA, trackPfPctB, trackPfPctC } = state;
-  // v7.9.10: 의원당 시범사업 참여 환자 수 (= Σ regDist) · v7.9.11: 의원당 환자수(totalN/M) 표시 삭제
+  // v7.9.10: 의원당 사업 참여 환자 수 (= Σ regDist) · v7.9.11: 의원당 환자수(totalN/M) 표시 삭제
   const perClinicReg = Math.round((regDist || []).reduce((a, b) => a + (b || 0), 0));
   const L2_display = L2_track ?? (perfMemo?.L2default ?? perfMemo?.L1avg ?? 0.7);   // v7.9.5: Track 탭 전용 · v7.10.6: 디폴트 ΔC 3.0%p
   const ffsPct = 100 - hccPct;
@@ -167,7 +167,7 @@ export default memo(function TabTrack({
       </div>
 
       <div className="mt-3 text-[11px] text-stone-600 leading-relaxed">
-        ※ 의원당 시범사업 참여 환자 수 = <b>{f(perClinicReg)}명</b>
+        ※ 의원당 사업 참여 환자 수 = <b>{f(perClinicReg)}명</b>
         <br/>※ 일차의료기능 보정 (PF) 제외, 운영지원금(단독모형) 제외
         <br/><span className="text-stone-500">※ 본 사업 참여로 발생하는 수입 변화분만 표시. 의원 전체 수입(비급여·기타) 영향은 별도.</span>
       </div>
@@ -220,7 +220,7 @@ export default memo(function TabTrack({
               })}
             </div>
             <div className="mt-3 text-[11px] text-stone-600 leading-relaxed">
-              ※ 의원당 시범사업 참여 환자 수 = <b>{f(perClinicReg)}명</b>
+              ※ 의원당 사업 참여 환자 수 = <b>{f(perClinicReg)}명</b>
               <br/>※ PF %는 환자군 기준의료비(B) 기준
               <br/>※ PF 수입액 = Σ 환자군별 B × PF% × 의원당 등록환자수
             </div>
@@ -261,7 +261,7 @@ export default memo(function TabTrack({
           })}
         </div>
         <div className="mt-3 text-[11px] text-indigo-800/70 leading-relaxed">
-          ※ 의원당 시범사업 참여 환자 수 = <b>{f(perClinicReg)}명</b>
+          ※ 의원당 사업 참여 환자 수 = <b>{f(perClinicReg)}명</b>
           <br/>※ 운영지원금(단독모형) 제외 · 의원 전체 수입(비급여·기타) 영향은 별도
         </div>
       </div>
